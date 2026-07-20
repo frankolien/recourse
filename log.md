@@ -4,6 +4,20 @@ Convention: every session appends one entry above this line's predecessors. Form
 
 ---
 
+## 2026-07-20: Session 14, policy compiler and the visual policy builder
+
+Found: the policy builder was the last big web piece, and it needed an engine compiler to turn authored JSON (PRD section 6) into the on-chain Rule structs. The risk was R2: the compiler must not become a third implementation of anything. The verdict logic lives in compute and the hash in policyHash, both already mirrored to Solidity.
+
+Decided: make the compiler pure authoring and serialization. It maps claim-type and evidence and attestation names to the numeric struct fields, validates ranges (uint32 windows, bps 0 to 10000, at most 16 rules), and reuses policyHash and compute unchanged. The merchant is supplied separately because on-chain it is msg.sender, not part of the authored JSON. The builder previews only; publishing on-chain needs a wallet and is the next step.
+
+Built: engine/src/compiler.ts (compilePolicy, toSpec, PolicyCompileError, name tables) exported from the package, with engine/test/compiler.test.ts (9 cases). The golden case authors the seed policy #1 spec and asserts it compiles to the exact structs and hash. Web: components/policy-builder.tsx and the /policies/new route, a two column authoring UI (policy settings, add and remove rules with claim type, evidence, attestation, window, refund, return) that live-compiles to the policy hash, shows the compiled Rule structs, tests a sample claim through compute, and copies the authored JSON. The /policies "New policy" button now routes here.
+
+Verified: engine typecheck and 24 vitest cases green; web tsc, eslint, and the production build green (14 routes). The builder's default spec is policy #1, and its compiled hash rendered server-side as 0xc5a2b6c0d2ca...41fa892f, which is byte-for-byte the on-chain policyHash(1) read from Arc. Authoring JSON to TS compiler to Solidity registerPolicy all agree.
+
+Rules earned: a compiler that sits next to a canonical engine earns its keep by reusing the engine's hash and compute, never by re-deriving them, and a golden test that ties the authored default to a live on-chain hash proves the whole chain in one assertion.
+
+---
+
 ## 2026-07-20: Session 13, panel padding, Lottie accents, and a verifier dead end
 
 Found: three issues surfaced while reviewing the new merchant routes. The base .dash-panel class had no padding (the dashboard's own panels each set their own via variant classes), so the new bare panels rendered flush to the border. The public verifier had no link back into the app: its logo and its "Public verifier" back link both pointed at /verify/5, the page itself, so they were no-ops and the page felt like a dead end. And the app used only static icons with no motion.

@@ -87,7 +87,7 @@ export function PoliciesPage() {
           <h1>Policies</h1>
           <p>Refund rules are immutable and pinned to each payment. First matching rule wins.</p>
         </div>
-        <button className="page-cta ghost"><Plus size={15} /> New policy</button>
+        <Link className="page-cta ghost" href="/policies/new"><Plus size={15} /> New policy</Link>
       </header>
 
       {loading ? (
