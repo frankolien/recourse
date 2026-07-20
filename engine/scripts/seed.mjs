@@ -48,8 +48,11 @@ const deployer = privateKeyToAccount(process.env.DEPLOYER_PK ?? ANVIL.deployer);
 const merchant = privateKeyToAccount(seedKey("SEED_MERCHANT_PK", ANVIL.merchant));
 const buyer = privateKeyToAccount(seedKey("SEED_BUYER_PK", ANVIL.buyer));
 
-const pub = createPublicClient({ chain, transport: http(rpcUrl) });
-const wallet = (account) => createWalletClient({ account, chain, transport: http(rpcUrl) });
+// The public Arc RPC rate-limits, so retry with backoff and poll receipts gently.
+const transport = http(rpcUrl, { retryCount: 12, retryDelay: 2000, timeout: 30000 });
+const pub = createPublicClient({ chain, transport, pollingInterval: 4000 });
+const wallet = (account) => createWalletClient({ account, chain, transport });
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const USDC = [
   { type: "function", name: "transfer", stateMutability: "nonpayable", inputs: [{ type: "address" }, { type: "uint256" }], outputs: [{ type: "bool" }] },
@@ -85,8 +88,9 @@ const DAY = 86400;
 
 async function send(account, address, abi, functionName, args, label) {
   const hash = await wallet(account).writeContract({ address, abi, functionName, args });
-  const rcpt = await pub.waitForTransactionReceipt({ hash });
+  const rcpt = await pub.waitForTransactionReceipt({ hash, pollingInterval: 4000, retryCount: 12, timeout: 180000 });
   if (rcpt.status !== "success") throw new Error(`${label} reverted (${hash})`);
+  await sleep(500); // stay under the public RPC rate limit
   return rcpt;
 }
 
@@ -130,12 +134,14 @@ async function main() {
   await send(merchant, d.policyRegistry, REGISTRY, "registerPolicy", [14 * DAY, 0, rules, "ipfs://demo-policy"], "register policy");
   const policyId = await pub.readContract({ address: d.policyRegistry, abi: REGISTRY, functionName: "policyCount" });
 
-  // Phase 3: buyer pays eight times and disputes two.
+  // Phase 3: buyer pays eight times and disputes two. paymentIds are sequential from
+  // the current count, so read it once instead of after every pay (fewer RPC calls).
   await send(buyer, d.usdc, USDC, "approve", [d.escrow, buyerFunding], "buyer approve");
+  const base = await pub.readContract({ address: d.escrow, abi: ESCROW, functionName: "paymentCount" });
   const ids = [];
   for (let i = 0n; i < N; i++) {
     await send(buyer, d.escrow, ESCROW, "pay", [policyId, PAY, `0x${(i + 1n).toString(16).padStart(64, "0")}`], `pay ${i}`);
-    ids.push(await pub.readContract({ address: d.escrow, abi: ESCROW, functionName: "paymentCount" }));
+    ids.push(base + i + 1n);
   }
   await send(buyer, d.escrow, ESCROW, "fileDispute", [ids[4], 0, []], "dispute refund");
   await send(buyer, d.escrow, ESCROW, "fileDispute", [ids[5], 0, []], "dispute deny");
