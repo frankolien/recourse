@@ -4,6 +4,18 @@ Convention: every session appends one entry above this line's predecessors. Form
 
 ---
 
+## 2026-07-20: Session 4, deploy and codegen pipeline
+
+Found: a real Arc deploy is blocked on the RPC and the real USDC address, but the deploy wiring (constructor args, setVault, buffer funding) and the address codegen can be written and fully verified locally without Arc.
+
+Decided: D16, the deploy script picks its output filename by chainId: Arc (5042002) writes deployments/arc-testnet.json and requires RECOURSE_USDC; any other chain writes deployments/local-<chainId>.json, so a local dry-run can never clobber the canonical Arc address book. D17, generated address books (engine/src/addresses.ts) and local dry-run deployments (deployments/local-*.json) are gitignored; the real deployments/arc-testnet.json is committed after an Arc deploy as the address source of truth. D18, codegen is a small node script (ops/codegen.mjs) rather than Solidity, since it emits typed TS; it takes the deployment JSON path as an argument and is structured to add backend and mobile targets later.
+
+Built: contracts/script/Deploy.s.sol (env-driven: RECOURSE_USDC, RECOURSE_ATTESTOR, RECOURSE_TREASURY, RECOURSE_YIELD_FEE_BPS, RECOURSE_RESOLVE_DELAY, RECOURSE_ADAPTER_BUFFER; deploys registry, adapter, escrow, vault, wires setVault, funds the mock buffer on the local path, and writes the address book). ops/codegen.mjs (emits engine/src/addresses.ts). Added ../deployments to fs_permissions. Verified end to end with a local in-memory dry-run: deploy wrote deployments/local-31337.json, codegen produced engine/src/addresses.ts, and tsc accepted it. Dry-run artifacts removed and gitignored.
+
+Rules earned: none new.
+
+---
+
 ## 2026-07-20: Session 3, M1 stateful contract layer (escrow, adapter, vault)
 
 Found: three design points the docs left implicit. One, a simulated yield adapter has no external yield source, so redeem can only pay principal plus yield if the adapter holds a USDC buffer. Two, the doc says assign is callable by "the current beneficiary," but at advance time the beneficiary is the merchant while the caller is the vault, so that phrasing cannot implement T+0. Three, distributing exactly the redeemed total without dust needs one payout computed as the residual.

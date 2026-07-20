@@ -9,12 +9,16 @@ Rolling operational file. Read this first every session: blockers, then next act
 
 ## Next actions (architecture section 11 order, dependency-true)
 
-1. contracts/: deploy script (Deploy.s.sol) that deploys registry, adapter, escrow, vault, wires escrow.setVault, funds the adapter yield buffer, and writes deployments/arc-testnet.json. Then codegen (ops/) emitting engine/src/addresses.ts (and backend/mobile targets as those land). Blocked on the Arc RPC + real USDC address from docs.arc.io for a real deploy; the script can be written and dry-run locally first.
+1. Deploy to Arc: once ARC_RPC_URL and the real USDC address are known, run
+   RECOURSE_USDC=<usdc> forge script script/Deploy.s.sol:Deploy --rpc-url $ARC_RPC_URL --broadcast
+   then node ops/codegen.mjs (defaults to deployments/arc-testnet.json). Commit the real
+   deployments/arc-testnet.json (address source of truth) and the generated addresses.
 2. ops/: seed script (2 merchants, 8 payments, 2 disputes with opposite verdicts, 1 advanced by the vault) once deployed.
-3. engine/: the policy compiler (authoring JSON, per PRD section 6, into Rule structs). compute and the hash utils already exist; the compiler is what the web policy builder and its live preview need. Not yet built.
-4. Pull Arc testnet RPC and USYC Teller address from docs.arc.io into env and deployments config. Apply for USYC access.
+3. backend/ (Rust): indexer, then read routes, then evidence store, then attestor bot (architecture section 5).
+4. engine/: the policy compiler (authoring JSON, per PRD section 6, into Rule structs) for the web policy builder preview. compute and hash utils already exist.
+5. Pull Arc testnet RPC and USYC Teller address from docs.arc.io. Apply for USYC access.
 
-Done: deterministic core (M0), TS engine mirror with hash parity (M2), and the stateful contract layer (RecourseEscrow, MockUSYCAdapter, SettlementVault) with integration tests green: pay, release with yield, dispute + attest + resolve, un-attested resolveDelay deny, and the vault advance / reconcile profit and full-refund loss paths, all asserting exact USDC conservation. If the engine or vectors change, regenerate hashes.json (forge script script/GenVectorHashes.s.sol:GenVectorHashes) and keep forge and vitest green in one commit (R2).
+Done: deterministic core (M0), TS engine mirror with hash parity (M2), the stateful contract layer with integration tests (M1), and the deploy + codegen pipeline (Deploy.s.sol writes the address book; ops/codegen.mjs emits engine/src/addresses.ts), dry-run verified locally end to end. A local dry-run writes deployments/local-<chainId>.json (gitignored) so it never clobbers arc-testnet.json; on Arc chainId 5042002 it requires RECOURSE_USDC and writes arc-testnet.json. If the engine or vectors change, regenerate hashes.json (forge script script/GenVectorHashes.s.sol:GenVectorHashes) and keep forge and vitest green in one commit (R2).
 
 ## Standing rules
 
