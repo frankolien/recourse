@@ -2,35 +2,48 @@
 
 Rolling operational file. Read this first every session: blockers, then next actions, then standing rules. The full spec lives in docs/recourse/. This file is distinct from the handoff doc; it is the live worklist.
 
+## Live deployment (Arc testnet, chainId 5042002)
+
+Deployed and verified on-chain 2026-07-20. Addresses in deployments/arc-testnet.json;
+explorer https://testnet.arcscan.app/address/<addr>.
+
+| Contract | Address |
+|---|---|
+| RecourseEscrow | 0x18BfF4cF4c0843EF17c0f12e7E5C940683e930a1 |
+| PolicyRegistry | 0x4b1A69eBEbBb3aF4dD8741c78065DE3d271C1483 |
+| SettlementVault | 0x2Fa3Aa1BD0cBb04B0e68Ca97bbf53Aa08e44a163 |
+| MockUSYCAdapter | 0x53678a5aeBeACeed4A6Efc3a5F9c22DcFF4d772D |
+| USDC (Circle) | 0x3600000000000000000000000000000000000000 |
+
+Wiring verified: escrow points at usdc/registry/adapter/vault; resolveDelay 60, yieldFeeBps 1000;
+attestor and treasury both set to the deployer 0xD6c574461d96Ee708f58Fe553049aD4f48BB983A;
+adapter holds a 10 USDC yield buffer. To redeploy, re-run the deploy runbook below; a redeploy
+means re-running codegen and re-committing arc-testnet.json.
+
 ## Blockers
 
 1. USYC testnet access not yet requested. Apply via the Circle faucet/portal. Until approved, MockUSYCAdapter is the wired adapter; the swap to a USYCTellerAdapter (Teller at 0x9fdF14c5B14173D74C08Af27AebFf39240dC105A) is a redeploy. Not blocking anything else.
-2. Live Arc deploy needs a funded throwaway DEPLOYER_PK and a go-ahead to broadcast (an outward action, so not fired unilaterally). The deployer needs testnet USDC from faucet.circle.com for gas plus a small buffer for the adapter. RESOLVED: RPC, chainId, and all Circle addresses were pulled from docs.arc.io and verified on-chain (chainId 5042002, USDC 6 decimals, Teller has code); they live in deployments/arc-config.json and .env.example.
+2. The demo attestor currently equals the deployer key. When the Rust attestor bot lands, either give it this key or rotate via escrow.setAttestor to the bot's address.
 
-## Deploy runbook (once DEPLOYER_PK is funded and go-ahead given)
+## Deploy runbook (for redeploys)
 
 ```
 export ARC_RPC_URL=https://rpc.testnet.arc.network
 export RECOURSE_USDC=0x3600000000000000000000000000000000000000
 forge script script/Deploy.s.sol:Deploy --rpc-url $ARC_RPC_URL --private-key $DEPLOYER_PK --broadcast
-# fund the adapter yield buffer (~10 USDC) so redeem can pay accrued yield:
-cast send $RECOURSE_USDC "transfer(address,uint256)" <yieldAdapter-from-arc-testnet.json> 10000000 --rpc-url $ARC_RPC_URL --private-key $DEPLOYER_PK
-node ops/codegen.mjs   # emits engine/src/addresses.ts from deployments/arc-testnet.json
+cast send $RECOURSE_USDC "transfer(address,uint256)" $(node -e "console.log(require('./deployments/arc-testnet.json').yieldAdapter)") 10000000 --rpc-url $ARC_RPC_URL --private-key $DEPLOYER_PK
+node ops/codegen.mjs
 ```
-Then commit deployments/arc-testnet.json (the address source of truth).
 
 ## Next actions (architecture section 11 order, dependency-true)
 
-1. Deploy to Arc: once ARC_RPC_URL and the real USDC address are known, run
-   RECOURSE_USDC=<usdc> forge script script/Deploy.s.sol:Deploy --rpc-url $ARC_RPC_URL --broadcast
-   then node ops/codegen.mjs (defaults to deployments/arc-testnet.json). Commit the real
-   deployments/arc-testnet.json (address source of truth) and the generated addresses.
-2. ops/: seed script (2 merchants, 8 payments, 2 disputes with opposite verdicts, 1 advanced by the vault) once deployed.
-3. backend/ (Rust): indexer, then read routes, then evidence store, then attestor bot (architecture section 5).
+1. ops/: seed script (forge) that registers 2 merchant policies and creates 8 payments, 2 disputes with opposite verdicts, and 1 vault-advanced, against the live deployment. This produces the demo state the verify page and dashboard read. The escrow's real disputeWindow makes release/resolve time-dependent on a live chain, so seed with short windows or rely on resolveDelay for the demo.
+2. backend/ (Rust): indexer, then read routes, then evidence store, then attestor bot (architecture section 5). Reads addresses from deployments/arc-testnet.json via codegen.
+3. web/: verify page first (the demo weapon), reading previewVerdict from the live escrow and recomputing in-browser with the TS engine.
 4. engine/: the policy compiler (authoring JSON, per PRD section 6, into Rule structs) for the web policy builder preview. compute and hash utils already exist.
-5. Pull Arc testnet RPC and USYC Teller address from docs.arc.io. Apply for USYC access.
+5. USYC access: apply; when approved, write USYCTellerAdapter and redeploy.
 
-Done: deterministic core (M0), TS engine mirror with hash parity (M2), the stateful contract layer with integration tests (M1), and the deploy + codegen pipeline (Deploy.s.sol writes the address book; ops/codegen.mjs emits engine/src/addresses.ts), dry-run verified locally end to end. A local dry-run writes deployments/local-<chainId>.json (gitignored) so it never clobbers arc-testnet.json; on Arc chainId 5042002 it requires RECOURSE_USDC and writes arc-testnet.json. If the engine or vectors change, regenerate hashes.json (forge script script/GenVectorHashes.s.sol:GenVectorHashes) and keep forge and vitest green in one commit (R2).
+Done: deterministic core (M0), TS engine mirror with hash parity (M2), the stateful contract layer with integration tests (M1), the deploy + codegen pipeline, and a live, on-chain-verified deployment to Arc testnet (see the table above). This clears the core of Checkpoint 2 (deployed core contracts on a public repo); the remaining CP2 item is a verify-page clip. If the engine or vectors change, regenerate hashes.json (forge script script/GenVectorHashes.s.sol:GenVectorHashes) and keep forge and vitest green in one commit (R2).
 
 ## Standing rules
 
