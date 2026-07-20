@@ -4,21 +4,18 @@ Rolling operational file. Read this first every session: blockers, then next act
 
 ## Live deployment (Arc testnet, chainId 5042002)
 
-STALE, REDEPLOY REQUIRED: the addresses below are the first deploy, which has the
-settlement-underflow bug (a short-hold full refund could revert). The fix landed in
-src/MockUSYCAdapter.sol and src/RecourseEscrow.sol after this deploy, so before seeding
-or demoing, redeploy with the runbook below, re-run codegen, and re-commit arc-testnet.json.
-
-Deployed and verified on-chain 2026-07-20. Addresses in deployments/arc-testnet.json;
-explorer https://testnet.arcscan.app/address/<addr>.
+Fixed-contract deploy, verified on-chain 2026-07-20 (includes the settlement-underflow
+fix). Addresses in deployments/arc-testnet.json; explorer https://testnet.arcscan.app/address/<addr>.
 
 | Contract | Address |
 |---|---|
-| RecourseEscrow | 0x18BfF4cF4c0843EF17c0f12e7E5C940683e930a1 |
-| PolicyRegistry | 0x4b1A69eBEbBb3aF4dD8741c78065DE3d271C1483 |
-| SettlementVault | 0x2Fa3Aa1BD0cBb04B0e68Ca97bbf53Aa08e44a163 |
-| MockUSYCAdapter | 0x53678a5aeBeACeed4A6Efc3a5F9c22DcFF4d772D |
+| RecourseEscrow | 0x61Fd99789B28582882a3369E2024AeaE5b5D2DC0 |
+| PolicyRegistry | 0x94f8551fbE43aB919D87c3951394b148c914430E |
+| SettlementVault | 0x5d8a3000866493f5D0B5B07a4Ad63ADE3B02054D |
+| MockUSYCAdapter | 0x2336AaBE139b7F426aF63f713b9f93CD3FFC6204 |
 | USDC (Circle) | 0x3600000000000000000000000000000000000000 |
+
+(Superseded first deploy, kept for reference: escrow 0x18BfF4cF4c0843EF17c0f12e7E5C940683e930a1.)
 
 Wiring verified: escrow points at usdc/registry/adapter/vault; resolveDelay 60, yieldFeeBps 1000;
 attestor and treasury both set to the deployer 0xD6c574461d96Ee708f58Fe553049aD4f48BB983A;
@@ -40,14 +37,17 @@ export RECOURSE_USDC=0x3600000000000000000000000000000000000000
 cast send $RECOURSE_USDC "transfer(address,uint256)" $(node -e "console.log(require('./deployments/arc-testnet.json').yieldAdapter)") 10000000 --rpc-url $ARC_RPC_URL --private-key $DEPLOYER_PK
 node ops/codegen.mjs
 ```
-Then seed the demo state (needs the deployer funded with ~25 USDC; it funds the buyer
-and merchant in-script). Seed uses DEPLOYER_PK as attestor and defaults the buyer and
-merchant to anvil keys unless SEED_BUYER_PK / SEED_MERCHANT_PK are set:
+Then seed the demo state. The seeder is viem, not forge: Arc's USDC is a native-token
+precompile that forge's local EVM cannot execute (StackUnderflow during simulation), so
+seeding goes through direct RPC broadcast. Needs the deployer funded with ~20 USDC; it
+funds the buyer and merchant in-script. Uses DEPLOYER_PK as attestor and defaults buyer
+and merchant to anvil keys unless SEED_BUYER_PK / SEED_MERCHANT_PK are set:
 ```
-(cd contracts && forge script script/Seed.s.sol:Seed --rpc-url $ARC_RPC_URL --private-key $DEPLOYER_PK --broadcast)
+node engine/scripts/seed.mjs        # defaults to deployments/arc-testnet.json
 ```
 The seed writes deployments/seed-arc-testnet.json with the notable paymentIds (refund,
-deny, advanced) for the verify-page demo. Dry-run verified end to end on local anvil.
+deny, advanced) for the verify-page demo. Dry-run verified end to end on local anvil
+(deploy via forge, seed via viem). The forge seeder was removed for the reason above.
 
 ## Next actions (architecture section 11 order, dependency-true)
 

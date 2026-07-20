@@ -4,6 +4,20 @@ Convention: every session appends one entry above this line's predecessors. Form
 
 ---
 
+## 2026-07-20: Session 8, redeploy with the fix and a viem seeder for Arc
+
+Found: Arc's USDC is a native-token precompile (0x1800...0000). forge script executes run() locally to build its transaction list, and that local EVM cannot run the precompile, so any USDC movement reverts with StackUnderflow during forge's local execution. This is why the forge deploy worked (it moves no USDC) but the forge seed could not run on Arc, while cast send and the deploy's separate buffer transfer worked (they broadcast directly to the real node). The anvil dry-run hid it because local USDC is a plain ERC-20.
+
+Decided: D21, the seeder is viem (direct RPC broadcast), not forge, so it runs on Arc; the forge Seed.s.sol was removed to avoid two seeders. Kept chain-aware funding (mint on local, deployer USDC transfer on Arc) and EIP-712 attestation via viem signTypedData against the same domain (RecourseAttestor / 1 / chainId / escrow). It lives in engine/scripts/seed.mjs to reuse the engine's viem dependency.
+
+Built: engine/scripts/seed.mjs. Dry-ran end to end on anvil (deploy via forge, seed via viem): policyCount 1, paymentCount 8, payment 5 REFUNDED 100%, payment 6 DENIED, payment 7 beneficiary == vault, outstanding 1 USDC. Removed contracts/script/Seed.s.sol.
+
+Redeployed the fixed contracts to Arc and verified on-chain: escrow 0x61Fd99789B28582882a3369E2024AeaE5b5D2DC0, registry 0x94f8551fbE43aB919D87c3951394b148c914430E, vault 0x5d8a3000866493f5D0B5B07a4Ad63ADE3B02054D, adapter 0x2336AaBE139b7F426aF63f713b9f93CD3FFC6204. escrow.adapter/vault/usdc all correct; 10 USDC buffer at the new adapter; escrow bytecode grew (clamp) and adapter bytecode grew (ceil), confirming the fix is on-chain. Updated deployments/arc-testnet.json to the new addresses.
+
+Rules earned: none new (reinforces R13: the anvil dry-run and the Arc run exercise different USDC implementations, so both matter).
+
+---
+
 ## 2026-07-20: Session 7, seed script and a settlement-underflow fix it caught
 
 Found: writing the seed and dry-running it on a local anvil surfaced a real bug in the deployed contracts. MockUSYCAdapter floored shares on deposit and assets on redeem, so a deposit made when the index was already above 1.0, then redeemed after a short hold, returned a wei less than principal. In resolve() a full refund then computed toBeneficiary = total - refund - fee with total < refund and underflowed, reverting the settlement. On Arc this would brick any refund resolved soon after payment. Simulation hid it because forge runs all script txs at one timestamp (no index drift); only the real broadcast, with advancing block timestamps, triggered it.
