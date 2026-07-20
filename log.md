@@ -4,6 +4,20 @@ Convention: every session appends one entry above this line's predecessors. Form
 
 ---
 
+## 2026-07-20: Session 3, M1 stateful contract layer (escrow, adapter, vault)
+
+Found: three design points the docs left implicit. One, a simulated yield adapter has no external yield source, so redeem can only pay principal plus yield if the adapter holds a USDC buffer. Two, the doc says assign is callable by "the current beneficiary," but at advance time the beneficiary is the merchant while the caller is the vault, so that phrasing cannot implement T+0. Three, distributing exactly the redeemed total without dust needs one payout computed as the residual.
+
+Decided: D12, MockUSYCAdapter pays yield from a pre-funded USDC buffer (deploy and tests fund it) and tracks per-caller shares so it cannot be drained by a stranger; the real Teller has its own source and the swap stays a redeploy. D13, the escrow stores a trusted owner-set vault address and assign is vault-only; the vault's advance pays the merchant net and checks enrollment and caps first, so the merchant is never harmed. This is a deliberate refinement of the doc's "only current beneficiary." D14, resolve and release pay the buyer refund and the treasury yield fee, then the beneficiary receives the residual, guaranteeing buyer + protocol + beneficiary == redeemed total with no dust. D15, the vault carries advances at par in totalAssets (idle + outstanding); reconcile decrements outstanding after settle so realized PnL flows into share price, with a documented transient between the escrow payout and reconcile.
+
+Built: src/interfaces/IYieldAdapter.sol, src/MockUSYCAdapter.sol (linear 4.5% APY index, deterministic per timestamp). src/RecourseEscrow.sol (pay sweeps into adapter; fileDispute derives evidence mask and root; submitAttestation verifies an EIP-712 signature from the attestor with an s-malleability guard; resolve computes the verdict via PolicyEngine, redeems, splits funds, emits Resolved with the verdictHash; release for the happy path; assign vault-only; previewVerdict is the eth_call surface; getPayment for the vault and backend). src/SettlementVault.sol (minimal ERC-4626-shaped shares; deposit, withdraw bounded by idle, enrollMerchant owner-gated, advance pays T+0 and takes assignment, reconcile realizes PnL). Installed OpenZeppelin v5.1.0 as a pinned submodule (ReentrancyGuard, Ownable, SafeERC20, ERC20 for the test USDC only). test/mocks/TestUSDC.sol (6 decimals). test/EscrowVault.t.sol: 7 integration tests asserting exact USDC movement and conservation across happy-path release, attested full refund, un-attested resolveDelay deny, and the vault advance / reconcile profit and loss paths.
+
+Green: forge 12 tests (5 core plus 7 integration), vitest 15 unchanged.
+
+Rules earned: none new. Reinforced R1 (all product USDC through the 6-decimal ERC-20 interface) and the security posture in architecture section 10 (nonReentrant on all fund movers, checks-effects-interactions, exposure caps, resolveDelay guard).
+
+---
+
 ## 2026-07-20: Session 2, M2 TS engine mirror and hash parity
 
 Found: M0 left the vectors carrying only expected verdict fields, not hashes, so parity could only be asserted on the decoded verdict, not on the keccak256 outputs the verify page relies on. verdictHash also needs a paymentId, which the vectors lacked.

@@ -9,11 +9,12 @@ Rolling operational file. Read this first every session: blockers, then next act
 
 ## Next actions (architecture section 11 order, dependency-true)
 
-1. contracts/: RecourseEscrow, MockUSYCAdapter (behind IYieldAdapter), SettlementVault. Integration tests for pay, dispute, attest, resolve, release. Deploy script writes deployments/arc-testnet.json; codegen emits addresses to engine, backend, mobile.
-2. engine/: the policy compiler (authoring JSON, per PRD section 6, into Rule structs). compute and the hash utils already exist; the compiler is what the web policy builder and its live preview need. Not yet built.
-3. Pull Arc testnet RPC and USYC Teller address from docs.arc.io into env and deployments config. Apply for USYC access.
+1. contracts/: deploy script (Deploy.s.sol) that deploys registry, adapter, escrow, vault, wires escrow.setVault, funds the adapter yield buffer, and writes deployments/arc-testnet.json. Then codegen (ops/) emitting engine/src/addresses.ts (and backend/mobile targets as those land). Blocked on the Arc RPC + real USDC address from docs.arc.io for a real deploy; the script can be written and dry-run locally first.
+2. ops/: seed script (2 merchants, 8 payments, 2 disputes with opposite verdicts, 1 advanced by the vault) once deployed.
+3. engine/: the policy compiler (authoring JSON, per PRD section 6, into Rule structs). compute and the hash utils already exist; the compiler is what the web policy builder and its live preview need. Not yet built.
+4. Pull Arc testnet RPC and USYC Teller address from docs.arc.io into env and deployments config. Apply for USYC access.
 
-Done: the deterministic core (Solidity engine + registry, M0) and the TS engine mirror (M2 parity). Both suites are green against the same golden vectors and the Solidity-generated hashes.json. If the engine or vectors change, regenerate hashes.json (forge script script/GenVectorHashes.s.sol:GenVectorHashes) and keep forge and vitest green in one commit (R2).
+Done: deterministic core (M0), TS engine mirror with hash parity (M2), and the stateful contract layer (RecourseEscrow, MockUSYCAdapter, SettlementVault) with integration tests green: pay, release with yield, dispute + attest + resolve, un-attested resolveDelay deny, and the vault advance / reconcile profit and full-refund loss paths, all asserting exact USDC conservation. If the engine or vectors change, regenerate hashes.json (forge script script/GenVectorHashes.s.sol:GenVectorHashes) and keep forge and vitest green in one commit (R2).
 
 ## Standing rules
 
