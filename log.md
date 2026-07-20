@@ -4,6 +4,20 @@ Convention: every session appends one entry above this line's predecessors. Form
 
 ---
 
+## 2026-07-20: Session 15, marketing landing page at the root
+
+Found: the app had no front door. The root redirected straight to /dashboard, so there was nowhere to explain the product to a first-time visitor or a judge. The owner supplied a landing reference whose display headlines are a serif, which conflicts with the Geist-everywhere decision from Session 12.
+
+Decided: build the landing to match the reference and make it the root route, with Launch App and Start building going to /dashboard and Explore the demo going to /verify/5. Resolve the font conflict by scope: add a --serif token (Georgia, offline, no CDN) used only for the landing headlines under a .landing scope, so the app keeps Geist and only the marketing page gets the editorial serif. Flag this so the owner can unify later if they want serif headlines app-wide.
+
+Built: components/landing-page.tsx and the root page, a full landing with a sticky nav (brand, links, Arc Testnet chip, Launch App), a two column hero (serif headline, subcopy, two CTAs, social proof) beside an overlapping product mockup collage (dashboard card, a scalloped protected-payment receipt, a dispute-status card with a timeline, and a floating escrow-earnings sparkline chip), a Powered by Circle stack strip (Arc, USDC, USYC, Gateway, CCTP, Circle Wallets, Paymaster, Nanopayments), a four card feature grid, and a footer. All landing styles are scoped under .landing and collapse cleanly at 1080, 860, and 640 px.
+
+Verified: web tsc, eslint, and the production build are green (14 routes). The root returns 200 and renders the landing (no longer a redirect); the hero CTAs resolve to /dashboard and /verify/5.
+
+Rules earned: when a new reference conflicts with a standing font decision, scope the exception to the surface that needs it rather than reversing the decision app-wide, and name the choice so the owner can decide whether to generalize it.
+
+---
+
 ## 2026-07-20: Session 14, policy compiler and the visual policy builder
 
 Found: the policy builder was the last big web piece, and it needed an engine compiler to turn authored JSON (PRD section 6) into the on-chain Rule structs. The risk was R2: the compiler must not become a third implementation of anything. The verdict logic lives in compute and the hash in policyHash, both already mirrored to Solidity.
