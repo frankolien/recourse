@@ -3128,10 +3128,10 @@ footer {
 
 .landing-hero {
   display: grid;
-  grid-template-columns: 1fr 1.12fr;
+  grid-template-columns: 1fr 1.2fr;
   gap: 40px;
   align-items: center;
-  max-width: 1360px;
+  max-width: 1440px;
   margin: 0 auto;
   padding: clamp(34px, 5vw, 60px) clamp(22px, 5vw, 56px) 44px;
 }
@@ -3240,27 +3240,40 @@ footer {
 /* ---- Hero product mockups (decorative collage) ---- */
 .landing-mock {
   position: relative;
-  width: 580px;
+  width: 700px;
   max-width: 100%;
-  height: 540px;
+  height: 470px;
   margin-left: auto;
 }
 
-.landing-mock::before {
+/* Two soft overlapping lobes make an organic backdrop, not a plain circle. */
+.landing-mock::before,
+.landing-mock::after {
   content: "";
   position: absolute;
-  top: 22px;
-  right: -14px;
-  width: 500px;
-  height: 452px;
-  border-radius: 46% 54% 48% 52% / 52% 46% 54% 48%;
-  background: #edf1ec;
+  background: #eef1ec;
   z-index: 0;
+}
+
+.landing-mock::before {
+  top: 26px;
+  left: -26px;
+  width: 470px;
+  height: 350px;
+  border-radius: 52% 48% 60% 40% / 60% 54% 46% 40%;
+}
+
+.landing-mock::after {
+  top: 78px;
+  right: -18px;
+  width: 400px;
+  height: 300px;
+  border-radius: 48% 52% 44% 56% / 52% 48% 56% 44%;
 }
 
 .mock-card {
   position: absolute;
-  padding: 16px;
+  padding: 17px 18px;
   border: 1px solid var(--line);
   border-radius: 16px;
   background: var(--white);
@@ -3269,46 +3282,57 @@ footer {
 }
 
 .mock-dashboard {
-  top: 48px;
+  top: 52px;
   left: 0;
   z-index: 2;
-  width: 216px;
+  width: 250px;
 }
 
 .mock-dispute {
-  top: 48px;
+  top: 52px;
   left: auto;
   right: 0;
   z-index: 1;
-  width: 216px;
+  width: 252px;
 }
 
 .mock-receipt {
   top: 0;
-  left: 182px;
+  left: 220px;
   z-index: 4;
-  width: 216px;
+  width: 262px;
   padding-top: 30px;
+  padding-bottom: 22px;
   text-align: center;
   box-shadow: 0 26px 56px rgba(26, 43, 37, 0.15);
 }
 
-.mock-receipt::before {
+.mock-receipt::before,
+.mock-receipt::after {
   content: "";
   position: absolute;
-  top: 0;
   left: 0;
   right: 0;
-  height: 8px;
-  background: radial-gradient(circle at 6px 0, var(--paper-bright) 0 4px, transparent 4.5px) repeat-x;
-  background-size: 12px 8px;
+  height: 9px;
+  background-repeat: repeat-x;
+  background-size: 14px 9px;
+}
+
+.mock-receipt::before {
+  top: 0;
+  background-image: radial-gradient(circle at 7px 0, var(--paper-bright) 0 5px, transparent 5.5px);
+}
+
+.mock-receipt::after {
+  bottom: 0;
+  background-image: radial-gradient(circle at 7px 9px, var(--paper-bright) 0 5px, transparent 5.5px);
 }
 
 .mock-earnings {
-  right: 4px;
-  bottom: 0;
+  right: -8px;
+  bottom: -6px;
   z-index: 5;
-  width: 202px;
+  width: 238px;
 }
 
 .mock-title {
@@ -3382,16 +3406,20 @@ footer {
   display: block;
   font-size: 12px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .mock-row small {
   color: #7c847f;
   font-size: 10px;
+  white-space: nowrap;
 }
 
 .mock-row b {
+  flex: 0 0 auto;
   font-size: 12px;
   font-weight: 650;
+  white-space: nowrap;
 }
 
 .mock-link {
@@ -3497,12 +3525,14 @@ footer {
 .mock-details dt {
   color: #7c847f;
   font-size: 11px;
+  white-space: nowrap;
 }
 
 .mock-details dd {
   margin: 0;
   font-size: 11px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .mock-tag {
@@ -3541,11 +3571,13 @@ footer {
 .mock-kv span {
   color: #7c847f;
   font-size: 11px;
+  white-space: nowrap;
 }
 
 .mock-kv b {
   font-size: 11px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .mock-timeline {
@@ -3807,7 +3839,7 @@ footer {
   color: var(--green);
 }
 
-@media (max-width: 1280px) {
+@media (max-width: 1400px) {
   .landing-hero {
     grid-template-columns: 1fr;
     gap: 12px;
@@ -3816,13 +3848,15 @@ footer {
   .landing-mock {
     position: static;
     display: grid;
-    gap: 16px;
+    gap: 18px;
     width: auto;
+    max-width: 460px;
     height: auto;
-    margin-top: 12px;
+    margin: 12px auto 0;
   }
 
-  .landing-mock::before {
+  .landing-mock::before,
+  .landing-mock::after {
     display: none;
   }
 
