@@ -62,7 +62,7 @@ Demo state is seeded and verified on Arc (deployments/seed-arc-testnet.json): po
 8 payments, payment 5 REFUNDED 100%, payment 6 DENIED, payment 7 vault-advanced.
 Re-seed by rerunning `node engine/scripts/seed.mjs` (produces a new policy + payments).
 
-Done: deterministic core (M0), TS engine mirror with hash parity (M2), the stateful contract layer with integration tests (M1), the deploy + codegen pipeline, a live on-chain deployment to Arc testnet, the public verify page, and the dashboard overview. The dashboard matches the supplied 1536 by 1024 reference with the buyer sidebar, summary cards, protections, dispute tracker, activity rail, earnings, learning cards, and support panel. If the engine or vectors change, regenerate hashes.json (forge script script/GenVectorHashes.s.sol:GenVectorHashes) and keep forge and vitest green in one commit (R2).
+Done: deterministic core (M0), TS engine mirror with hash parity (M2), the stateful contract layer with integration tests (M1), the deploy + codegen pipeline, a live on-chain deployment to Arc testnet, the public verify page, dashboard overview, and full marketing landing page. The landing page now covers the product value, four-step protection flow, live verdict verification, buyer and merchant and LP value, vault return mechanics, FAQs, and a final demo CTA while keeping every claim tied to the implemented prototype. If the engine or vectors change, regenerate hashes.json (forge script script/GenVectorHashes.s.sol:GenVectorHashes) and keep forge and vitest green in one commit (R2).
 
 ## Standing rules
 

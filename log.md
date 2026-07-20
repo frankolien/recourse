@@ -60,6 +60,34 @@ Rules earned: when a user asks for a specific site's font, inspect that site's s
 
 ---
 
+## 2026-07-20: Session 13, full landing page product narrative
+
+Found: after the credibility pass, the landing page still ended after four feature cards and did not explain the mechanism, public verification, user roles, vault economics, or the prototype’s limits. The short page looked polished but left judges and prospective users to infer the core product story.
+
+Decided: expand with product-specific context rather than generic marketing blocks. The narrative order is value proposition, capability summary, four-step flow, live verification proof, aligned buyer and merchant and LP incentives, vault return equation, operational FAQs, then final demo actions.
+
+Built: a four-step workflow section, live Solidity versus browser hash proof card, three audience value cards, vault economics section, five-question semantic FAQ accordion, and closing launch banner. Navigation now points About to the workflow and For Merchants to the dashboard. Added responsive layouts for every new section, including stacked workflow cards, single-column audience cards, a mobile vault equation, and readable FAQ spacing.
+
+Verified: TypeScript, ESLint, and the production build are green. Desktop structure renders once for every section, mobile width remains exactly 390 pixels with no overflow, the FAQ anchor and accordion render correctly below the sticky header, and the browser console is clean. The full-page browser capture repeated content due to a stitching artifact; DOM counts confirmed one instance of each section.
+
+Rules earned: landing page length should come from answering real product questions in narrative order, not from adding decorative filler sections.
+
+---
+
+## 2026-07-20: Session 12, landing page credibility and responsive polish
+
+Found: the landing page claimed a broader Circle integration stack than the prototype currently implements, showed a protected total that did not equal its visible payments, mixed developer and product CTAs, used placeholder portrait avatars as social proof, and stacked four large mockup cards vertically below 1400 pixels. The desktop collage also allowed floating cards to escape its visual boundary.
+
+Decided: make every above-the-fold claim demonstrable. The eyebrow now says Live on Arc Testnet, the trust row reports the live contract, eight seeded payments, and hash-verified verdicts, and the stack lists Arc Testnet, USDC, the USYC adapter, and the deterministic engine only. The primary CTA opens the live proof demo and developer documentation is secondary.
+
+Built: reconciled the protected total to $464, rewrote the hero around immutable refund rules and evidence-based outcomes, removed placeholder avatars and unsupported integration marks, contained and rebalanced the desktop product collage, improved body contrast, and replaced the laptop breakpoint with a stable two-column layout. Mobile now hides decorative side cards and shows one readable protected-payment receipt.
+
+Verified: production build, TypeScript, and ESLint are green. Visual checks passed at 1440 by 900 and 390 by 844. Mobile document width equals viewport width with no horizontal overflow, and the browser console is clean.
+
+Rules earned: marketing claims must map to implemented capabilities, and decorative product collages need a single contained mobile focal point rather than stacking every desktop layer.
+
+---
+
 ## 2026-07-20: Session 11, dashboard corrected to the supplied reference
 
 Found: the first web delivery made the verifier the visual home, but the owner’s reference was the full account dashboard. The verifier was functionally correct but was the wrong primary surface and could not resemble the requested 1536 by 1024 dashboard screenshot.
