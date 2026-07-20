@@ -4,6 +4,11 @@ Rolling operational file. Read this first every session: blockers, then next act
 
 ## Live deployment (Arc testnet, chainId 5042002)
 
+STALE, REDEPLOY REQUIRED: the addresses below are the first deploy, which has the
+settlement-underflow bug (a short-hold full refund could revert). The fix landed in
+src/MockUSYCAdapter.sol and src/RecourseEscrow.sol after this deploy, so before seeding
+or demoing, redeploy with the runbook below, re-run codegen, and re-commit arc-testnet.json.
+
 Deployed and verified on-chain 2026-07-20. Addresses in deployments/arc-testnet.json;
 explorer https://testnet.arcscan.app/address/<addr>.
 
@@ -25,15 +30,24 @@ means re-running codegen and re-committing arc-testnet.json.
 1. USYC testnet access not yet requested. Apply via the Circle faucet/portal. Until approved, MockUSYCAdapter is the wired adapter; the swap to a USYCTellerAdapter (Teller at 0x9fdF14c5B14173D74C08Af27AebFf39240dC105A) is a redeploy. Not blocking anything else.
 2. The demo attestor currently equals the deployer key. When the Rust attestor bot lands, either give it this key or rotate via escrow.setAttestor to the bot's address.
 
-## Deploy runbook (for redeploys)
+## Deploy + seed runbook
 
+Redeploy (run from contracts/ for the forge step, repo root for the rest):
 ```
 export ARC_RPC_URL=https://rpc.testnet.arc.network
 export RECOURSE_USDC=0x3600000000000000000000000000000000000000
-forge script script/Deploy.s.sol:Deploy --rpc-url $ARC_RPC_URL --private-key $DEPLOYER_PK --broadcast
+(cd contracts && forge script script/Deploy.s.sol:Deploy --rpc-url $ARC_RPC_URL --private-key $DEPLOYER_PK --broadcast)
 cast send $RECOURSE_USDC "transfer(address,uint256)" $(node -e "console.log(require('./deployments/arc-testnet.json').yieldAdapter)") 10000000 --rpc-url $ARC_RPC_URL --private-key $DEPLOYER_PK
 node ops/codegen.mjs
 ```
+Then seed the demo state (needs the deployer funded with ~25 USDC; it funds the buyer
+and merchant in-script). Seed uses DEPLOYER_PK as attestor and defaults the buyer and
+merchant to anvil keys unless SEED_BUYER_PK / SEED_MERCHANT_PK are set:
+```
+(cd contracts && forge script script/Seed.s.sol:Seed --rpc-url $ARC_RPC_URL --private-key $DEPLOYER_PK --broadcast)
+```
+The seed writes deployments/seed-arc-testnet.json with the notable paymentIds (refund,
+deny, advanced) for the verify-page demo. Dry-run verified end to end on local anvil.
 
 ## Next actions (architecture section 11 order, dependency-true)
 
@@ -64,6 +78,7 @@ From the owner (this repo):
 - R10. Comment with purpose only. A comment explains why (intent, a constraint, a gotcha, a spec reference), never restates what the code plainly does.
 - R11. Do not push to GitHub. Commit locally only unless explicitly told to push. No Co-Authored-By: Claude trailer and no "Generated with Claude Code" line in commit messages.
 - R12. Confirm the approach before writing non-trivial code: research the tradeoffs, check the pattern against the docs, and split work across subagents where it helps.
+- R13. Verify money-moving scripts against a real node (anvil), not just forge simulation. Simulation runs every tx at one block timestamp and hides time-dependent behavior (yield-index drift, rounding); only a live broadcast with advancing timestamps exposes it.
 
 ## Session close checklist
 

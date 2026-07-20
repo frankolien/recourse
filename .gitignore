@@ -28,6 +28,7 @@ data/evidence/
 # Codegen outputs and local dry-run deployments (regenerated per deploy; the real
 # deployments/arc-testnet.json is committed after an Arc deploy).
 deployments/local-*.json
+deployments/seed-local-*.json
 engine/src/addresses.ts
 
 # OS

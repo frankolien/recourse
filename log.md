@@ -4,6 +4,22 @@ Convention: every session appends one entry above this line's predecessors. Form
 
 ---
 
+## 2026-07-20: Session 7, seed script and a settlement-underflow fix it caught
+
+Found: writing the seed and dry-running it on a local anvil surfaced a real bug in the deployed contracts. MockUSYCAdapter floored shares on deposit and assets on redeem, so a deposit made when the index was already above 1.0, then redeemed after a short hold, returned a wei less than principal. In resolve() a full refund then computed toBeneficiary = total - refund - fee with total < refund and underflowed, reverting the settlement. On Arc this would brick any refund resolved soon after payment. Simulation hid it because forge runs all script txs at one timestamp (no index drift); only the real broadcast, with advancing block timestamps, triggered it.
+
+Decided: D20, fix at the source and defensively. The adapter now rounds shares up on deposit so redeem never returns less than principal (guarantee: floor(ceil(a*W/i)*i/W) >= a); the extra wei is covered by the yield buffer. resolve() also clamps: refund is capped at total and the fee at the remainder, so a settlement can round a wei short but never reverts. Release was already safe.
+
+Built: src/Seed.s.sol (multi-key via per-actor broadcast blocks; reads deployments/<network>.json; chain-aware funding: mint on local, deployer USDC transfer on Arc which also credits native gas; one policy, eight payments, two disputes attested to opposite verdicts, one vault advance; writes deployments/seed-<network>.json pointers). Fixed the adapter and escrow, added a regression test (test_resolve_fullRefund_shortHold_noUnderflow) that warps the index above 1.0 before paying and resolves immediately. Verified on anvil end to end: deploy, seed, then cast reads confirm policyCount 1, paymentCount 8, payment 5 REFUNDED 100% (verdictBps 10000, Settled), payment 6 DENIED (default, ruleIndex 255), payment 7 beneficiary == vault with outstanding 1 USDC.
+
+Consequence: the first Arc deploy (commit ca3a5d2) has the buggy contracts and is now stale. Redeploy with the fix before seeding or demoing; handoff.md carries the runbook and a STALE marker.
+
+Rules earned: R13, verify money-moving scripts against a real node (anvil), not just forge simulation; simulation runs at a single timestamp and hides time-dependent rounding.
+
+Green: forge 13 tests, vitest 15 unchanged.
+
+---
+
 ## 2026-07-20: Session 6, live deployment to Arc testnet
 
 Found: the deploy went through cleanly. The forge broadcast console summary mislabels which address is which contract, so the authoritative sources are deployments/arc-testnet.json (written by the script) and on-chain reads.
