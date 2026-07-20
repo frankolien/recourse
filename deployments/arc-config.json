@@ -1,0 +1,26 @@
+{
+  "network": "arc-testnet",
+  "chainId": 5042002,
+  "rpcUrl": "https://rpc.testnet.arc.network",
+  "explorer": "https://testnet.arcscan.app",
+  "faucet": "https://faucet.circle.com",
+  "source": "docs.arc.io/arc/references/contract-addresses; verified on-chain 2026-07-20 (chainId, USDC decimals=6, symbol=USDC, Teller has code)",
+  "tokens": {
+    "usdc": {
+      "address": "0x3600000000000000000000000000000000000000",
+      "decimals": 6,
+      "note": "ERC-20 interface only; the native gas representation is 18 decimals. Product logic reads the 6-decimal interface (R1)."
+    },
+    "eurc": { "address": "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a", "decimals": 6 },
+    "usyc": { "address": "0xe9185F0c5F296Ed1797AaE4238D26CCaBEadb86C", "decimals": 6 }
+  },
+  "circle": {
+    "usycTeller": "0x9fdF14c5B14173D74C08Af27AebFf39240dC105A",
+    "cctpTokenMessengerV2": "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
+    "cctpMessageTransmitterV2": "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
+    "cctpTokenMinterV2": "0xb43db544E2c27092c107639Ad201b3dEfAbcF192",
+    "cctpMessageV2": "0xbaC0179bB358A8936169a63408C8481D582390C4",
+    "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9",
+    "gatewayMinter": "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B"
+  }
+}

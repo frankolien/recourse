@@ -4,6 +4,18 @@ Convention: every session appends one entry above this line's predecessors. Form
 
 ---
 
+## 2026-07-20: Session 5, Arc testnet config pulled and verified
+
+Found: the Arc testnet endpoints and Circle contract addresses, pulled from docs.arc.io (contract-addresses and connect-to-arc pages) rather than guessed, then verified live over the RPC. RPC https://rpc.testnet.arc.network returns chainId 5042002; USDC 0x3600...0000 reports 6 decimals and symbol USDC; the USYC Teller 0x9fdF14c5B14173D74C08Af27AebFf39240dC105A has bytecode. USDC and EURC addresses match what the architecture already documented.
+
+Decided: D19, the immutable Circle-provided network facts live in deployments/arc-config.json (rpc, chainId, explorer, faucet, USDC/EURC/USYC, USYC Teller, CCTP, Gateway), with a source-and-verification note; secrets and per-deploy env live in .env.example (keys blank, never committed). This satisfies "pulled from docs.arc.io into config, never guessed."
+
+Built: deployments/arc-config.json, .env.example, and a deploy runbook in handoff.md. Reframed the deploy blocker honestly: the endpoints are no longer the blocker; a live deploy now only needs a funded throwaway DEPLOYER_PK and a go-ahead to broadcast (an outward action not fired unilaterally). USYC access is still pending, so MockUSYCAdapter stays wired; the Teller adapter is a redeploy once approved.
+
+Rules earned: none new. Reinforced the docs-over-memory rule for chain addresses.
+
+---
+
 ## 2026-07-20: Session 4, deploy and codegen pipeline
 
 Found: a real Arc deploy is blocked on the RPC and the real USDC address, but the deploy wiring (constructor args, setVault, buffer funding) and the address codegen can be written and fully verified locally without Arc.

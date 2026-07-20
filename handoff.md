@@ -4,8 +4,20 @@ Rolling operational file. Read this first every session: blockers, then next act
 
 ## Blockers
 
-1. USYC testnet access not yet requested. Apply on day one via the Circle faucet/portal. Until approved, MockUSYCAdapter is the wired adapter and the swap to USYCTellerAdapter is a redeploy. Not blocking the deterministic core.
-2. Arc testnet RPC endpoint, explorer, and USYC Teller address not yet pulled from docs.arc.io. Not blocking the engine (pure, chain-independent), but blocks deploy. Pull into env and deployments config before M1 deploy, never guess.
+1. USYC testnet access not yet requested. Apply via the Circle faucet/portal. Until approved, MockUSYCAdapter is the wired adapter; the swap to a USYCTellerAdapter (Teller at 0x9fdF14c5B14173D74C08Af27AebFf39240dC105A) is a redeploy. Not blocking anything else.
+2. Live Arc deploy needs a funded throwaway DEPLOYER_PK and a go-ahead to broadcast (an outward action, so not fired unilaterally). The deployer needs testnet USDC from faucet.circle.com for gas plus a small buffer for the adapter. RESOLVED: RPC, chainId, and all Circle addresses were pulled from docs.arc.io and verified on-chain (chainId 5042002, USDC 6 decimals, Teller has code); they live in deployments/arc-config.json and .env.example.
+
+## Deploy runbook (once DEPLOYER_PK is funded and go-ahead given)
+
+```
+export ARC_RPC_URL=https://rpc.testnet.arc.network
+export RECOURSE_USDC=0x3600000000000000000000000000000000000000
+forge script script/Deploy.s.sol:Deploy --rpc-url $ARC_RPC_URL --private-key $DEPLOYER_PK --broadcast
+# fund the adapter yield buffer (~10 USDC) so redeem can pay accrued yield:
+cast send $RECOURSE_USDC "transfer(address,uint256)" <yieldAdapter-from-arc-testnet.json> 10000000 --rpc-url $ARC_RPC_URL --private-key $DEPLOYER_PK
+node ops/codegen.mjs   # emits engine/src/addresses.ts from deployments/arc-testnet.json
+```
+Then commit deployments/arc-testnet.json (the address source of truth).
 
 ## Next actions (architecture section 11 order, dependency-true)
 
