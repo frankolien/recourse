@@ -13,7 +13,7 @@
 // verdicts (NOT_DELIVERED -> full refund, DELIVERED -> denied), one vault advance.
 
 import { createWalletClient, createPublicClient, http, defineChain } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
+import { privateKeyToAccount, generatePrivateKey } from "viem/accounts";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -40,9 +40,13 @@ const chain = defineChain({
   rpcUrls: { default: { http: [rpcUrl] } },
 });
 
+// Anvil keys are pre-funded with gas locally, but some are on Arc USDC's blocklist,
+// so on Arc default the buyer and merchant to fresh random keys (funded in-script).
+const seedKey = (envName, anvilKey) =>
+  process.env[envName] ?? (isLocal ? anvilKey : generatePrivateKey());
 const deployer = privateKeyToAccount(process.env.DEPLOYER_PK ?? ANVIL.deployer);
-const merchant = privateKeyToAccount(process.env.SEED_MERCHANT_PK ?? ANVIL.merchant);
-const buyer = privateKeyToAccount(process.env.SEED_BUYER_PK ?? ANVIL.buyer);
+const merchant = privateKeyToAccount(seedKey("SEED_MERCHANT_PK", ANVIL.merchant));
+const buyer = privateKeyToAccount(seedKey("SEED_BUYER_PK", ANVIL.buyer));
 
 const pub = createPublicClient({ chain, transport: http(rpcUrl) });
 const wallet = (account) => createWalletClient({ account, chain, transport: http(rpcUrl) });
@@ -76,7 +80,7 @@ const VAULT = [
 ];
 
 const N = 8n;
-const PAY = 1_000000n; // 1 USDC
+const PAY = 250000n; // 0.25 USDC, kept small so re-runs are cheap on testnet
 const DAY = 86400;
 
 async function send(account, address, abi, functionName, args, label) {
@@ -105,8 +109,10 @@ async function attestAndResolve(id, value) {
 
 async function main() {
   console.log(`seeding ${chain.name} (chainId ${d.chainId}) at ${rpcUrl}`);
-  const buyerFunding = PAY * N + 2_000000n; // payments + gas headroom
-  const lpDeposit = 5_000000n;
+  console.log(`  merchant ${merchant.address}`);
+  console.log(`  buyer    ${buyer.address}`);
+  const buyerFunding = PAY * N + 1_000000n; // payments + gas headroom
+  const lpDeposit = 2_000000n;
 
   // Phase 1: deployer funds actors, enrolls the merchant, seeds the vault.
   if (isLocal) {
@@ -114,7 +120,7 @@ async function main() {
     await send(deployer, d.usdc, USDC, "mint", [deployer.address, lpDeposit], "mint deployer");
   } else {
     await send(deployer, d.usdc, USDC, "transfer", [buyer.address, buyerFunding], "fund buyer");
-    await send(deployer, d.usdc, USDC, "transfer", [merchant.address, 1_000000n], "fund merchant gas");
+    await send(deployer, d.usdc, USDC, "transfer", [merchant.address, 500000n], "fund merchant gas");
   }
   await send(deployer, d.settlementVault, VAULT, "enrollMerchant", [merchant.address, 50, 100_000000n], "enroll merchant");
   await send(deployer, d.usdc, USDC, "approve", [d.settlementVault, lpDeposit], "lp approve");
@@ -141,6 +147,8 @@ async function main() {
 
   const pointers = {
     policyId: Number(policyId),
+    merchant: merchant.address,
+    buyer: buyer.address,
     refundPaymentId: Number(ids[4]),
     denyPaymentId: Number(ids[5]),
     advancedPaymentId: Number(ids[6]),

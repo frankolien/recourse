@@ -14,7 +14,9 @@ Built: engine/scripts/seed.mjs. Dry-ran end to end on anvil (deploy via forge, s
 
 Redeployed the fixed contracts to Arc and verified on-chain: escrow 0x61Fd99789B28582882a3369E2024AeaE5b5D2DC0, registry 0x94f8551fbE43aB919D87c3951394b148c914430E, vault 0x5d8a3000866493f5D0B5B07a4Ad63ADE3B02054D, adapter 0x2336AaBE139b7F426aF63f713b9f93CD3FFC6204. escrow.adapter/vault/usdc all correct; 10 USDC buffer at the new adapter; escrow bytecode grew (clamp) and adapter bytecode grew (ceil), confirming the fix is on-chain. Updated deployments/arc-testnet.json to the new addresses.
 
-Rules earned: none new (reinforces R13: the anvil dry-run and the Arc run exercise different USDC implementations, so both matter).
+Then, running the viem seed on Arc, hit a second Arc-specific gotcha: Circle's USDC on Arc has a blocklist, and the well-known anvil merchant key (0x7099...79C8) is on it, so the deployer's USDC transfer to it reverted with "Blocked address". Fixed: on Arc the seed defaults the buyer and merchant to fresh random keys (generatePrivateKey), which are not blocklisted and are funded in-script; local dry-runs still use the anvil keys, which have ETH gas and no blocklist on the mock USDC. Also shrank amounts (0.25 USDC per payment) so re-runs are cheap, and the seed now records the merchant and buyer addresses in the pointer file.
+
+Rules earned: none new (reinforces R13: the anvil dry-run and the Arc run exercise different USDC implementations; here Arc added both a native-precompile constraint and a blocklist that local testing cannot surface).
 
 ---
 

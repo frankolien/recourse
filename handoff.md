@@ -39,9 +39,11 @@ node ops/codegen.mjs
 ```
 Then seed the demo state. The seeder is viem, not forge: Arc's USDC is a native-token
 precompile that forge's local EVM cannot execute (StackUnderflow during simulation), so
-seeding goes through direct RPC broadcast. Needs the deployer funded with ~20 USDC; it
-funds the buyer and merchant in-script. Uses DEPLOYER_PK as attestor and defaults buyer
-and merchant to anvil keys unless SEED_BUYER_PK / SEED_MERCHANT_PK are set:
+seeding goes through direct RPC broadcast. Needs the deployer funded with ~10 USDC; it
+funds the buyer and merchant in-script (small amounts, 0.25 USDC per payment). DEPLOYER_PK
+is the attestor. On Arc the buyer and merchant default to fresh random keys because the
+well-known anvil keys are on Arc USDC's blocklist; set SEED_BUYER_PK / SEED_MERCHANT_PK to
+override.
 ```
 node engine/scripts/seed.mjs        # defaults to deployments/arc-testnet.json
 ```
