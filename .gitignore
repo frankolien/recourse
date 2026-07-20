@@ -1,0 +1,29 @@
+# Foundry
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+
+# Node / TypeScript
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Rust
+target/
+
+# Flutter / Dart
+.dart_tool/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Env and secrets (testnet throwaways still never get committed)
+.env
+.env.*
+!.env.example
+
+# Local demo state
+data/evidence/
+
+# OS
+.DS_Store
