@@ -53,7 +53,7 @@ deny, advanced) for the verify-page demo. Dry-run verified end to end on local a
 
 ## Next actions (architecture section 11 order, dependency-true)
 
-1. web/: verify page first (the demo weapon), reading previewVerdict from the live escrow and recomputing in-browser with the TS engine. Use the seeded state: /verify/5 is the REFUNDED case, /verify/6 is DENIED (see deployments/seed-arc-testnet.json). Read the live RPC via dRPC (arc-testnet.drpc.org); the official endpoint rate-limits.
+1. web/: the merchant app is now a full multi-page site. A shared MerchantShell (in components/) renders the sidebar and a persistent topbar with pathname-driven active state, mounted via the app/(merchant) route group layout. Real routes exist for /dashboard, /payments, /protection, /disputes, /receipts, /vault, /policies, /settings, /support; /policies reads policy #1 live from the registry; /vault and /settings show the deployed contract addresses with ArcScan links. The typeface is Geist and Geist Mono (xend.global's font), self-hosted via the geist package and wired through the --display/--body/--mono tokens. The public verifier remains at /verify/5 and /verify/6 with live Arc reads, browser recomputation, exact hash comparison, and an evidence sandbox. Remaining web work: the visual policy builder (authoring UI that writes a new policy and returns its id), and turning the illustrative merchant data on the new pages into live indexer reads once the backend lands.
 2. backend/ (Rust): indexer, then read routes, then evidence store, then attestor bot (architecture section 5). Reads addresses from deployments/arc-testnet.json via codegen.
 3. engine/: the policy compiler (authoring JSON, per PRD section 6, into Rule structs) for the web policy builder preview. compute and hash utils already exist.
 4. USYC access: apply; when approved, write USYCTellerAdapter and redeploy.
@@ -62,7 +62,7 @@ Demo state is seeded and verified on Arc (deployments/seed-arc-testnet.json): po
 8 payments, payment 5 REFUNDED 100%, payment 6 DENIED, payment 7 vault-advanced.
 Re-seed by rerunning `node engine/scripts/seed.mjs` (produces a new policy + payments).
 
-Done: deterministic core (M0), TS engine mirror with hash parity (M2), the stateful contract layer with integration tests (M1), the deploy + codegen pipeline, and a live, on-chain-verified deployment to Arc testnet (see the table above). This clears the core of Checkpoint 2 (deployed core contracts on a public repo); the remaining CP2 item is a verify-page clip. If the engine or vectors change, regenerate hashes.json (forge script script/GenVectorHashes.s.sol:GenVectorHashes) and keep forge and vitest green in one commit (R2).
+Done: deterministic core (M0), TS engine mirror with hash parity (M2), the stateful contract layer with integration tests (M1), the deploy + codegen pipeline, a live on-chain deployment to Arc testnet, the public verify page, and the dashboard overview. The dashboard matches the supplied 1536 by 1024 reference with the buyer sidebar, summary cards, protections, dispute tracker, activity rail, earnings, learning cards, and support panel. If the engine or vectors change, regenerate hashes.json (forge script script/GenVectorHashes.s.sol:GenVectorHashes) and keep forge and vitest green in one commit (R2).
 
 ## Standing rules
 

@@ -4,6 +4,48 @@ Convention: every session appends one entry above this line's predecessors. Form
 
 ---
 
+## 2026-07-20: Session 12, Geist typeface, real routing, and a full merchant app
+
+Found: the dashboard was the only real merchant route. Its sidebar navigation mostly pointed at /verify/5 or dead # anchors, the shell was hard coded inside the dashboard component, and the app used Georgia and Inter rather than the requested xend.global typeface. xend.global was inspected directly and runs on Geist and Geist Mono (the Vercel typeface).
+
+Decided: adopt Geist across the app through the self-hosted geist package (offline woff2, no CDN), keeping the design system intact by only swapping the three font tokens. Extract the sidebar and a persistent topbar into a shared MerchantShell driven by usePathname, mount it through a (merchant) route group layout so the sidebar persists across navigation and the active item and section title are always correct. Then give every navigation destination a real page instead of a redirect.
+
+Built: MerchantShell (pathname active state, section title, persistent topbar, notification and profile links), a (merchant) route group, and eight routes: /payments, /protection, /disputes, /receipts, /vault, /policies, /settings, /support. The dashboard moved into the group and shed its embedded shell. Pages reuse the existing panel, table, and card vocabulary and add a small shared set (metric cards, records tables, status pills, address rows, toggles, how-steps). /policies reads policy #1 live from the registry and renders its rules and onchain hash. /vault and /settings surface the real contract addresses from deployments/arc-testnet.json with ArcScan links. The verifiable Arc payments (5 refunded, 6 denied) are linked from /payments, /receipts, and /disputes so the public proof is one click from the app.
+
+Verified: production next build is green (13 routes), tsc --noEmit and eslint are clean, and every route returns 200 (root 307 to /dashboard). Confirmed the built CSS ships Geist @font-face with real woff2 files and defines --font-geist-sans, so the typeface loads rather than falling back. Confirmed server-rendered active nav and section title are correct on a sub-route, and that no href resolves to a dead anchor.
+
+Rules earned: when a user asks for a specific site's font, inspect that site's stylesheet to identify it rather than guessing, and prefer the self-hosted package over a CDN so the app stays offline safe.
+
+---
+
+## 2026-07-20: Session 11, dashboard corrected to the supplied reference
+
+Found: the first web delivery made the verifier the visual home, but the owner’s reference was the full account dashboard. The verifier was functionally correct but was the wrong primary surface and could not resemble the requested 1536 by 1024 dashboard screenshot.
+
+Decided: keep the verifier as the public proof route, add the dashboard as its own surface, and redirect the root to /dashboard. Match the reference directly rather than stretching the verifier shell into a dashboard.
+
+Built: /dashboard with the fixed buyer sidebar, account and network controls, USDC balance, protected payment and action summaries, monthly spend chart, active protection table, dispute timeline, recent activity, escrow earnings, learning cards, and support panel. Added responsive fallbacks for narrower screens while preserving the dense desktop composition.
+
+Verified: rendered at the reference 1536 by 1024 viewport and visually compared against web.png. Content start, sidebar width, card grid, table density, dispute tracker, and right rail now align closely with the target. Browser console is clean. TypeScript and the production build are green; the unused import found by ESLint was removed.
+
+Rules earned: when a user provides a target screenshot, the default route and information architecture are part of the visual requirement, not just the palette and component styling.
+
+---
+
+## 2026-07-20: Session 10, public verifier web experience
+
+Found: web/ was still empty, while the seeded Arc deployment already exposed every read needed for the demo weapon through getPayment, getPolicy, policyHash, and previewVerdict. The seeded refunded and denied claims do not make evidence alone decisive, so a direct evidence toggle on the chain inputs would not demonstrate the promised outcome change.
+
+Decided: build the verify surface before the dashboard, as required by the dependency order. The app reads Arc through dRPC in the browser, imports @recourse/engine rather than copying verdict logic, and sources contract addresses from deployments/arc-testnet.json. The sandbox includes an explicit local evidence-test preset that selects the damaged claim with no photo, then adding Photo changes the result from Denied to Refunded under Rule 2 without writing to chain.
+
+Built: a Next.js App Router app in web/, public /verify/[paymentId] routes, responsive Recourse shell based on the supplied editorial dashboard reference, live payment and immutable policy panels, Solidity eth_call versus TypeScript hash comparison, refunded, partial, and denied stamp states, evidence sandbox, and demo links for payments 5 and 6.
+
+Verified: npm build, TypeScript, and ESLint are green. Browser checks against live Arc confirmed payment 5 is Refunded 100 percent with matching hash 0x683e3c325e6e...bc650f, payment 6 is Denied with matching hash 0x87c2706fa4b2...421bb9, the evidence preset plus Photo changes the local result to Refunded under Rule 2, and the browser console has no warnings or errors.
+
+Rules earned: none new. Reinforced R2 and R3 by importing the existing engine and deployment JSON directly.
+
+---
+
 ## 2026-07-20: Session 9, demo state seeded and verified on Arc
 
 Found: the public Arc RPC (rpc.testnet.arc.network) rate-limits hard and returns "request limit reached" as a JSON-RPC error that viem's transport does not retry, so the seed died on the first receipt poll across several attempts (each stranding a little USDC in a fresh funding address). Two other public endpoints answer without auth: dRPC (arc-testnet.drpc.org) and thirdweb (5042002.rpc.thirdweb.com).
