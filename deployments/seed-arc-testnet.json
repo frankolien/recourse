@@ -1,0 +1,15 @@
+{
+  "policyId": 1,
+  "merchant": "0xD70beb0ce6E261fdaa8Cb72607316C6bcA16A082",
+  "buyer": "0x15f1A215260994a4019497fa8267f2F6B479Bf6A",
+  "refundPaymentId": 5,
+  "denyPaymentId": 6,
+  "advancedPaymentId": 7,
+  "openPaymentIds": [
+    1,
+    2,
+    3,
+    4,
+    8
+  ]
+}

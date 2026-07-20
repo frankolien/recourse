@@ -4,6 +4,18 @@ Convention: every session appends one entry above this line's predecessors. Form
 
 ---
 
+## 2026-07-20: Session 9, demo state seeded and verified on Arc
+
+Found: the public Arc RPC (rpc.testnet.arc.network) rate-limits hard and returns "request limit reached" as a JSON-RPC error that viem's transport does not retry, so the seed died on the first receipt poll across several attempts (each stranding a little USDC in a fresh funding address). Two other public endpoints answer without auth: dRPC (arc-testnet.drpc.org) and thirdweb (5042002.rpc.thirdweb.com).
+
+Decided: D22, the seed wraps every RPC call in explicit backoff-retry that recognizes rate-limit and transient errors, reads counts once instead of per payment, and sleeps between txs; recommend running against dRPC rather than the official endpoint. D23, shrank seed amounts to 0.25 USDC per payment; the seed generates fresh (non-blocklisted) buyer and merchant keys on Arc and records their addresses in the pointer file.
+
+Verified on Arc via dRPC: policyCount 1, paymentCount 8, payment 5 REFUNDED 100% (previewVerdict 10000/matched, status Settled, verdictBps 10000), payment 6 DENIED (previewVerdict 0, ruleIndex 255), payment 7 beneficiary == vault, vault.outstanding 0.25 USDC. Payment 5 settling a full refund without reverting confirms the underflow fix works on the live fixed contracts. Committed deployments/seed-arc-testnet.json (policyId 1, refund 5, deny 6, advanced 7).
+
+Rules earned: none new.
+
+---
+
 ## 2026-07-20: Session 8, redeploy with the fix and a viem seeder for Arc
 
 Found: Arc's USDC is a native-token precompile (0x1800...0000). forge script executes run() locally to build its transaction list, and that local EVM cannot run the precompile, so any USDC movement reverts with StackUnderflow during forge's local execution. This is why the forge deploy worked (it moves no USDC) but the forge seed could not run on Arc, while cast send and the deploy's separate buffer transfer worked (they broadcast directly to the real node). The anvil dry-run hid it because local USDC is a plain ERC-20.
