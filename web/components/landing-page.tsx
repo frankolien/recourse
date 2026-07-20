@@ -53,6 +53,32 @@ const features = [
   { icon: <TrendingUp size={20} />, tone: "sage", title: "Yield while protected", copy: "Escrowed funds earn yield through USYC during the dispute window.", cta: "Explore the vault", href: "/vault" },
 ];
 
+const avatars = [
+  { bg: "#ece5d8", skin: "#d9a97f", hair: "#3a2a20", shirt: "#6b7f74" },
+  { bg: "#e5e9ea", skin: "#a9754f", hair: "#20160f", shirt: "#48596a" },
+  { bg: "#e9e7de", skin: "#e7bd93", hair: "#6a4a30", shirt: "#8a7d5f" },
+];
+
+// Flat portrait avatars for social proof: head, hair, and shoulders in diverse
+// tones, drawn inline so the page stays offline and uses no stranger photos.
+function Avatar({ bg, skin, hair, shirt, index }: { bg: string; skin: string; hair: string; shirt: string; index: number }) {
+  const clip = `avatar-clip-${index}`;
+  return (
+    <svg viewBox="0 0 48 48" className="landing-avatar" aria-hidden="true">
+      <defs>
+        <clipPath id={clip}><circle cx="24" cy="24" r="24" /></clipPath>
+      </defs>
+      <g clipPath={`url(#${clip})`}>
+        <rect width="48" height="48" fill={bg} />
+        <rect x="20.5" y="26" width="7" height="10" fill={skin} />
+        <ellipse cx="24" cy="49" rx="15" ry="12" fill={shirt} />
+        <circle cx="24" cy="20.5" r="9" fill={skin} />
+        <path d="M14.5 22 C14 12 34 12 33.5 22 C33 17 29.5 15.5 24 15.5 C18.5 15.5 15 17 14.5 22 Z" fill={hair} />
+      </g>
+    </svg>
+  );
+}
+
 export function LandingPage() {
   return (
     <div className="landing">
@@ -86,7 +112,9 @@ export function LandingPage() {
             <Link className="landing-cta ghost" href="/verify/5">Explore the demo</Link>
           </div>
           <div className="landing-proof">
-            <div className="landing-avatars"><span /><span /><span /></div>
+            <div className="landing-avatars">
+              {avatars.map((avatar, index) => <Avatar key={index} {...avatar} index={index} />)}
+            </div>
             <p>Trusted by builders and businesses<br />on Arc Testnet</p>
           </div>
         </div>
@@ -159,11 +187,13 @@ export function LandingPage() {
       </section>
 
       <section className="landing-stack">
-        <span>Powered by Circle</span>
-        <div className="landing-stack-row">
-          {stack.map((item) => (
-            <div className="landing-stack-item" key={item.label}>{item.icon}<span>{item.label}</span></div>
-          ))}
+        <div className="landing-stack-inner">
+          <span>Powered by Circle</span>
+          <div className="landing-stack-row">
+            {stack.map((item) => (
+              <div className="landing-stack-item" key={item.label}>{item.icon}<span>{item.label}</span></div>
+            ))}
+          </div>
         </div>
       </section>
 

@@ -3128,12 +3128,12 @@ footer {
 
 .landing-hero {
   display: grid;
-  grid-template-columns: 1.02fr 1.1fr;
-  gap: 44px;
+  grid-template-columns: 1fr 1.12fr;
+  gap: 40px;
   align-items: center;
-  max-width: 1320px;
+  max-width: 1360px;
   margin: 0 auto;
-  padding: clamp(40px, 6vw, 76px) clamp(22px, 5vw, 56px) 48px;
+  padding: clamp(34px, 5vw, 60px) clamp(22px, 5vw, 56px) 44px;
 }
 
 .landing-eyebrow {
@@ -3153,11 +3153,10 @@ footer {
 .landing-hero-copy h1 {
   margin: 22px 0 0;
   font-family: var(--serif);
-  font-size: clamp(42px, 5.2vw, 66px);
+  font-size: clamp(40px, 4.7vw, 58px);
   font-weight: 500;
-  line-height: 1.03;
-  letter-spacing: -0.02em;
-  text-wrap: balance;
+  line-height: 1.04;
+  letter-spacing: -0.015em;
 }
 
 .landing-hero-copy h1 em {
@@ -3219,34 +3218,16 @@ footer {
   display: flex;
 }
 
-.landing-avatars span {
-  width: 34px;
-  height: 34px;
-  margin-left: -9px;
+.landing-avatar {
+  width: 36px;
+  height: 36px;
+  margin-left: -10px;
   border: 2px solid var(--paper-bright);
   border-radius: 50%;
-  background:
-    radial-gradient(circle at 50% 34%, #d5aa85 0 40%, transparent 41%),
-    radial-gradient(circle at 50% 96%, #35564d 0 46%, transparent 47%),
-    #8aa295;
 }
 
-.landing-avatars span:first-child {
+.landing-avatar:first-child {
   margin-left: 0;
-}
-
-.landing-avatars span:nth-child(2) {
-  background:
-    radial-gradient(circle at 50% 34%, #cf9f9a 0 40%, transparent 41%),
-    radial-gradient(circle at 50% 96%, #3d4f5c 0 46%, transparent 47%),
-    #97a7ad;
-}
-
-.landing-avatars span:nth-child(3) {
-  background:
-    radial-gradient(circle at 50% 34%, #c7b088 0 40%, transparent 41%),
-    radial-gradient(circle at 50% 96%, #2f4a41 0 46%, transparent 47%),
-    #7f978b;
 }
 
 .landing-proof p {
@@ -3259,7 +3240,22 @@ footer {
 /* ---- Hero product mockups (decorative collage) ---- */
 .landing-mock {
   position: relative;
-  min-height: 560px;
+  width: 580px;
+  max-width: 100%;
+  height: 540px;
+  margin-left: auto;
+}
+
+.landing-mock::before {
+  content: "";
+  position: absolute;
+  top: 22px;
+  right: -14px;
+  width: 500px;
+  height: 452px;
+  border-radius: 46% 54% 48% 52% / 52% 46% 54% 48%;
+  background: #edf1ec;
+  z-index: 0;
 }
 
 .mock-card {
@@ -3268,32 +3264,33 @@ footer {
   border: 1px solid var(--line);
   border-radius: 16px;
   background: var(--white);
-  box-shadow: var(--shadow);
+  box-shadow: 0 16px 40px rgba(26, 43, 37, 0.10);
   font-size: 12px;
 }
 
 .mock-dashboard {
-  top: 42px;
+  top: 48px;
   left: 0;
   z-index: 2;
-  width: 246px;
+  width: 216px;
 }
 
 .mock-dispute {
-  top: 56px;
+  top: 48px;
+  left: auto;
   right: 0;
   z-index: 1;
-  width: 250px;
+  width: 216px;
 }
 
 .mock-receipt {
   top: 0;
-  left: 176px;
+  left: 182px;
   z-index: 4;
-  width: 298px;
+  width: 216px;
   padding-top: 30px;
   text-align: center;
-  box-shadow: 0 30px 70px rgba(26, 43, 37, 0.16);
+  box-shadow: 0 26px 56px rgba(26, 43, 37, 0.15);
 }
 
 .mock-receipt::before {
@@ -3308,10 +3305,10 @@ footer {
 }
 
 .mock-earnings {
-  right: 18px;
-  bottom: 2px;
+  right: 4px;
+  bottom: 0;
   z-index: 5;
-  width: 212px;
+  width: 202px;
 }
 
 .mock-title {
@@ -3637,17 +3634,22 @@ footer {
 
 /* ---- Powered-by strip ---- */
 .landing-stack {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 18px;
-  padding: 26px clamp(22px, 5vw, 56px);
+  padding: 22px clamp(22px, 5vw, 56px);
   border-top: 1px solid var(--line-soft);
   border-bottom: 1px solid var(--line-soft);
   background: var(--white);
 }
 
-.landing-stack > span {
+.landing-stack-inner {
+  display: flex;
+  align-items: center;
+  gap: clamp(20px, 3vw, 44px);
+  max-width: 1360px;
+  margin: 0 auto;
+}
+
+.landing-stack-inner > span {
+  flex: 0 0 auto;
   color: #8a918c;
   font-size: 11px;
   font-weight: 650;
@@ -3656,10 +3658,11 @@ footer {
 }
 
 .landing-stack-row {
+  flex: 1;
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
-  gap: 14px 30px;
+  justify-content: space-between;
+  gap: 16px 24px;
 }
 
 .landing-stack-item {
@@ -3710,10 +3713,10 @@ footer {
 
 .landing-feature-icon {
   display: grid;
-  width: 48px;
-  height: 48px;
+  width: 50px;
+  height: 50px;
   place-items: center;
-  border-radius: 12px;
+  border-radius: 50%;
 }
 
 .landing-feature-icon.green {
@@ -3804,18 +3807,23 @@ footer {
   color: var(--green);
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1280px) {
   .landing-hero {
     grid-template-columns: 1fr;
-    gap: 8px;
+    gap: 12px;
   }
 
   .landing-mock {
     position: static;
     display: grid;
     gap: 16px;
-    min-height: 0;
-    margin-top: 8px;
+    width: auto;
+    height: auto;
+    margin-top: 12px;
+  }
+
+  .landing-mock::before {
+    display: none;
   }
 
   .mock-card {
@@ -3826,7 +3834,9 @@ footer {
   .mock-receipt {
     left: 0;
   }
+}
 
+@media (max-width: 1080px) {
   .landing-feature-grid {
     grid-template-columns: repeat(2, 1fr);
   }
