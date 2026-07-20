@@ -1,0 +1,21 @@
+{
+  "name": "@recourse/engine",
+  "version": "0.1.0",
+  "description": "TypeScript mirror of the canonical Solidity PolicyEngine, chained to the Solidity engine by packages/vectors.",
+  "type": "module",
+  "private": true,
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

@@ -9,11 +9,11 @@ Rolling operational file. Read this first every session: blockers, then next act
 
 ## Next actions (architecture section 11 order, dependency-true)
 
-1. engine/: TypeScript mirror of PolicyEngine plus the policy compiler and verdict-hash utils. vitest must pass packages/vectors/verdicts.json byte-for-byte on verdict hashes. This locks hash parity and unblocks the verify page. Use viem for hashing and ABI encoding so hashes match Solidity exactly.
-2. contracts/: RecourseEscrow, MockUSYCAdapter (behind IYieldAdapter), SettlementVault. Integration tests for pay, dispute, attest, resolve, release. Deploy script writes deployments/arc-testnet.json; codegen emits addresses to engine, backend, mobile.
+1. contracts/: RecourseEscrow, MockUSYCAdapter (behind IYieldAdapter), SettlementVault. Integration tests for pay, dispute, attest, resolve, release. Deploy script writes deployments/arc-testnet.json; codegen emits addresses to engine, backend, mobile.
+2. engine/: the policy compiler (authoring JSON, per PRD section 6, into Rule structs). compute and the hash utils already exist; the compiler is what the web policy builder and its live preview need. Not yet built.
 3. Pull Arc testnet RPC and USYC Teller address from docs.arc.io into env and deployments config. Apply for USYC access.
 
-Steps 1 and 2 are independent and can interleave. The PRD calendar schedules escrow (M1, Jul 22 to 24) before TS parity (M2, Jul 25 to 26); architecture section 11 is dependency-true and the handoff doc says to follow it. Either order is defensible as long as both stay green together.
+Done: the deterministic core (Solidity engine + registry, M0) and the TS engine mirror (M2 parity). Both suites are green against the same golden vectors and the Solidity-generated hashes.json. If the engine or vectors change, regenerate hashes.json (forge script script/GenVectorHashes.s.sol:GenVectorHashes) and keep forge and vitest green in one commit (R2).
 
 ## Standing rules
 
