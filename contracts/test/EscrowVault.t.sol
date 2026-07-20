@@ -228,6 +228,20 @@ contract EscrowVaultTest is Test {
         assertLt(vault.totalAssets(), 1_000e6, "LP realized a loss");
     }
 
+    // Regression: depositing when the adapter index is already above 1.0 and resolving
+    // immediately used to round the redeem a wei under principal and underflow the
+    // refund split. The ceil-on-deposit and the clamp must keep the buyer whole.
+    function test_resolve_fullRefund_shortHold_noUnderflow() public {
+        vm.warp(block.timestamp + 30 days); // index well above WAD before we deposit
+        uint256 paymentId = _pay();
+        _fileNotDelivered(paymentId);
+        _attest(paymentId, 2); // NOT_DELIVERED -> full refund, resolves immediately
+
+        escrow.resolve(paymentId); // must not revert
+        assertEq(usdc.balanceOf(buyer), 1_000e6, "buyer refunded full principal");
+        assertEq(usdc.balanceOf(address(escrow)), 0, "no dust left in escrow");
+    }
+
     function test_previewVerdict_matchesDamagedRule() public {
         uint256 paymentId = _pay();
         RecourseEscrow.EvidenceItem[] memory ev = new RecourseEscrow.EvidenceItem[](1);

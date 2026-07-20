@@ -38,7 +38,12 @@ contract MockUSYCAdapter is IYieldAdapter {
 
     function deposit(uint256 assets) external returns (uint256 shares) {
         usdc.safeTransferFrom(msg.sender, address(this), assets);
-        shares = (assets * WAD) / index();
+        // Round shares up so redeem never returns less than the deposited principal.
+        // A floor at both deposit and redeem can lose a wei on a short hold, which
+        // would underflow the escrow's refund split. The extra wei is covered by the
+        // adapter's yield buffer.
+        uint256 idx = index();
+        shares = (assets * WAD + idx - 1) / idx;
         sharesOf[msg.sender] += shares;
     }
 

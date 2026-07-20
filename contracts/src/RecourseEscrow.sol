@@ -208,10 +208,15 @@ contract RecourseEscrow is Ownable, ReentrancyGuard {
 
         uint256 total = adapter.redeem(pmt.shares);
         uint256 refund = (uint256(pmt.amount) * v.refundBps) / 10000;
+        // Never distribute more than was redeemed; clamps guard against adapter rounding
+        // so a settlement can round a wei short but never revert.
+        if (refund > total) refund = total;
         uint256 yieldTotal = total > pmt.amount ? total - pmt.amount : 0;
         uint256 protocolFee = (yieldTotal * yieldFeeBps) / 10000;
+        uint256 rest = total - refund;
+        if (protocolFee > rest) protocolFee = rest;
         // Residual to the beneficiary guarantees buyer + protocol + beneficiary == total.
-        uint256 toBeneficiary = total - refund - protocolFee;
+        uint256 toBeneficiary = rest - protocolFee;
 
         if (refund > 0) usdc.safeTransfer(pmt.buyer, refund);
         if (protocolFee > 0) usdc.safeTransfer(treasury, protocolFee);
