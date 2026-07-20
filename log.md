@@ -4,6 +4,20 @@ Convention: every session appends one entry above this line's predecessors. Form
 
 ---
 
+## 2026-07-20: Session 13, panel padding, Lottie accents, and a verifier dead end
+
+Found: three issues surfaced while reviewing the new merchant routes. The base .dash-panel class had no padding (the dashboard's own panels each set their own via variant classes), so the new bare panels rendered flush to the border. The public verifier had no link back into the app: its logo and its "Public verifier" back link both pointed at /verify/5, the page itself, so they were no-ops and the page felt like a dead end. And the app used only static icons with no motion.
+
+Decided: give the base .dash-panel a default 22px padding (the dashboard variants declare their own later and still override). Point the verifier logo and back link at /dashboard, relabel the back link "Back to app". Add Lottie for motion, but self-hosted and on-brand: use lottie-web directly (the MIT core has no React peer dep, so it installs against React 19 where the common React wrappers cap at 18), dynamic-imported inside a small client wrapper so it stays out of SSR and loads as a lazy chunk. Author the animation JSON by hand in brand green rather than pulling from a CDN, matching the offline, no-CDN posture used for fonts and seeding.
+
+Built: components/lottie-player.tsx (dynamic import, reduced-motion aware, destroy on unmount), three hand-authored animations (loader, ping, burst) in lib/lottie, wired into the verify and policies loading states, the verify hash-match success (a ring burst behind the check), and the live indicators (the "Live on Arc" pill and the Arc Testnet chip on every merchant page).
+
+Verified: production build is green (13 routes), tsc and eslint are clean, every route returns 200 with no SSR error from the JSON imports or the client player, and the verifier logo and back link resolve to /dashboard. lottie-web stays a lazy chunk, so First Load JS moved only 1 kB.
+
+Rules earned: a control that looks like a back affordance must lead somewhere other than the current page, and a shared base class that expects per-variant padding will bite the next author who uses it bare, so give the base a sane default.
+
+---
+
 ## 2026-07-20: Session 12, Geist typeface, real routing, and a full merchant app
 
 Found: the dashboard was the only real merchant route. Its sidebar navigation mostly pointed at /verify/5 or dead # anchors, the shell was hard coded inside the dashboard component, and the app used Georgia and Inter rather than the requested xend.global typeface. xend.global was inspected directly and runs on Geist and Geist Mono (the Vercel typeface).

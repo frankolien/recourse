@@ -18,6 +18,8 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BrandMark } from "@/components/brand-mark";
+import { LottiePlayer } from "@/components/lottie-player";
+import pingAnim from "@/lib/lottie/ping.json";
 import { arcTestnet } from "@/lib/contracts";
 
 const GITHUB_URL = "https://github.com/frankolien/recourse";
@@ -124,7 +126,7 @@ export function MerchantShell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="dash-header-actions">
             <span className="network-select" title={`Chain ${arcTestnet.id}`}>
-              <span className="dash-live-dot" /> Arc Testnet
+              <LottiePlayer animationData={pingAnim} className="lottie-ping" /> Arc Testnet
             </span>
             <Link className="notification-button" href="/disputes" aria-label="Notifications">
               <Bell size={17} />

@@ -1605,6 +1605,13 @@ footer {
   background: #fff;
 }
 
+/* Base panel padding for the merchant routes. The dashboard's own panels
+   (.protections-panel, .disputes-panel, .activity-panel, .earnings-panel)
+   set their own padding below and override this. */
+.dash-panel {
+  padding: 22px;
+}
+
 .protections-panel {
   padding: 21px 20px 0;
 }
@@ -2826,6 +2833,48 @@ footer {
 
 .resource-item > svg {
   color: #b6bcb6;
+}
+
+/* ---- Lottie interaction accents (see components/lottie-player) ---- */
+.lottie-loader {
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 2px;
+}
+
+.lottie-loader-sm {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+}
+
+.lottie-ping {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.match-check {
+  position: relative;
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+}
+
+.match-check > svg {
+  position: relative;
+  z-index: 1;
+}
+
+.match-burst {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 48px;
+  height: 48px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 @media (max-width: 1260px) {

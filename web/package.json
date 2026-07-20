@@ -12,6 +12,7 @@
   "dependencies": {
     "@recourse/engine": "file:../engine",
     "geist": "^1.7.2",
+    "lottie-web": "^5.13.0",
     "lucide-react": "^0.468.0",
     "next": "^15.1.0",
     "react": "^19.0.0",

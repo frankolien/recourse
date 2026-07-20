@@ -12,7 +12,6 @@ import {
   Fingerprint,
   FlaskConical,
   Github,
-  LoaderCircle,
   LockKeyhole,
   RefreshCw,
   ShieldCheck,
@@ -24,6 +23,10 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatUnits } from "viem";
 import { BrandMark } from "@/components/brand-mark";
+import { LottiePlayer } from "@/components/lottie-player";
+import burstAnim from "@/lib/lottie/burst.json";
+import loaderAnim from "@/lib/lottie/loader.json";
+import pingAnim from "@/lib/lottie/ping.json";
 import {
   arcTestnet,
   escrowAbi,
@@ -234,7 +237,7 @@ export function VerifyPage({ paymentId }: { paymentId: bigint }) {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <Link href="/verify/5" className="brand" aria-label="Recourse home">
+        <Link href="/dashboard" className="brand" aria-label="Recourse home">
           <BrandMark />
           <span>Recourse</span>
         </Link>
@@ -259,9 +262,9 @@ export function VerifyPage({ paymentId }: { paymentId: bigint }) {
 
       <main className="main-content">
         <header className="topbar">
-          <Link href="/verify/5" className="back-link"><ArrowLeft size={16} /> Public verifier</Link>
+          <Link href="/dashboard" className="back-link"><ArrowLeft size={16} /> Back to app</Link>
           <div className="top-actions">
-            <span className="live-pill"><span className="network-dot" /> Live on Arc</span>
+            <span className="live-pill"><LottiePlayer animationData={pingAnim} className="lottie-ping" /> Live on Arc</span>
             <a className="icon-button" href={explorerPaymentUrl} target="_blank" rel="noreferrer" aria-label="Open escrow on ArcScan"><ArrowUpRight size={18} /></a>
           </div>
         </header>
@@ -280,7 +283,7 @@ export function VerifyPage({ paymentId }: { paymentId: bigint }) {
         </section>
 
         {loading ? (
-          <div className="state-card"><LoaderCircle className="spin" size={24} /><h2>Reading Arc testnet</h2><p>Fetching payment, policy, and onchain verdict.</p></div>
+          <div className="state-card"><LottiePlayer animationData={loaderAnim} className="lottie-loader" /><h2>Reading Arc testnet</h2><p>Fetching payment, policy, and onchain verdict.</p></div>
         ) : error ? (
           <div className="state-card error"><X size={24} /><h2>Verification unavailable</h2><p>{error}</p><button onClick={() => void load()}><RefreshCw size={15} /> Try again</button></div>
         ) : data && localVerdict && sandboxInput && sandboxVerdict ? (
@@ -319,7 +322,9 @@ export function VerifyPage({ paymentId }: { paymentId: bigint }) {
                   <span className="source-tag soft">TypeScript</span>
                 </div>
                 <div className={hashesMatch ? "match-banner" : "match-banner mismatch"}>
-                  {hashesMatch ? <CheckCircle2 size={18} /> : <X size={18} />}
+                  {hashesMatch
+                    ? <span className="match-check"><LottiePlayer animationData={burstAnim} className="match-burst" /><CheckCircle2 size={18} /></span>
+                    : <X size={18} />}
                   <div><strong>{hashesMatch ? "Hashes match exactly" : "Hash mismatch"}</strong><span>{hashesMatch ? "The verdict is independently reproducible." : "The two engine results differ."}</span></div>
                 </div>
               </article>

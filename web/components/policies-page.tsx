@@ -4,7 +4,6 @@ import { type Policy } from "@recourse/engine";
 import {
   ArrowUpRight,
   Check,
-  LoaderCircle,
   LockKeyhole,
   Plus,
   RefreshCw,
@@ -12,6 +11,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { LottiePlayer } from "@/components/lottie-player";
+import loaderAnim from "@/lib/lottie/loader.json";
 import {
   explorerAddressUrl,
   publicClient,
@@ -90,7 +91,7 @@ export function PoliciesPage() {
       </header>
 
       {loading ? (
-        <div className="dash-panel state-inline"><LoaderCircle className="spin" size={22} /><div><strong>Reading policy from Arc</strong><p>Fetching policy #1 and its onchain hash.</p></div></div>
+        <div className="dash-panel state-inline"><LottiePlayer animationData={loaderAnim} className="lottie-loader-sm" /><div><strong>Reading policy from Arc</strong><p>Fetching policy #1 and its onchain hash.</p></div></div>
       ) : error ? (
         <div className="dash-panel state-inline error"><X size={22} /><div><strong>Policy unavailable</strong><p>{error}</p></div><button className="page-cta ghost" onClick={() => void load()}><RefreshCw size={14} /> Retry</button></div>
       ) : data ? (
