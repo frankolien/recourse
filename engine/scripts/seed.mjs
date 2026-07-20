@@ -54,6 +54,23 @@ const pub = createPublicClient({ chain, transport, pollingInterval: 4000 });
 const wallet = (account) => createWalletClient({ account, chain, transport });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Explicit retry: the public RPC returns "request limit reached" as a JSON-RPC error,
+// which viem's transport does not treat as retryable, so back off and retry here.
+async function withRetry(fn, label, attempts = 10) {
+  for (let i = 0; ; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      const msg = e?.message ? e.message : String(e);
+      const retryable = /limit|429|timeout|fetch failed|ECONN|socket|network/i.test(msg);
+      if (!retryable || i >= attempts - 1) throw e;
+      const wait = Math.min(20000, 1500 * 2 ** i) + Math.floor(Math.random() * 800);
+      console.log(`  ${label}: rate-limited, retry ${i + 1} in ${Math.round(wait / 1000)}s`);
+      await sleep(wait);
+    }
+  }
+}
+
 const USDC = [
   { type: "function", name: "transfer", stateMutability: "nonpayable", inputs: [{ type: "address" }, { type: "uint256" }], outputs: [{ type: "bool" }] },
   { type: "function", name: "approve", stateMutability: "nonpayable", inputs: [{ type: "address" }, { type: "uint256" }], outputs: [{ type: "bool" }] },
@@ -87,12 +104,18 @@ const PAY = 250000n; // 0.25 USDC, kept small so re-runs are cheap on testnet
 const DAY = 86400;
 
 async function send(account, address, abi, functionName, args, label) {
-  const hash = await wallet(account).writeContract({ address, abi, functionName, args });
-  const rcpt = await pub.waitForTransactionReceipt({ hash, pollingInterval: 4000, retryCount: 12, timeout: 180000 });
+  const hash = await withRetry(() => wallet(account).writeContract({ address, abi, functionName, args }), `${label} submit`);
+  const rcpt = await withRetry(
+    () => pub.waitForTransactionReceipt({ hash, pollingInterval: 6000, retryCount: 2, timeout: 120000 }),
+    `${label} receipt`,
+  );
   if (rcpt.status !== "success") throw new Error(`${label} reverted (${hash})`);
-  await sleep(500); // stay under the public RPC rate limit
+  await sleep(800); // stay under the public RPC rate limit
   return rcpt;
 }
+
+const read = (address, abi, functionName, args) =>
+  withRetry(() => pub.readContract({ address, abi, functionName, args }), `read ${functionName}`);
 
 const rules = [
   { claimType: 0, requiredEvidenceMask: 0, attType: 1, attExpected: 2, claimWindow: 14 * DAY, refundBps: 10000, requiresReturn: false },
@@ -132,12 +155,12 @@ async function main() {
 
   // Phase 2: merchant publishes a policy.
   await send(merchant, d.policyRegistry, REGISTRY, "registerPolicy", [14 * DAY, 0, rules, "ipfs://demo-policy"], "register policy");
-  const policyId = await pub.readContract({ address: d.policyRegistry, abi: REGISTRY, functionName: "policyCount" });
+  const policyId = await read(d.policyRegistry, REGISTRY, "policyCount");
 
   // Phase 3: buyer pays eight times and disputes two. paymentIds are sequential from
   // the current count, so read it once instead of after every pay (fewer RPC calls).
   await send(buyer, d.usdc, USDC, "approve", [d.escrow, buyerFunding], "buyer approve");
-  const base = await pub.readContract({ address: d.escrow, abi: ESCROW, functionName: "paymentCount" });
+  const base = await read(d.escrow, ESCROW, "paymentCount");
   const ids = [];
   for (let i = 0n; i < N; i++) {
     await send(buyer, d.escrow, ESCROW, "pay", [policyId, PAY, `0x${(i + 1n).toString(16).padStart(64, "0")}`], `pay ${i}`);
@@ -163,7 +186,7 @@ async function main() {
   const outName = isLocal ? `seed-local-${d.chainId}.json` : "seed-arc-testnet.json";
   writeFileSync(resolve(repoRoot, "deployments", outName), JSON.stringify(pointers, null, 2) + "\n");
 
-  const [refundVerdict] = await pub.readContract({ address: d.escrow, abi: ESCROW, functionName: "previewVerdict", args: [ids[4]] });
+  const [refundVerdict] = await read(d.escrow, ESCROW, "previewVerdict", [ids[4]]);
   console.log("policyId", pointers.policyId);
   console.log("refund paymentId", pointers.refundPaymentId, "verdict", refundVerdict);
   console.log("deny paymentId", pointers.denyPaymentId);
