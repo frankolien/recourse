@@ -4,6 +4,54 @@ Convention: every session appends one entry above this line's predecessors. Form
 
 ---
 
+## 2026-07-21: Session 26, iPhone buyer business logic before UI wiring
+
+Found: the owner correctly challenged the order of work. The first native slice proved the project, generated config, exact USDC type, QR boundary, and visual shell, but feature UI should not advance until buyer workflows are explicit and tested. Mobile business logic must mean orchestration and client-side invariants only. Refund eligibility remains solely in Solidity plus the TypeScript verification mirror (R2).
+
+Built: chain-aligned domain models for PaymentStatus, ClaimType, EvidenceKind, PolicyRecord, PaymentRecord, UploadedEvidence, VerdictPreview, and validated ChainHash. Refactored PaymentRequest to use a real bytes32 value instead of an unchecked string. Added Sendable infrastructure protocols: ContractGateway for reads, writes, receipt waiting, and previewVerdict; EvidenceRepository for offchain uploads; BuyerPaymentRepository for indexed lists; and UnixTimeProvider for deterministic boundary tests. Added three UI-independent workflows. CheckoutPlanner and CheckoutWorkflow validate deployment and merchant, check exact ERC-20 balance and allowance, branch between direct pay and approve-then-pay, stop on a reverted receipt, require a Paid event payment id, and reconcile buyer, merchant, policy, amount, and status from chain. DisputeWorkflow requires the recorded buyer and Paid state, uses the contract's inclusive paidAt plus disputeWindow boundary, uploads evidence in stable order, files, and reconciles Disputed state and claim type. VerdictWorkflow reads previewVerdict from the gateway, never computes rules, models attestation versus resolveDelay readiness, submits permissionless resolve, and requires Settled state before success. Refund display arithmetic uses quotient and remainder basis-point math to avoid multiplication overflow.
+
+Verified: added actor-based gateway and evidence fakes plus checkout, dispute, and verdict suites. Swift 6 strict-concurrency build and all 18 tests pass on iPhone 16 Pro. Coverage includes direct pay versus approval, insufficient balance, approval revert stopping payment, onchain payment reconciliation, buyer authorization, closed-window rejection before upload, exact-boundary dispute acceptance, immediate readiness after attestation, resolve-delay waiting, settled-state confirmation, and chain-returned verdict use.
+
+Rules earned: build mobile feature logic as deterministic workflows over protocols before view models. Mirror contract preconditions that protect UX, but never mirror the policy engine. Every transaction workflow ends by reading authoritative chain state rather than trusting submission success. Keep evidence order stable because the contract's evidence root is order-sensitive.
+
+---
+
+## 2026-07-21: Session 25, native iPhone M4.1 foundation
+
+Found: mobile/ was empty, while Xcode 26.4.1, Swift 6.3.1, and the xcodeproj Ruby gem were available. No project generator CLI was installed. The first native slice needed to establish trustworthy money and QR types before pulling in an EVM dependency. Xcode macro plugins and Simulator services also require execution outside the filesystem sandbox, and the machine has very little free disk, so validation used an active-architecture simulator build and temporary DerivedData.
+
+Built: a deterministic generated Xcode project at mobile/Recourse.xcodeproj with an iOS 17 SwiftUI application, Swift 6 strict concurrency, a shared scheme, camera and Face ID usage descriptions, and an XCTest target. The checked-in mobile/scripts/generate_project.rb produces byte-identical project files and puts deployment codegen before Swift compilation. Extended ops/codegen.mjs to emit mobile/Recourse/Generated/Deployment.swift from the canonical Arc deployment, kept ignored as generated output (R3), and documented the build in mobile/README.md. Added the feature-first app foundation: observable environment and typed router; Home, Scan, Receipts, and Account shells; editorial ledger-green design tokens; exact integer-only USDCAmount; validated EthereumAddress; versioned base64url PaymentRequest decoding with chain, escrow, amount, and bytes32 order-reference checks; and an actor-based KeychainStore. No EVM dependency or fake signer was added.
+
+Verified: the project builds successfully under Swift 6 for the iOS Simulator. Seven XCTest cases pass on iPhone 16 Pro, covering six-decimal USDC parsing and formatting plus valid QR decoding and wrong-chain and wrong-escrow rejection. Launched the built app in Simulator and inspected a 402x874 screenshot: the serif editorial hierarchy, green balance card, scan action, tab bar, and account entry render without clipping. Project regeneration was run twice and produced no diff.
+
+Rules earned: encode money as base-unit integers at the domain boundary, not Decimal or Double in feature code. Validate untrusted QR requests before navigation or network work. A generated Xcode project is only useful if regeneration is byte-stable, so pin otherwise-random dependency object IDs. Add the EVM library only behind the reviewed gateway and signer protocols, after the native shell and invariants are green.
+
+---
+
+## 2026-07-21: Session 25, full attestor loop verified live on Arc
+
+Found: the attestor bot was built and unit-verified but never exercised end to end against a live disputed payment (the seeded 5/6 are settled). Needed a fresh Disputed payment, which is a buyer action (fileDispute must be signed by the payment's buyer, and the seeder's buyer key is a fresh random key that is not persisted).
+
+Built: engine/scripts/open-dispute.mjs, a buyer-side helper that funds a fresh buyer, pays once, and files a dispute, then stops (no attestation), leaving the payment Disputed for the attestor. Reuses the seeder's viem patterns; defaults to dRPC on Arc.
+
+Verified LIVE on Arc: opened paymentId 9 (buyer 0x11b8FB49...6Cf2Fe, policy 1, claimType 0). Before attestation it previewed DENIED (no rule matches without the delivery attestation, so the policy falls through to the 0% default). Ran POST /api/demo/attest {9, value 2 NOT_DELIVERED} (submitAttestation tx 0xa040...9735, accepted onchain, the first live proof the Rust signature recovers to the attestor), then POST /api/demo/resolve {9} (settlement tx 0x79da...dba0). previewVerdict(9) flipped to (10000, false, 0, true) = Refunded 100% matched; the indexer reflected status Settled refundBps 10000; chain verdictHash 0x5d05b6...f2867 equals the indexed hash. The full thesis ran: buyer disputes, attestor signs one objective fact, the immutable policy flips the verdict deterministically, anyone recomputes it.
+
+Decided (owner directive): build the product fully real, no DEMO_MODE shortcuts, quality over the demo deadline. Codex owns the native iOS buyer app; this workstream owns the rest (evidence store, real auth, attestor-as-service, USYC swap). Real-build order: evidence blob store, then real auth (Circle Programmable Wallets), then un-gate the attestor into a real service; apply for USYC testnet access in parallel (lead-time gated). The one irreducibly external node is delivery truth (no real shipment on testnet); everything around it is fully real.
+
+Rules earned: prove a cross-service loop on the real chain before trusting it, not just in unit tests. An un-attested dispute correctly previews as the policy default, which is a feature: it shows the attestation is what drives the verdict.
+
+---
+
+## 2026-07-21: Session 24, native iPhone architecture decision
+
+Found: the repository specified Flutter as a fixed buyer-app choice, but the owner wants an iPhone-first product for personal Swift ownership, App Store delivery, and a long-term enterprise-quality native experience. The product boundaries do not require cross-platform UI sharing: contracts, QR payloads, backend APIs, and the web verifier are already the stable interoperability layer. The main native risk is EVM key custody and transaction encoding, not SwiftUI.
+
+Decided: replace Flutter-first with a native Swift iPhone client targeting iOS 17+. The new blueprint in docs/recourse/recourse-ios-architecture.md uses SwiftUI, Observation, structured concurrency, NavigationStack, AVFoundation, PhotosUI, URLSession, Keychain, LocalAuthentication, and a protocol-isolated ContractGateway. Start with web3swift behind the gateway, pin and review the package, and keep the signer replaceable. The demo signer is testnet-only and stores an encrypted keystore behind Keychain user presence. It must not claim Secure Enclave Ethereum signing because Secure Enclave does not directly provide secp256k1 signing. Swift calls previewVerdict and never becomes a third verdict implementation. App Store and TestFlight are the first release path; enterprise distribution is separate and only applies to eligible internal deployments. Android is deferred and may use Flutter later against the same external contracts.
+
+Rules earned: choose native UI independently from protocol portability. Preserve future clients through versioned QR payloads, documented APIs, generated addresses and ABIs, and chain-authoritative state rather than forcing a shared cross-platform presentation layer. Put replaceable cryptography and custody behind a narrow signer protocol before building feature screens.
+
+---
+
 ## 2026-07-21: Session 23, attestor bot (EIP-712 signer + demo endpoints)
 
 Found: the read backend was live but the dispute loop had no attestor. Per the docs the attestor is a binary in the backend crate that signs an objective delivery fact (EIP-712) and pushes the transaction; it never decides outcomes (R4, PRD "arbiter has no discretion"), the onchain PolicyEngine computes the verdict. Researched the exact mechanism with three subagents before coding (R12): the contract side (hand-rolled EIP-712, domain RecourseAttestor/1/chainId/escrow, struct Attestation(uint256 paymentId,uint8 attType,uint8 value,uint64 deadline), raw ecrecover requiring 65-byte r||s||v low-s v in {27,28}), the seeder's working viem signing as the byte-exact reference, and the doc spec (POST /api/demo/attest {paymentId,value}, DEMO_MODE-gated, value caller-supplied).
