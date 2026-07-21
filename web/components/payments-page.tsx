@@ -1,39 +1,53 @@
-import {
-  ArrowUpRight,
-  Cloud,
-  FileText,
-  Package,
-  ShieldCheck,
-  Zap,
-} from "lucide-react";
+"use client";
+
+import { ArrowUpRight, ShieldCheck } from "lucide-react";
 import Link from "next/link";
+import { LiveNotice } from "@/components/live-notice";
+import {
+  type ApiPayment,
+  formatDate,
+  formatUsdc,
+  getPayments,
+  isDisputed,
+  shortAddr,
+  statusLabel,
+  verdictOutcome,
+} from "@/lib/api";
+import { useLive } from "@/lib/use-live";
 
-const metrics = [
-  { label: "Total volume", value: "$1,240.00", sub: "This month", tone: "" },
-  { label: "Protected now", value: "$640.00", sub: "3 payments", tone: "up" },
-  { label: "Settled", value: "$580.00", sub: "Released to merchants", tone: "" },
-  { label: "Open disputes", value: "1", sub: "Awaiting evidence", tone: "down" },
-];
-
-const payments = [
-  { id: "RC-286", merchant: "CloudCompute", product: "API Credits Pack", amount: "$24.00", units: "24.00 USDC", date: "20 Jul 2026", status: "Protected", tone: "green", href: "/protection", icon: <Cloud size={16} /> },
-  { id: "RC-285", merchant: "FileStore", product: "Pro Plan Monthly", amount: "$120.00", units: "120.00 USDC", date: "18 Jul 2026", status: "Protected", tone: "green", href: "/protection", icon: <FileText size={16} /> },
-  { id: "RC-283", merchant: "DesignVault", product: "Premium Assets", amount: "$320.00", units: "320.00 USDC", date: "15 Jul 2026", status: "Protected", tone: "green", href: "/protection", icon: <Zap size={16} /> },
-  { id: "RC-280", merchant: "PrintWorks", product: "Business Cards", amount: "$44.00", units: "44.00 USDC", date: "9 Jul 2026", status: "Settled", tone: "neutral", href: "/receipts", icon: <Package size={16} /> },
-];
-
+// Chain-direct demo verdicts, recomputable in the browser with no backend in the
+// loop. Kept alongside the live list so the page always has a verifiable anchor.
 const onchain = [
   { paymentId: 5, title: "Protected payment #5", outcome: "Refunded 100%", tone: "green", amount: "0.25 USDC" },
   { paymentId: 6, title: "Protected payment #6", outcome: "Denied", tone: "red", amount: "0.25 USDC" },
 ];
 
+function rowStatus(p: ApiPayment): { label: string; tone: string } {
+  return isDisputed(p) ? verdictOutcome(p) : statusLabel(p.status);
+}
+
 export function PaymentsPage() {
+  const state = useLive(() => getPayments());
+  const payments = state.data ?? [];
+
+  const total = payments.reduce((sum, p) => sum + BigInt(p.amount || "0"), 0n);
+  const protectedNow = payments.filter((p) => p.status === 1 && !isDisputed(p)).length;
+  const settled = payments.filter((p) => p.status === 3).length;
+  const openDisputes = payments.filter((p) => p.status === 2).length;
+
+  const metrics = [
+    { label: "Total volume", value: formatUsdc(total.toString()), sub: `${payments.length} payments`, tone: "" },
+    { label: "Protected now", value: `${protectedNow}`, sub: "Held in escrow", tone: "up" },
+    { label: "Settled", value: `${settled}`, sub: "Released", tone: "" },
+    { label: "Open disputes", value: `${openDisputes}`, sub: "Awaiting verdict", tone: openDisputes ? "down" : "" },
+  ];
+
   return (
     <div className="page-stack">
       <header className="dash-header">
         <div>
           <h1>Payments</h1>
-          <p>Every USDC payment you have made through Recourse, protected end to end.</p>
+          <p>Every USDC payment indexed from Arc, protected end to end.</p>
         </div>
       </header>
 
@@ -49,25 +63,32 @@ export function PaymentsPage() {
 
       <section className="dash-panel">
         <div className="panel-heading">
-          <div><h2>Recent payments</h2><p>Product purchases protected by an onchain policy</p></div>
+          <div><h2>Recent payments</h2><p>Live onchain payments protected by an onchain policy</p></div>
           <Link href="/receipts">View receipts</Link>
         </div>
         <div className="records-table">
           <div className="records-head">
             <span>Merchant</span><span>Amount</span><span>Date</span><span>Status</span><span />
           </div>
-          {payments.map((payment) => (
-            <Link className="records-row" href={payment.href} key={payment.id}>
-              <div className="records-id">
-                <span className="records-badge">{payment.icon}</span>
-                <div className="records-cell"><strong>{payment.merchant}</strong><small>{payment.id} · {payment.product}</small></div>
-              </div>
-              <div className="records-cell num"><strong>{payment.amount}</strong><small>{payment.units}</small></div>
-              <div className="records-cell"><strong>{payment.date}</strong></div>
-              <div><span className={`status-pill ${payment.tone}`}>{payment.status}</span></div>
-              <ArrowUpRight size={16} />
-            </Link>
-          ))}
+          {payments.length > 0 ? (
+            payments.map((p) => {
+              const st = rowStatus(p);
+              return (
+                <Link className="records-row" href={isDisputed(p) ? `/verify/${p.paymentId}` : "/protection"} key={p.paymentId}>
+                  <div className="records-id">
+                    <span className="records-badge"><ShieldCheck size={16} /></span>
+                    <div className="records-cell"><strong>{shortAddr(p.merchant)}</strong><small>Payment #{p.paymentId} · policy #{p.policyId}</small></div>
+                  </div>
+                  <div className="records-cell num"><strong>{formatUsdc(p.amount)}</strong><small>from {shortAddr(p.buyer)}</small></div>
+                  <div className="records-cell"><strong>{formatDate(p.paidAt)}</strong></div>
+                  <div><span className={`status-pill ${st.tone}`}>{st.label}</span></div>
+                  <ArrowUpRight size={16} />
+                </Link>
+              );
+            })
+          ) : (
+            <LiveNotice state={state} emptyTitle="No payments indexed" emptyHint="Once the indexer catches up with Arc, onchain payments appear here." />
+          )}
         </div>
       </section>
 

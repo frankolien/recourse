@@ -3650,6 +3650,23 @@ footer {
   color: #7a3033;
 }
 
+.state-inline .spin {
+  animation: state-spin 900ms linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes state-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .state-inline .spin {
+    animation: none;
+  }
+}
+
 .resource-list {
   display: grid;
   gap: 8px;

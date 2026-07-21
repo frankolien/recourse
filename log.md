@@ -4,6 +4,18 @@ Convention: every session appends one entry above this line's predecessors. Form
 
 ---
 
+## 2026-07-21: Session 22, wire the merchant lists to the indexer read API
+
+Found: the payments, disputes, receipts, and protection pages still rendered hardcoded arrays (CloudCompute, FileStore, and similar fictional merchants) as Server Components. With the backend read API in place, these should show the real seeded onchain payments, which is the "not mocks" payoff the owner asked for.
+
+Built: web/lib/api.ts (typed client for /api/payments, /api/disputes, /api/policies, /health with USDC and enum formatters mirroring RecourseEscrow.Status and the engine claim-type table), web/lib/use-live.ts (a small fetch-on-mount hook exposing loading, data, and error), and web/components/live-notice.tsx (loading, indexer-offline, and empty states). Converted the four list pages to client components that render live payments: amounts formatted from u128 base units (R1), merchants and buyers shown as short addresses, statuses mapped from the Status enum, disputed rows linking to the dynamic verifier at /verify/{id}, and metrics computed from the live set. Protection joins payments to policy dispute windows to show a real progress bar. When the backend is unreachable the pages show an honest "indexer offline" notice rather than fabricated rows, and the chain-direct verifiable sections stay untouched. NEXT_PUBLIC_BACKEND_URL configures the base (defaults to localhost:8080).
+
+Verified: tsc and eslint clean; production build green, 16 routes, the landing still static and the four list pages now client shells that fetch at runtime. Not yet exercised against a live backend (needs docker compose up plus cargo run locally), so the live rows are wired and type-correct but the end-to-end fetch is unverified here.
+
+Rules earned: when a real data source can be offline, degrade to an explicit offline state, never to fabricated data that reads as real, and keep the independently verifiable sections chain-direct so they work even when the projection is down.
+
+---
+
 ## 2026-07-21: Session 21, backend code-review pass (three P1 correctness fixes)
 
 Found: a review of the Session 20 backend flagged three real correctness bugs. (1) In indexer.rs the disputed-payment verdict came from preview_verdict(...).ok(), so a transient RPC failure became None and the upsert overwrote the cached verdict columns with NULL, blanking a disputed payment's verdict for a tick. (2) The projection tables were keyed by paymentId alone with no deployment scoping; paymentIds restart at 1 on a redeploy, so a prior escrow's rows could masquerade as current. (3) /health ran count_payments(...).unwrap_or(0) and returned 200 "ok" even when Postgres was unreachable. The review also raised P2s (state-poller cannot reconstruct tx hashes or events, serial per-record reads, raw startup SQL without migration history, permissive CORS once write routes land) and zero tests.

@@ -1,32 +1,49 @@
-import {
-  Check,
-  ChevronRight,
-  Cloud,
-  FileText,
-  Info,
-  ShieldCheck,
-  Zap,
-} from "lucide-react";
+"use client";
+
+import { Check, ChevronRight, Info, ShieldCheck } from "lucide-react";
 import Link from "next/link";
+import { LiveNotice } from "@/components/live-notice";
+import {
+  type ApiPayment,
+  type ApiPolicy,
+  formatDate,
+  formatUsdc,
+  getPayments,
+  getPolicies,
+  isDisputed,
+  shortAddr,
+  verdictOutcome,
+} from "@/lib/api";
+import { useLive } from "@/lib/use-live";
 
-const metrics = [
-  { label: "Active protections", value: "3", sub: "Across 3 merchants" },
-  { label: "Total protected", value: "$640.00", sub: "Held in escrow" },
-  { label: "Average window", value: "30 days", sub: "Until auto release" },
-];
+interface ProtectionData {
+  payments: ApiPayment[];
+  policies: ApiPolicy[];
+}
 
-const active = [
-  { merchant: "CloudCompute", product: "API Credits Pack", amount: "$24.00", units: "24.00 USDC", ends: "3 Aug 2026, 4:30 PM", remaining: "in 13 days", progress: 70, icon: <Cloud size={18} />, tone: "cloud" },
-  { merchant: "FileStore", product: "Pro Plan Monthly", amount: "$120.00", units: "120.00 USDC", ends: "15 Aug 2026, 10:00 AM", remaining: "in 25 days", progress: 45, icon: <FileText size={18} />, tone: "file" },
-  { merchant: "DesignVault", product: "Premium Assets", amount: "$320.00", units: "320.00 USDC", ends: "28 Aug 2026, 11:59 PM", remaining: "in 38 days", progress: 30, icon: <Zap size={18} />, tone: "design" },
-];
-
-const released = [
-  { merchant: "PrintWorks", product: "Business Cards", amount: "$44.00", date: "9 Jul 2026", status: "Released", tone: "neutral" },
-  { merchant: "Acme Store", product: "Protected payment #5", amount: "0.25 USDC", date: "20 Jul 2026", status: "Refunded", tone: "green", href: "/verify/5" },
-];
+function windowFor(policies: ApiPolicy[], policyId: number): number {
+  return policies.find((p) => p.policyId === policyId)?.disputeWindow ?? 0;
+}
 
 export function ProtectionPage() {
+  const state = useLive<ProtectionData>(() =>
+    Promise.all([getPayments(), getPolicies()]).then(([payments, policies]) => ({ payments, policies })),
+  );
+  const payments = state.data?.payments ?? [];
+  const policies = state.data?.policies ?? [];
+
+  const active = payments.filter((p) => p.status === 1 && !isDisputed(p));
+  const released = payments.filter((p) => p.status === 3 || isDisputed(p));
+  const totalProtected = active.reduce((sum, p) => sum + BigInt(p.amount || "0"), 0n);
+  const nowSecs = Math.floor(Date.now() / 1000);
+
+  const firstPolicy = policies[0];
+  const metrics = [
+    { label: "Active protections", value: `${active.length}`, sub: "Held in escrow" },
+    { label: "Total protected", value: formatUsdc(totalProtected.toString()), sub: "Across active payments" },
+    { label: "Onchain policy", value: firstPolicy ? `#${firstPolicy.policyId}` : "-", sub: "Immutable rule set" },
+  ];
+
   return (
     <div className="page-stack">
       <header className="dash-header">
@@ -55,16 +72,26 @@ export function ProtectionPage() {
           <div className="protection-head">
             <span>Merchant</span><span>Amount</span><span>Protection ends</span><span>Status</span><span>Progress</span><span />
           </div>
-          {active.map((item) => (
-            <Link className="protection-row" href="/disputes" key={item.merchant}>
-              <div className="merchant-cell"><span className={`merchant-icon ${item.tone}`}>{item.icon}</span><span><strong>{item.merchant}</strong><small>{item.product}</small></span></div>
-              <div><strong>{item.amount}</strong><small>{item.units}</small></div>
-              <div><strong>{item.ends}</strong><small>{item.remaining}</small></div>
-              <div><span className="active-status"><ShieldCheck size={14} /> Active</span></div>
-              <div className="progress-cell"><span><i style={{ width: `${item.progress}%` }} /></span><small>{item.progress}% of window</small></div>
-              <ChevronRight size={16} />
-            </Link>
-          ))}
+          {active.length > 0 ? (
+            active.map((p) => {
+              const window = windowFor(policies, p.policyId);
+              const ends = p.paidAt + window;
+              const elapsed = window > 0 ? Math.min(Math.max((nowSecs - p.paidAt) / window, 0), 1) : 0;
+              const progress = Math.round(elapsed * 100);
+              return (
+                <Link className="protection-row" href={`/verify/${p.paymentId}`} key={p.paymentId}>
+                  <div className="merchant-cell"><span className="merchant-icon cloud"><ShieldCheck size={18} /></span><span><strong>{shortAddr(p.merchant)}</strong><small>Payment #{p.paymentId}</small></span></div>
+                  <div><strong>{formatUsdc(p.amount)}</strong><small>from {shortAddr(p.buyer)}</small></div>
+                  <div><strong>{window > 0 ? formatDate(ends) : "Open"}</strong><small>{window > 0 ? `${Math.round(window / 86400)} day window` : "No window"}</small></div>
+                  <div><span className="active-status"><ShieldCheck size={14} /> Active</span></div>
+                  <div className="progress-cell"><span><i style={{ width: `${progress}%` }} /></span><small>{progress}% of window</small></div>
+                  <ChevronRight size={16} />
+                </Link>
+              );
+            })
+          ) : (
+            <LiveNotice state={state} emptyTitle="No active protections" emptyHint="Protected payments held in escrow will appear here." />
+          )}
         </div>
       </section>
 
@@ -77,23 +104,25 @@ export function ProtectionPage() {
           <div className="records-head">
             <span>Merchant</span><span>Amount</span><span>Date</span><span>Outcome</span><span />
           </div>
-          {released.map((item) => {
-            const inner = (
-              <>
-                <div className="records-id">
-                  <span className="records-badge"><Check size={16} /></span>
-                  <div className="records-cell"><strong>{item.merchant}</strong><small>{item.product}</small></div>
-                </div>
-                <div className="records-cell num"><strong>{item.amount}</strong></div>
-                <div className="records-cell"><strong>{item.date}</strong></div>
-                <div><span className={`status-pill ${item.tone}`}>{item.status}</span></div>
-                <ChevronRight size={16} />
-              </>
-            );
-            return item.href
-              ? <Link className="records-row" href={item.href} key={item.product}>{inner}</Link>
-              : <div className="records-row" key={item.product}>{inner}</div>;
-          })}
+          {released.length > 0 ? (
+            released.map((p) => {
+              const outcome = isDisputed(p) ? verdictOutcome(p) : { label: "Released", tone: "neutral" };
+              return (
+                <Link className="records-row" href={isDisputed(p) ? `/verify/${p.paymentId}` : "/receipts"} key={p.paymentId}>
+                  <div className="records-id">
+                    <span className="records-badge"><Check size={16} /></span>
+                    <div className="records-cell"><strong>{shortAddr(p.merchant)}</strong><small>Payment #{p.paymentId}</small></div>
+                  </div>
+                  <div className="records-cell num"><strong>{formatUsdc(p.amount)}</strong></div>
+                  <div className="records-cell"><strong>{formatDate(p.paidAt)}</strong></div>
+                  <div><span className={`status-pill ${outcome.tone}`}>{outcome.label}</span></div>
+                  <ChevronRight size={16} />
+                </Link>
+              );
+            })
+          ) : (
+            <LiveNotice state={state} emptyTitle="Nothing released yet" emptyHint="Settled and resolved payments will appear here." />
+          )}
         </div>
       </section>
 

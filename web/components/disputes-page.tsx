@@ -1,32 +1,31 @@
-import {
-  ChevronRight,
-  FlaskConical,
-  LockKeyhole,
-  ShieldCheck,
-  XCircle,
-} from "lucide-react";
+"use client";
+
+import { ChevronRight, FlaskConical, LockKeyhole, ShieldCheck, XCircle } from "lucide-react";
 import Link from "next/link";
-
-const metrics = [
-  { label: "Open", value: "1", sub: "Needs your evidence" },
-  { label: "Awaiting verdict", value: "0", sub: "Attestor idle" },
-  { label: "Resolved", value: "4", sub: "Last 30 days" },
-];
-
-const history = [
-  { id: "RC-278", merchant: "MegaStore", issue: "Item not as described", amount: "0.25 USDC", outcome: "Refunded", tone: "green", href: "/verify/5" },
-  { id: "RC-271", merchant: "QuickShip", issue: "Wrong item", amount: "0.25 USDC", outcome: "Denied", tone: "red", href: "/verify/6" },
-  { id: "RC-260", merchant: "BrightGoods", issue: "Damaged on arrival", amount: "$60.00", outcome: "Partial 50%", tone: "amber" },
-  { id: "RC-244", merchant: "PixelPrints", issue: "Not delivered", amount: "$18.00", outcome: "Refunded", tone: "green" },
-];
+import { LiveNotice } from "@/components/live-notice";
+import { CLAIM_TYPES, formatDate, formatUsdc, getDisputes, shortAddr, verdictOutcome } from "@/lib/api";
+import { useLive } from "@/lib/use-live";
 
 export function DisputesPage() {
+  const state = useLive(() => getDisputes());
+  const disputes = state.data ?? [];
+
+  const open = disputes.filter((p) => p.status === 2);
+  const resolved = disputes.filter((p) => p.status === 3);
+  const openCase = open[0];
+
+  const metrics = [
+    { label: "Open", value: `${open.length}`, sub: open.length ? "Awaiting verdict" : "All clear" },
+    { label: "Filed", value: `${disputes.length}`, sub: "Total claims" },
+    { label: "Resolved", value: `${resolved.length}`, sub: "With onchain verdict" },
+  ];
+
   return (
     <div className="page-stack">
       <header className="dash-header">
         <div>
           <h1>Disputes</h1>
-          <p>Track every open case and its verdict. Outcomes are decided by policy, not by support.</p>
+          <p>Track every filed claim and its verdict. Outcomes are decided by policy, not by support.</p>
         </div>
       </header>
 
@@ -44,45 +43,51 @@ export function DisputesPage() {
         <div className="page-stack">
           <section className="dash-panel disputes-panel">
             <div className="panel-heading compact">
-              <div><h2>Open dispute</h2><p>Submit evidence before the window closes</p></div>
-              <Link href="/verify/5">Open verifier</Link>
+              <div><h2>Open dispute</h2><p>Claims filed and awaiting a verdict</p></div>
+              {openCase && <Link href={`/verify/${openCase.paymentId}`}>Open verifier</Link>}
             </div>
-            <div className="dispute-row">
-              <div className="dispute-order"><span className="dispute-icon"><LockKeyhole size={17} /></span><div><strong>Order #RC-284</strong><small>vs MegaStore</small><b>Evidence required</b></div></div>
-              <div className="dispute-info"><span>Issue</span><strong>Service was not delivered</strong><small>Requested on<br />20 Jul 2026, 9:18 AM</small></div>
-              <div className="dispute-info due"><span>Evidence due</span><strong>Today, 5:00 PM</strong><small>in 5h 42m</small></div>
-              <div className="dispute-timeline">
-                <div className="timeline-line"><i className="done" /><i className="review" /><i /><i /></div>
-                <div className="timeline-labels"><span><b>Submitted</b><small>20 Jul, 9:18 AM</small></span><span><b>Under review</b><small>Waiting for evidence</small></span><span><b>Decision</b><small>Pending</small></span><span><b>Resolved</b><small>Pending</small></span></div>
+            {openCase ? (
+              <div className="dispute-row">
+                <div className="dispute-order">
+                  <span className="dispute-icon"><LockKeyhole size={17} /></span>
+                  <div><strong>Payment #{openCase.paymentId}</strong><small>vs {shortAddr(openCase.merchant)}</small><b>Awaiting verdict</b></div>
+                </div>
+                <div className="dispute-info"><span>Issue</span><strong>{CLAIM_TYPES[openCase.claimType] ?? "Other"}</strong><small>Filed on<br />{formatDate(openCase.filedAt)}</small></div>
+                <div className="dispute-info"><span>Amount</span><strong>{formatUsdc(openCase.amount)}</strong><small>Held in escrow</small></div>
+                <div className="dispute-info due"><span>Next step</span><strong>Attestor verdict</strong><small>Recompute it live on the verifier</small></div>
               </div>
-            </div>
+            ) : (
+              <LiveNotice state={state} emptyTitle="No open disputes" emptyHint="Every filed claim has reached an onchain verdict." />
+            )}
           </section>
 
           <section className="dash-panel">
             <div className="panel-heading">
-              <div><h2>Dispute history</h2><p>Resolved cases and their onchain verdicts</p></div>
+              <div><h2>Dispute history</h2><p>Filed claims and their onchain verdicts</p></div>
             </div>
             <div className="records-table">
               <div className="records-head">
                 <span>Order</span><span>Amount</span><span>Issue</span><span>Verdict</span><span />
               </div>
-              {history.map((item) => {
-                const inner = (
-                  <>
-                    <div className="records-id">
-                      <span className="records-badge">{item.tone === "red" ? <XCircle size={16} /> : <ShieldCheck size={16} />}</span>
-                      <div className="records-cell"><strong>{item.merchant}</strong><small>{item.id}</small></div>
-                    </div>
-                    <div className="records-cell num"><strong>{item.amount}</strong></div>
-                    <div className="records-cell"><strong>{item.issue}</strong></div>
-                    <div><span className={`status-pill ${item.tone}`}>{item.outcome}</span></div>
-                    <ChevronRight size={16} />
-                  </>
-                );
-                return item.href
-                  ? <Link className="records-row" href={item.href} key={item.id}>{inner}</Link>
-                  : <div className="records-row" key={item.id}>{inner}</div>;
-              })}
+              {disputes.length > 0 ? (
+                disputes.map((p) => {
+                  const outcome = verdictOutcome(p);
+                  return (
+                    <Link className="records-row" href={`/verify/${p.paymentId}`} key={p.paymentId}>
+                      <div className="records-id">
+                        <span className="records-badge">{outcome.tone === "red" ? <XCircle size={16} /> : <ShieldCheck size={16} />}</span>
+                        <div className="records-cell"><strong>{shortAddr(p.merchant)}</strong><small>Payment #{p.paymentId}</small></div>
+                      </div>
+                      <div className="records-cell num"><strong>{formatUsdc(p.amount)}</strong></div>
+                      <div className="records-cell"><strong>{CLAIM_TYPES[p.claimType] ?? "Other"}</strong></div>
+                      <div><span className={`status-pill ${outcome.tone}`}>{outcome.label}</span></div>
+                      <ChevronRight size={16} />
+                    </Link>
+                  );
+                })
+              ) : (
+                <LiveNotice state={state} emptyTitle="No disputes filed" emptyHint="Filed claims and their verdicts will appear here." />
+              )}
             </div>
           </section>
         </div>
