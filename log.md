@@ -4,6 +4,20 @@ Convention: every session appends one entry above this line's predecessors. Form
 
 ---
 
+## 2026-07-21: Session 20, Rust backend indexer and read API (actix-web)
+
+Found: the merchant app surfaces still ran on mock arrays. The architecture calls for a Rust backend that indexes chain state, serves reads, stores evidence, and signs demo attestations, with no business logic (R4) and no third verdict implementation (R2). The owner asked for actix-web rather than axum.
+
+Decided: start the backend with the read half (indexer plus read routes); defer evidence store and attestor bot. Use a state-polling indexer (read every payment and policy each tick) rather than event-log decoding, which is simpler and robust at demo scale. Verdicts come from the onchain previewVerdict, never recomputed (R2). Addresses load from deployments/arc-testnet.json at startup (R3). Keep the verifier and policy reads chain-direct on the web so they stay independently verifiable without trusting this service.
+
+Built: backend/ as a Cargo crate with actix-web, actix-cors, sqlx (Postgres, runtime queries so no live DB at compile time), and alloy for chain reads. src/chain.rs models the escrow and registry via sol! and reads paymentCount, getPayment, previewVerdict, policyCount, getPolicy, policyHash. src/indexer.rs polls Arc every INDEX_INTERVAL_SECS and upserts payments and policies, previewing verdicts only for filed disputes. src/db.rs holds the schema (migrations/0001_init.sql, run idempotently on startup), models, upserts, and read queries. src/routes.rs serves /health, /api/payments (optional merchant filter), /api/payments/{id}, /api/disputes, /api/policies, /api/policies/{id}. ops/docker-compose.yml provides Postgres; backend/README.md is the runbook.
+
+Verified: cargo check is clean (zero warnings). alloy 1.8 resolved; the only fix needed was on_http to connect_http. Not yet run against live Postgres plus Arc (needs docker compose up and cargo run locally), so the indexer loop and endpoints are compile-verified but not yet exercised end to end.
+
+Rules earned: a state-polling indexer is a legitimate, lower-risk first cut before event-log decoding, and a read-only backend earns R4 compliance by pulling verdicts from previewVerdict rather than ever recomputing them.
+
+---
+
 ## 2026-07-21: Session 17, wallet connect, onchain policy publish, and R5 reconcile
 
 Found: the onboarding (Session 16) set up an account but the web still had no real wallet. The PRD F1 specifies "connect wallet on web" with wagmi v2 and the injected connector for testnet, and publishing a policy onchain was the last open web item. The onboarding also offered Buyer as a web role, which conflicts with R5 (buyer lives on the Flutter mobile app; merchant and LP on the web).
@@ -15,6 +29,48 @@ Built: lib/wagmi.ts (Arc chain plus injected, ssr true), components/providers.ts
 Verified: tsc and eslint clean; production build green with zero module-not-found warnings, 16 routes, the landing still statically prerendered. The onchain publish path is ABI-correct and compiles, but the actual transaction needs a funded Arc wallet to exercise (untested against a live wallet here).
 
 Rules earned: when a wallet library bundles connectors you do not use, scope its provider to the routes that need it and ignore the unused connectors' optional deps rather than installing them, and keep the preview identity (merchant address) equal to the transaction signer so the previewed hash equals the onchain one.
+
+---
+
+## 2026-07-21: Session 19, Peec-inspired focused onboarding
+
+Found: the previous onboarding used a persistent progress sidebar and oversized editorial headings, making a short setup flow feel like an admin dashboard. Research into Peec AI's hands-on onboarding showed a tighter pattern: magic-link entry followed by a few focused screens for business type, brand details, location, and suggested topics. Its visual layout keeps the active form compact on the left and uses contextual product or customer proof on the right.
+
+Decided: adapt the interaction principle, not Peec's brand. Recourse now presents one decision per screen with compact sans-serif typography, dense selectable rows, a clear black action button, and four-step progress in the supporting panel. Replace Peec's testimonial with truthful Recourse product proof based on implemented workspace, policy, settlement, and verifier capabilities.
+
+Built: removed the persistent setup checklist, moved the active onboarding form into a focused left panel, added a faded dashboard preview and step-aware proof card on the right, tightened every step's spacing and controls, sanitized old buyer roles back to merchant on web, and retained a single-column mobile flow.
+
+Green: web typecheck, lint, all four onboarding steps exercised in-browser, personalized completion verified, 390px mobile width with zero overflow, no console warnings, and git diff check.
+
+Rules earned: reference products should inform interaction hierarchy, not supply borrowed brand content or invented social proof.
+
+---
+
+## 2026-07-21: Session 18, real photography for the sign-in story
+
+Found: the solid green sign-in panel still felt synthetic after removing the decorative gradient.
+
+Decided: use real editorial photography rather than crypto circuitry or generated abstract art. A portrait aerial ocean photograph by Alex Perez provides natural movement, a premium dark palette, and enough negative space for the headline. The image is free under the Unsplash License, stored locally, and documented beside the asset. A single flat overlay exists only for text contrast, not decoration.
+
+Built: searched Unsplash and Pexels candidates, compared a real ocean photograph against an abstract light photograph, selected the ocean crop, resized it to 1440 by 1922, compressed it to a 384 KB WebP, and installed it as the responsive sign-in story background.
+
+Green: source and license recorded, asset localized, and git diff check clean.
+
+Rules earned: prefer real editorial imagery with documented provenance over decorative gradients when a brand surface needs atmosphere.
+
+---
+
+## 2026-07-21: Session 17, replace translucent status decoration with purposeful motion
+
+Found: the soft green status pill and pale shield bubble looked generic and decorative rather than connected to live product state.
+
+Decided: status decoration should communicate behavior. Use the existing ping Lottie for Arc network activity and the existing burst Lottie behind a crisp solid protection mark. Avoid translucent gradient decoration when a real icon or state animation can carry the meaning.
+
+Built: reusable LivePulse and ProtectionMark components, applied them to landing network labels, the payment proof label, the protected-payment receipt, and the dashboard protected-payments summary. Removed the soft fill from the landing eyebrow and replaced the sign-in story gradient with a solid product color.
+
+Green: web typecheck, lint, browser visual check, zero browser console warnings, and git diff check.
+
+Rules earned: purposeful motion should represent live state, not decorate empty space.
 
 ---
 

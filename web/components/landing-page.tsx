@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { BrandMark } from "@/components/brand-mark";
+import { LivePulse, ProtectionMark } from "@/components/live-pulse";
 
 const navLinks = [
   { label: "Product", href: "#features", caret: true },
@@ -152,14 +153,14 @@ export function LandingPage() {
           )}
         </nav>
         <div className="landing-nav-actions">
-          <span className="landing-chip"><span className="landing-dot" /> Arc Testnet</span>
+          <span className="landing-chip"><LivePulse /> Arc Testnet</span>
           <Link className="landing-launch" href="/signin">Launch App</Link>
         </div>
       </header>
 
       <section className="landing-hero">
         <div className="landing-hero-copy">
-          <span className="landing-eyebrow"><span className="landing-dot" /> Live on Arc Testnet</span>
+          <span className="landing-eyebrow"><LivePulse /> Live on Arc Testnet</span>
           <h1>Buyer protection for <em>USDC payments.</em></h1>
           <p>Escrow USDC under immutable refund rules. Buyers get verifiable recourse, merchants get paid immediately, and disputes resolve from evidence instead of opinion.</p>
           <div className="landing-cta-row">
@@ -195,7 +196,7 @@ export function LandingPage() {
           </article>
 
           <article className="mock-card mock-receipt">
-            <div className="mock-receipt-badge"><ShieldCheck size={20} /></div>
+            <ProtectionMark className="mock-receipt-badge" />
             <span className="mock-eyebrow">Protected payment</span>
             <div className="mock-amount">24.00 <span>USDC</span></div>
             <div className="mock-paidto">
@@ -300,7 +301,7 @@ export function LandingPage() {
         </div>
         <div className="landing-proof-demo">
           <div className="proof-demo-top">
-            <span><span className="landing-dot" /> Payment #5</span>
+            <span><LivePulse /> Payment #5</span>
             <b>Refunded 100%</b>
           </div>
           <div className="proof-demo-engine">

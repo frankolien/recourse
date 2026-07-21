@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { BrandMark } from "@/components/brand-mark";
+import { GoogleMark } from "@/components/google-mark";
 import { defaultDemoProfile, saveDemoProfile } from "@/lib/demo-profile";
 
 const benefits = [
@@ -51,7 +52,7 @@ export function SignInPage() {
           <p>Create an account or sign in to continue.</p>
 
           <button className="auth-provider" onClick={() => begin()}>
-            <span className="google-mark">G</span> Continue with Google
+            <GoogleMark /> Continue with Google
           </button>
           <button className="auth-provider" onClick={() => begin()}>
             <KeyRound size={18} /> Sign in with passkey

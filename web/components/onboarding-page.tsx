@@ -6,7 +6,6 @@ import {
   BriefcaseBusiness,
   Check,
   ChevronRight,
-  CircleDollarSign,
   Code2,
   HandCoins,
   Landmark,
@@ -30,7 +29,36 @@ const roles = [
   { id: "liquidity" as const, icon: HandCoins, title: "Liquidity provider", copy: "Supply liquidity to settlement vaults and earn yield." },
 ];
 
-const steps = ["Account type", "Profile", "Workspace", "Ready"];
+const previewContent = [
+  {
+    eyebrow: "Purpose-built workspaces",
+    title: "Start with the tools you actually need.",
+    copy: "Merchant and vault operations stay focused, while every workspace reads from the same protected-payment system.",
+    label: "Workspace model",
+    value: "Switch roles anytime",
+  },
+  {
+    eyebrow: "Fintech-first identity",
+    title: "Your account comes before your wallet.",
+    copy: "Set up a familiar business profile now. Connect an onchain wallet only when an action needs a signature.",
+    label: "Authentication",
+    value: "No wallet required yet",
+  },
+  {
+    eyebrow: "Live Arc infrastructure",
+    title: "Configure how protected funds move.",
+    copy: "Choose a settlement workspace and start with a clear protection policy instead of an empty configuration screen.",
+    label: "Default policy",
+    value: "Digital services protection",
+  },
+  {
+    eyebrow: "Setup complete",
+    title: "Everything important stays verifiable.",
+    copy: "Track settlement, inspect policy terms, and recompute dispute outcomes from the workspace you just created.",
+    label: "Network",
+    value: "Arc Testnet ready",
+  },
+];
 
 export function OnboardingPage() {
   const router = useRouter();
@@ -43,7 +71,7 @@ export function OnboardingPage() {
 
   useEffect(() => {
     const profile = readDemoProfile();
-    setRole(profile.role);
+    setRole(profile.role === "liquidity" ? "liquidity" : "merchant");
     setFirstName(profile.firstName);
     setLastName(profile.lastName);
     setEmail(profile.email);
@@ -65,6 +93,8 @@ export function OnboardingPage() {
     router.push("/dashboard");
   }
 
+  const preview = previewContent[step];
+
   return (
     <main className="onboarding-page">
       <header className="onboarding-topbar">
@@ -73,21 +103,6 @@ export function OnboardingPage() {
       </header>
 
       <div className="onboarding-layout">
-        <aside className="onboarding-progress">
-          <span className="demo-label">Account setup</span>
-          <h2>Start using protected payments.</h2>
-          <p>We will tailor the workspace to how you plan to use Recourse.</p>
-          <ol>
-            {steps.map((label, index) => (
-              <li className={index === step ? "active" : index < step ? "complete" : ""} key={label}>
-                <span>{index < step ? <Check size={14} /> : index + 1}</span>
-                <div><strong>{label}</strong><small>{index < step ? "Complete" : index === step ? "In progress" : "Next"}</small></div>
-              </li>
-            ))}
-          </ol>
-          <div className="onboarding-help"><ShieldCheck size={18} /><span><strong>Your wallet comes later</strong><small>Start with your account. Connect a wallet only when you are ready to transact.</small></span></div>
-        </aside>
-
         <section className="onboarding-content">
           {step === 0 && (
             <div className="onboarding-card">
@@ -147,7 +162,6 @@ export function OnboardingPage() {
               </div>
 
               <div className="setup-options">
-                {role === "buyer" && <><button><CircleDollarSign size={18} /><span><strong>Get test USDC</strong><small>Use seeded funds in the demo</small></span><ChevronRight size={16} /></button><button><Wallet size={18} /><span><strong>Connect existing wallet</strong><small>Required only for live testnet transactions</small></span><ChevronRight size={16} /></button></>}
                 {role === "merchant" && <><button><Landmark size={18} /><span><strong>Recourse settlement wallet</strong><small>Recommended for the prototype</small></span><span className="recommended">Recommended</span></button><button><ShieldCheck size={18} /><span><strong>Digital services policy</strong><small>Full refund when access is not delivered</small></span><ChevronRight size={16} /></button></>}
                 {role === "liquidity" && <><button><Landmark size={18} /><span><strong>Settlement vault</strong><small>Review utilization and outstanding exposure</small></span><ChevronRight size={16} /></button><button><Wallet size={18} /><span><strong>Connect funding wallet</strong><small>Needed before a testnet deposit</small></span><ChevronRight size={16} /></button></>}
               </div>
@@ -172,6 +186,31 @@ export function OnboardingPage() {
             </div>
           )}
         </section>
+
+        <aside className="onboarding-preview">
+          <div className="onboarding-preview-ui" aria-hidden="true">
+            <div className="preview-ui-top"><span /><span /><span /></div>
+            <div className="preview-ui-grid">
+              <div className="preview-ui-card wide"><small>Protected volume</small><strong>$464.00</strong><i /></div>
+              <div className="preview-ui-card"><small>Active</small><strong>3</strong><i /></div>
+              <div className="preview-ui-card"><small>Settled</small><strong>T+0</strong><i /></div>
+              <div className="preview-ui-table"><i /><i /><i /><i /></div>
+            </div>
+          </div>
+          <article className="onboarding-proof-card">
+            <span className="onboarding-proof-kicker"><ShieldCheck size={14} /> {preview.eyebrow}</span>
+            <h2>{preview.title}</h2>
+            <p>{preview.copy}</p>
+            <div className="onboarding-proof-fact">
+              <span><Landmark size={17} /></span>
+              <div><small>{preview.label}</small><strong>{preview.value}</strong></div>
+            </div>
+          </article>
+          <div className="onboarding-preview-progress" aria-label={`Step ${step + 1} of 4`}>
+            {[0, 1, 2, 3].map((index) => <span className={index <= step ? "active" : ""} key={index} />)}
+            <small>{step + 1} / 4</small>
+          </div>
+        </aside>
       </div>
     </main>
   );

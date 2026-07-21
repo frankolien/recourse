@@ -1,0 +1,7 @@
+Photo: Alex Perez
+Source: https://unsplash.com/photos/wj_JU6wWZnA
+License: Unsplash License
+License URL: https://unsplash.com/license
+Downloaded: 2026-07-21
+
+The local WebP is resized and compressed from the source photograph for use on the Recourse sign-in page.

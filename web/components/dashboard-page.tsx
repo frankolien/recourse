@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useDemoProfile } from "@/lib/demo-profile";
+import { ProtectionMark } from "@/components/live-pulse";
 
 const protections = [
   {
@@ -108,7 +109,7 @@ export function DashboardPage() {
           <strong><em>3</em> active</strong>
           <b>$640.00 <span>protected</span></b>
           <p>Across 3 merchants</p>
-          <div className="summary-icon green"><ShieldCheck size={21} /></div>
+          <ProtectionMark className="summary-icon green" />
         </Link>
 
         <Link className="summary-card action-summary" href="/disputes">
