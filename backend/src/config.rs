@@ -34,6 +34,8 @@ pub struct Config {
     // Attestor signing key (testnet throwaway, R7). Only consumed when DEMO_MODE is on
     // (R6). Absent means the demo attest/resolve endpoints stay disabled.
     pub attestor_pk: Option<String>,
+    // Filesystem directory for the content-addressed evidence blob store.
+    pub evidence_dir: String,
 }
 
 fn env_or(key: &str, default: &str) -> String {
@@ -57,6 +59,7 @@ impl Config {
             policy_registry: deployment.policy_registry,
             chain_id: deployment.chain_id,
             attestor_pk: std::env::var("ATTESTOR_PK").ok().filter(|s| !s.trim().is_empty()),
+            evidence_dir: env_or("EVIDENCE_DIR", "./evidence-store"),
         })
     }
 }

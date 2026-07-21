@@ -12,11 +12,16 @@ dist/
 # Rust
 target/
 
-# Flutter / Dart
+# Mobile generated output and local Xcode state
 .dart_tool/
 build/
 .flutter-plugins
 .flutter-plugins-dependencies
+mobile/Recourse/Generated/Deployment.swift
+mobile/*.xcworkspace/
+mobile/xcuserdata/
+mobile/**/xcuserdata/
+mobile/DerivedData/
 
 # Env and secrets (testnet throwaways still never get committed)
 .env
@@ -34,3 +39,7 @@ engine/src/addresses.ts
 
 # OS
 .DS_Store
+
+# Backend evidence blob store (user data, not committed)
+evidence-store/
+backend/evidence-store/

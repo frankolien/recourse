@@ -2,6 +2,7 @@ mod attestor;
 mod chain;
 mod config;
 mod db;
+mod evidence;
 mod indexer;
 mod routes;
 
@@ -54,14 +55,19 @@ async fn main() -> Result<()> {
         });
     }
 
+    let evidence = evidence::EvidenceStore::new(config.evidence_dir.clone().into())?;
+
     let port = config.port;
     let chain_id = config.chain_id;
     tracing::info!("recourse-backend listening on :{port} (Arc chain {chain_id})");
 
-    let state = web::Data::new(routes::AppState { pool, config, attestor });
+    let state = web::Data::new(routes::AppState { pool, config, attestor, evidence });
+    // Evidence uploads (photos) exceed the default 256 KB body cap.
+    let payload_cfg = web::PayloadConfig::new(10 * 1024 * 1024);
     HttpServer::new(move || {
         App::new()
             .app_data(state.clone())
+            .app_data(payload_cfg.clone())
             .wrap(Cors::permissive())
             .configure(routes::configure)
     })

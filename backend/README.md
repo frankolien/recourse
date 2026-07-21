@@ -34,6 +34,8 @@ the contract's `previewVerdict`.
 | GET | `/api/policies/{id}` | one policy with its rules and hash |
 | POST | `/api/demo/attest` | DEMO_MODE: sign a delivery attestation and submit it |
 | POST | `/api/demo/resolve` | DEMO_MODE: settle a disputed payment (moves funds) |
+| POST | `/api/evidence` | store an evidence blob, returns its keccak256 hash |
+| GET | `/api/evidence/{hash}` | fetch an evidence blob by hash |
 
 Amounts are USDC (6 decimals) as decimal strings. Addresses are lowercased.
 
@@ -57,8 +59,23 @@ moves USDC, so verify it against a real node before a live run (R13) and log dem
 runs (R8). To exercise the loop you need a payment in the Disputed state (file a
 dispute as the buyer first); the seeded disputes 5 and 6 are already settled.
 
+## Evidence store
+
+Content-addressed blob store on the filesystem (`EVIDENCE_DIR`, default
+`./evidence-store`). A blob's id is its keccak256 hash, which is exactly the value a
+buyer pins on-chain as `EvidenceItem.hash` in `fileDispute`, so the escrow's
+`evidenceRoot` commits to precisely what this store holds and anyone can re-verify a
+blob by rehashing it. Evidence is user data, kept off the disposable indexer projection.
+
+```
+# upload returns {"hash":"0x..","size":N,"contentType":".."}
+curl -X POST localhost:8080/api/evidence --data-binary @photo.jpg -H 'content-type: image/jpeg'
+curl localhost:8080/api/evidence/0x<hash> --output out.jpg
+```
+
 ## Not here yet
 
-The evidence blob store is the remaining backend piece. The web verifier and policy
-reads stay chain-direct on purpose, so they remain independently verifiable without
-trusting this service.
+Linking a payment to its verified evidence manifest (recompute the fold, check it
+against the onchain `evidenceRoot`) and surfacing evidence on the web verifier are the
+next steps. The web verifier and policy reads stay chain-direct on purpose, so they
+remain independently verifiable without trusting this service.

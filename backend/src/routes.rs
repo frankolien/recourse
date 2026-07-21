@@ -1,7 +1,9 @@
 use crate::attestor::AttestorClient;
 use crate::config::Config;
 use crate::db;
-use actix_web::{get, post, web, HttpResponse, Responder};
+use crate::evidence::EvidenceStore;
+use actix_web::http::header::CONTENT_TYPE;
+use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
 use serde::Deserialize;
 use serde_json::json;
 use sqlx::postgres::PgPool;
@@ -12,6 +14,7 @@ pub struct AppState {
     // Present only in DEMO_MODE with a configured key; drives the demo attest/resolve
     // endpoints. None means those endpoints report disabled.
     pub attestor: Option<AttestorClient>,
+    pub evidence: EvidenceStore,
 }
 
 fn server_error(context: &str, e: anyhow::Error) -> HttpResponse {
@@ -149,6 +152,36 @@ async fn demo_resolve(state: web::Data<AppState>, body: web::Json<ResolveBody>) 
     }
 }
 
+// Evidence blob store. Content-addressed by keccak256, so an uploaded blob's hash is
+// exactly the value a buyer pins on-chain in fileDispute (EvidenceItem.hash). Real and
+// always-on, not demo-gated.
+
+#[post("/api/evidence")]
+async fn put_evidence(state: web::Data<AppState>, req: HttpRequest, body: web::Bytes) -> impl Responder {
+    if body.is_empty() {
+        return HttpResponse::BadRequest().json(json!({ "error": "empty body" }));
+    }
+    let content_type = req
+        .headers()
+        .get(CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("application/octet-stream")
+        .to_string();
+    match state.evidence.put(&body, &content_type) {
+        Ok(stored) => HttpResponse::Ok().json(stored),
+        Err(e) => server_error("put_evidence", e),
+    }
+}
+
+#[get("/api/evidence/{hash}")]
+async fn get_evidence(state: web::Data<AppState>, path: web::Path<String>) -> impl Responder {
+    match state.evidence.get(&path.into_inner()) {
+        Ok(Some(blob)) => HttpResponse::Ok().content_type(blob.content_type).body(blob.bytes),
+        Ok(None) => HttpResponse::NotFound().json(json!({ "error": "evidence not found" })),
+        Err(e) => HttpResponse::BadRequest().json(json!({ "error": e.to_string() })),
+    }
+}
+
 pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.service(health)
         .service(list_payments)
@@ -157,5 +190,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         .service(list_policies)
         .service(get_policy)
         .service(demo_attest)
-        .service(demo_resolve);
+        .service(demo_resolve)
+        .service(put_evidence)
+        .service(get_evidence);
 }
