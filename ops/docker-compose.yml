@@ -7,8 +7,10 @@ services:
       POSTGRES_USER: recourse
       POSTGRES_PASSWORD: recourse
       POSTGRES_DB: recourse
+    # Host port 5433 by default to avoid colliding with other local Postgres
+    # instances on 5432. Override with RECOURSE_PG_PORT if needed.
     ports:
-      - "5432:5432"
+      - "${RECOURSE_PG_PORT:-5433}:5432"
     volumes:
       - recourse-pgdata:/var/lib/postgresql/data
     healthcheck:

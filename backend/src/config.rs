@@ -45,7 +45,7 @@ impl Config {
         let deployment: Deployment = serde_json::from_str(&raw).context("parsing deployment JSON")?;
 
         Ok(Self {
-            database_url: env_or("DATABASE_URL", "postgres://recourse:recourse@localhost:5432/recourse"),
+            database_url: env_or("DATABASE_URL", "postgres://recourse:recourse@localhost:5433/recourse"),
             rpc_url: env_or("ARC_RPC_URL", "https://arc-testnet.drpc.org"),
             port: env_or("PORT", "8080").parse().context("PORT")?,
             index_interval_secs: env_or("INDEX_INTERVAL_SECS", "15").parse().context("INDEX_INTERVAL_SECS")?,
