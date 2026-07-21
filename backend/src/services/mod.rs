@@ -44,6 +44,10 @@ pub struct AppConfig {
     // Shared secret guarding the privileged demo routes (attest/resolve). Absent means
     // those routes fail closed: without it, no one can trigger settlement.
     pub admin_api_key: Option<String>,
+    // When on (and the attestor is enabled), a background worker settles disputes that are
+    // due (attested, or past resolveDelay). Off by default so it never surprise-settles.
+    pub auto_resolve: bool,
+    pub auto_resolve_interval_secs: u64,
 }
 
 fn env_or(key: &str, default: &str) -> String {
@@ -83,6 +87,10 @@ impl AppConfig {
             admin_api_key: std::env::var("ADMIN_API_KEY")
                 .ok()
                 .filter(|s| !s.trim().is_empty()),
+            auto_resolve: env_or("ATTESTOR_AUTO_RESOLVE", "false") == "true",
+            auto_resolve_interval_secs: env_or("ATTESTOR_AUTO_RESOLVE_INTERVAL_SECS", "30")
+                .parse()
+                .context("ATTESTOR_AUTO_RESOLVE_INTERVAL_SECS")?,
         })
     }
 }

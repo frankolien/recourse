@@ -90,6 +90,23 @@ moves USDC, so verify it against a real node before a live run (R13) and log dem
 runs (R8). To exercise the loop you need a payment in the Disputed state (file a
 dispute as the buyer first); the seeded disputes 5 and 6 are already settled.
 
+### Automated resolver
+
+The manual `resolve` above is also available as a hands-off internal service. With
+`ATTESTOR_AUTO_RESOLVE=true` (and the attestor enabled), a background worker settles
+disputes that are due, reproducing the escrow's own precondition:
+
+```
+status == Disputed && (attType != 0 || now >= filedAt + resolveDelay)
+```
+
+so attested disputes settle promptly and un-attested ones settle once `resolveDelay`
+elapses (the policy default then applies). It confirms readiness against the live chain
+per payment before sending, never decides the verdict (the onchain PolicyEngine does,
+R2/R4), and logs every settlement (R8). It is off by default so it never surprise-settles
+a rehearsal. Attestation stays an external input (the delivery fact); the worker only
+picks the moment a settlement is already due.
+
 ## Evidence store
 
 Content-addressed blob store on the filesystem (`EVIDENCE_DIR`, default

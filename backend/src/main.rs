@@ -50,6 +50,28 @@ async fn main() -> Result<()> {
         });
     }
 
+    // Automated settlement: hands-off resolution of disputes that are due. Needs the
+    // attestor's funded wallet to send resolve txs, and is opt-in (ATTESTOR_AUTO_RESOLVE).
+    if config.auto_resolve {
+        match (&attestor, chain.resolve_delay().await) {
+            (Some(attestor), Ok(resolve_delay)) => {
+                let attestor = attestor.clone();
+                let chain = chain.clone();
+                let pool = pool.clone();
+                let interval = config.auto_resolve_interval_secs;
+                actix_web::rt::spawn(async move {
+                    jobs::resolver::run(attestor, chain, pool, interval, resolve_delay).await;
+                });
+            }
+            (None, _) => tracing::warn!(
+                "ATTESTOR_AUTO_RESOLVE set but attestor is disabled; not starting the resolver"
+            ),
+            (_, Err(e)) => {
+                tracing::warn!("auto-resolver not started: reading resolveDelay failed: {e:#}")
+            }
+        }
+    }
+
     let evidence = EvidenceStore::new(config.evidence_dir.clone().into())?;
 
     tracing::info!(

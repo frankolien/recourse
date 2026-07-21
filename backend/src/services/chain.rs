@@ -35,6 +35,7 @@ sol! {
         function paymentCount() external view returns (uint256);
         function getPayment(uint256 paymentId) external view returns (Payment);
         function previewVerdict(uint256 paymentId) external view returns (Verdict v, bytes32 verdictHash);
+        function resolveDelay() external view returns (uint64);
     }
 
     #[sol(rpc)]
@@ -122,6 +123,13 @@ impl ChainClient {
     pub async fn policy_count(&self) -> Result<u64> {
         let registry = IRegistry::new(self.registry, &self.provider);
         Ok(registry.policyCount().call().await?.to::<u64>())
+    }
+
+    // Min seconds an un-attested dispute must wait before resolve() will settle it. Read
+    // once so the auto-resolver can tell which disputes are ready.
+    pub async fn resolve_delay(&self) -> Result<u64> {
+        let escrow = IEscrow::new(self.escrow, &self.provider);
+        Ok(escrow.resolveDelay().call().await?)
     }
 
     pub async fn get_payment(&self, id: u64) -> Result<PaymentState> {
