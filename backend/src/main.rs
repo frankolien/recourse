@@ -18,15 +18,24 @@ use crate::services::AppConfig;
 async fn main() -> Result<()> {
     dotenvy::dotenv().ok();
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
+        )
         .init();
 
     let config = AppConfig::from_env()?;
-    let pool = PgPoolOptions::new().max_connections(5).connect(&config.database_url).await?;
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&config.database_url)
+        .await?;
     sqlx::migrate!("./migrations").run(&pool).await?;
     // Drop any projection left over from a different deployment before indexing.
-    jobs::indexer::reset_if_deployment_changed(&pool, &format!("{:#x}", config.escrow), config.chain_id as i64)
-        .await?;
+    jobs::indexer::reset_if_deployment_changed(
+        &pool,
+        &format!("{:#x}", config.escrow),
+        config.chain_id as i64,
+    )
+    .await?;
 
     let chain = ChainClient::new(&config.rpc_url, config.escrow, config.policy_registry)?;
     let attestor = build_attestor(&config).await?;
@@ -43,10 +52,20 @@ async fn main() -> Result<()> {
 
     let evidence = EvidenceStore::new(config.evidence_dir.clone().into())?;
 
-    tracing::info!("recourse-backend listening on :{} (Arc chain {})", config.port, config.chain_id);
+    tracing::info!(
+        "recourse-backend listening on :{} (Arc chain {})",
+        config.port,
+        config.chain_id
+    );
     let bind = ("0.0.0.0", config.port);
     HttpServer::new(move || {
-        app::build_app(pool.clone(), config.clone(), chain.clone(), attestor.clone(), evidence.clone())
+        app::build_app(
+            pool.clone(),
+            config.clone(),
+            chain.clone(),
+            attestor.clone(),
+            evidence.clone(),
+        )
     })
     .bind(bind)?
     .run()
@@ -67,9 +86,20 @@ async fn build_attestor(config: &AppConfig) -> Result<Option<AttestorClient>> {
         return Ok(None);
     };
     let client = AttestorClient::new(&config.rpc_url, config.escrow, config.chain_id, pk)?;
+    // Fail closed: a failed self-check means our EIP-712 digest disagrees with the escrow,
+    // so any signature we produce would be rejected onchain. Disable the attestor rather
+    // than expose a writer that only ever submits invalid attestations.
     match client.self_check().await {
-        Ok(()) => tracing::info!("attestor bot enabled, signer {} (digest verified)", client.attestor_address()),
-        Err(e) => tracing::warn!("attestor enabled but self-check failed: {e:#}"),
+        Ok(()) => {
+            tracing::info!(
+                "attestor bot enabled, signer {} (digest verified)",
+                client.attestor_address()
+            );
+            Ok(Some(client))
+        }
+        Err(e) => {
+            tracing::warn!("attestor disabled: self-check failed: {e:#}");
+            Ok(None)
+        }
     }
-    Ok(Some(client))
 }

@@ -35,22 +35,48 @@ pub fn build_app(
         .route("/health", web::get().to(handlers::health::health_check))
         .service(
             web::scope("/api")
-                .route("/payments", web::get().to(handlers::payments::list_payments))
-                .route("/payments/{id}", web::get().to(handlers::payments::get_payment))
-                .route("/payments/{id}/evidence", web::get().to(handlers::evidence::get_payment_evidence))
-                .route("/disputes", web::get().to(handlers::disputes::list_disputes))
-                .route("/policies", web::get().to(handlers::policies::list_policies))
-                .route("/policies/{id}", web::get().to(handlers::policies::get_policy))
+                .route(
+                    "/payments",
+                    web::get().to(handlers::payments::list_payments),
+                )
+                .route(
+                    "/payments/{id}",
+                    web::get().to(handlers::payments::get_payment),
+                )
+                .route(
+                    "/payments/{id}/evidence",
+                    web::get().to(handlers::evidence::get_payment_evidence),
+                )
+                .route(
+                    "/disputes",
+                    web::get().to(handlers::disputes::list_disputes),
+                )
+                .route(
+                    "/policies",
+                    web::get().to(handlers::policies::list_policies),
+                )
+                .route(
+                    "/policies/{id}",
+                    web::get().to(handlers::policies::get_policy),
+                )
                 .route("/demo/attest", web::post().to(handlers::demo::attest))
                 .route("/demo/resolve", web::post().to(handlers::demo::resolve))
+                // Issue a one-time nonce for wallet-signature auth on write routes.
+                .route("/auth/challenge", web::post().to(handlers::auth::challenge))
                 // Verify + record a payment's evidence list against the onchain root.
-                .route("/evidence/manifest", web::post().to(handlers::evidence::verify_manifest))
+                .route(
+                    "/evidence/manifest",
+                    web::post().to(handlers::evidence::verify_manifest),
+                )
                 // Evidence uploads (photos) exceed the default 256 KB body cap.
                 .service(
                     web::resource("/evidence")
                         .app_data(web::PayloadConfig::new(10 * 1024 * 1024))
                         .route(web::post().to(handlers::evidence::put_evidence)),
                 )
-                .route("/evidence/{hash}", web::get().to(handlers::evidence::get_evidence)),
+                .route(
+                    "/evidence/{hash}",
+                    web::get().to(handlers::evidence::get_evidence),
+                ),
         )
 }

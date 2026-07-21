@@ -3,9 +3,14 @@ use actix_web::{web, HttpRequest, HttpResponse};
 use alloy::primitives::B256;
 use serde::Deserialize;
 use serde_json::json;
+use sqlx::PgPool;
 
+use crate::handlers::auth::{error_response, extract_envelope};
+use crate::services::auth as svc_auth;
 use crate::services::chain::ChainClient;
-use crate::services::evidence::{compute_evidence_root, EvidenceManifest, EvidenceStore, ManifestItem};
+use crate::services::evidence::{
+    compute_evidence_root, EvidenceManifest, EvidenceStore, ManifestItem,
+};
 use crate::services::AppConfig;
 
 // Manifests are filed under one key per deployment so a redeploy's payment ids can't
@@ -15,10 +20,36 @@ fn deployment_key(config: &AppConfig) -> String {
 }
 
 /// POST /api/evidence — store an evidence blob, returns its keccak256 hash (the value a
-/// buyer pins on-chain as EvidenceItem.hash). Not demo-gated.
-pub async fn put_evidence(store: web::Data<EvidenceStore>, req: HttpRequest, body: web::Bytes) -> HttpResponse {
+/// buyer pins on-chain as EvidenceItem.hash). Authorized: the caller signs an EIP-712
+/// envelope proving they are the on-chain buyer of the referenced payment (action
+/// "evidence.upload"), so the store is not an open dumping ground.
+pub async fn put_evidence(
+    pool: web::Data<PgPool>,
+    chain: web::Data<ChainClient>,
+    config: web::Data<AppConfig>,
+    store: web::Data<EvidenceStore>,
+    req: HttpRequest,
+    body: web::Bytes,
+) -> HttpResponse {
     if body.is_empty() {
         return HttpResponse::BadRequest().json(json!({ "error": "empty body" }));
+    }
+    let envelope = match extract_envelope(&req) {
+        Ok(e) => e,
+        Err((code, msg)) => return error_response(code, &msg),
+    };
+    if let Err(e) = svc_auth::verify_buyer(
+        pool.get_ref(),
+        chain.get_ref(),
+        config.chain_id,
+        &envelope,
+        "evidence.upload",
+        &body,
+    )
+    .await
+    {
+        let (code, msg) = e.parts();
+        return error_response(code, &msg);
     }
     let content_type = req
         .headers()
@@ -36,9 +67,14 @@ pub async fn put_evidence(store: web::Data<EvidenceStore>, req: HttpRequest, bod
 }
 
 /// GET /api/evidence/{hash} — fetch an evidence blob by hash.
-pub async fn get_evidence(store: web::Data<EvidenceStore>, path: web::Path<String>) -> HttpResponse {
+pub async fn get_evidence(
+    store: web::Data<EvidenceStore>,
+    path: web::Path<String>,
+) -> HttpResponse {
     match store.get(&path.into_inner()) {
-        Ok(Some(blob)) => HttpResponse::Ok().content_type(blob.content_type).body(blob.bytes),
+        Ok(Some(blob)) => HttpResponse::Ok()
+            .content_type(blob.content_type)
+            .body(blob.bytes),
         Ok(None) => HttpResponse::NotFound().json(json!({ "error": "evidence not found" })),
         Err(e) => HttpResponse::BadRequest().json(json!({ "error": e.to_string() })),
     }
@@ -52,24 +88,55 @@ pub struct ManifestBody {
 }
 
 /// POST /api/evidence/manifest — record the ordered evidence list for a payment, but only
-/// if its fold reproduces the escrow's onchain evidenceRoot. Verification reads the live
-/// chain (not the projection), so this is trustless and free of indexer lag. Not
-/// demo-gated: this is the real trust anchor, not a demo shortcut.
+/// if its fold reproduces the escrow's onchain evidenceRoot. Authorized: the caller signs
+/// an EIP-712 envelope (action "evidence.manifest") proving they are the payment's buyer,
+/// and the signed bodyHash commits to this exact JSON. Verification reads the live chain
+/// (not the projection), so it is trustless and free of indexer lag.
 pub async fn verify_manifest(
+    pool: web::Data<PgPool>,
     chain: web::Data<ChainClient>,
     store: web::Data<EvidenceStore>,
     config: web::Data<AppConfig>,
-    body: web::Json<ManifestBody>,
+    req: HttpRequest,
+    body: web::Bytes,
 ) -> HttpResponse {
-    let body = body.into_inner();
-    if body.payment_id < 0 {
+    let envelope = match extract_envelope(&req) {
+        Ok(e) => e,
+        Err((code, msg)) => return error_response(code, &msg),
+    };
+    let parsed: ManifestBody = match serde_json::from_slice(&body) {
+        Ok(b) => b,
+        Err(e) => {
+            return HttpResponse::BadRequest()
+                .json(json!({ "error": format!("invalid JSON: {e}") }))
+        }
+    };
+    if parsed.payment_id <= 0 {
         return HttpResponse::BadRequest().json(json!({ "error": "invalid paymentId" }));
     }
-    let computed = match compute_evidence_root(&body.items) {
+    if envelope.payment_id != parsed.payment_id {
+        return error_response(401, "authorization paymentId does not match body");
+    }
+    // Buyer authorization also proves the payment exists (rejects a zeroed record).
+    if let Err(e) = svc_auth::verify_buyer(
+        pool.get_ref(),
+        chain.get_ref(),
+        config.chain_id,
+        &envelope,
+        "evidence.manifest",
+        &body,
+    )
+    .await
+    {
+        let (code, msg) = e.parts();
+        return error_response(code, &msg);
+    }
+
+    let computed = match compute_evidence_root(&parsed.items) {
         Ok(r) => format!("{r:#x}"),
         Err(e) => return HttpResponse::BadRequest().json(json!({ "error": e.to_string() })),
     };
-    let onchain = match chain.get_payment(body.payment_id as u64).await {
+    let onchain = match chain.get_payment(parsed.payment_id as u64).await {
         Ok(p) => p.evidence_root,
         Err(e) => {
             tracing::error!("verify_manifest: chain read failed: {e:#}");
@@ -78,7 +145,7 @@ pub async fn verify_manifest(
     };
     if !computed.eq_ignore_ascii_case(&onchain) {
         return HttpResponse::UnprocessableEntity().json(json!({
-            "paymentId": body.payment_id,
+            "paymentId": parsed.payment_id,
             "matches": false,
             "computedRoot": computed,
             "onchainRoot": onchain,
@@ -86,16 +153,16 @@ pub async fn verify_manifest(
         }));
     }
     let manifest = EvidenceManifest {
-        payment_id: body.payment_id,
+        payment_id: parsed.payment_id,
         evidence_root: onchain.clone(),
-        items: body.items,
+        items: parsed.items,
     };
     if let Err(e) = store.put_manifest(&deployment_key(&config), &manifest) {
         tracing::error!("verify_manifest: persist failed: {e:#}");
         return HttpResponse::InternalServerError().json(json!({ "error": "persist failed" }));
     }
     HttpResponse::Ok().json(json!({
-        "paymentId": body.payment_id,
+        "paymentId": parsed.payment_id,
         "matches": true,
         "computedRoot": computed,
         "onchainRoot": onchain,
@@ -113,10 +180,15 @@ pub async fn get_payment_evidence(
     path: web::Path<i64>,
 ) -> HttpResponse {
     let payment_id = path.into_inner();
-    if payment_id < 0 {
+    if payment_id <= 0 {
         return HttpResponse::BadRequest().json(json!({ "error": "invalid paymentId" }));
     }
     let onchain = match chain.get_payment(payment_id as u64).await {
+        // A policyId of 0 means the payment does not exist (getPayment zeroes the record),
+        // so do not answer as if it had empty evidence.
+        Ok(p) if p.policy_id == 0 => {
+            return HttpResponse::NotFound().json(json!({ "error": "payment not found" }))
+        }
         Ok(p) => p.evidence_root,
         Err(e) => {
             tracing::error!("get_payment_evidence: chain read failed: {e:#}");
@@ -127,7 +199,8 @@ pub async fn get_payment_evidence(
         Ok(m) => m,
         Err(e) => {
             tracing::error!("get_payment_evidence: manifest load failed: {e:#}");
-            return HttpResponse::InternalServerError().json(json!({ "error": "manifest load failed" }));
+            return HttpResponse::InternalServerError()
+                .json(json!({ "error": "manifest load failed" }));
         }
     };
     let Some(manifest) = manifest else {
@@ -143,7 +216,9 @@ pub async fn get_payment_evidence(
     };
     let computed = match compute_evidence_root(&manifest.items) {
         Ok(r) => format!("{r:#x}"),
-        Err(e) => return HttpResponse::InternalServerError().json(json!({ "error": e.to_string() })),
+        Err(e) => {
+            return HttpResponse::InternalServerError().json(json!({ "error": e.to_string() }))
+        }
     };
     let items: Vec<_> = manifest
         .items

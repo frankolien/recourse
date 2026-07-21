@@ -51,7 +51,10 @@ pub struct AttestOutcome {
 }
 
 fn now_secs() -> u64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
 }
 
 impl AttestorClient {
@@ -59,8 +62,16 @@ impl AttestorClient {
         let signer: PrivateKeySigner = private_key.trim().parse().context("parsing ATTESTOR_PK")?;
         let wallet = EthereumWallet::from(signer.clone());
         let url = rpc_url.parse().context("parsing RPC URL for attestor")?;
-        let provider = ProviderBuilder::new().wallet(wallet).connect_http(url).erased();
-        Ok(Self { provider, signer, escrow, chain_id })
+        let provider = ProviderBuilder::new()
+            .wallet(wallet)
+            .connect_http(url)
+            .erased();
+        Ok(Self {
+            provider,
+            signer,
+            escrow,
+            chain_id,
+        })
     }
 
     pub fn attestor_address(&self) -> Address {
@@ -116,7 +127,13 @@ impl AttestorClient {
         let sig = self.sign_attestation(&att)?;
         let escrow = IEscrowWrite::new(self.escrow, &self.provider);
         let receipt = escrow
-            .submitAttestation(U256::from(payment_id), ATT_TYPE_DELIVERY, value, deadline, sig)
+            .submitAttestation(
+                U256::from(payment_id),
+                ATT_TYPE_DELIVERY,
+                value,
+                deadline,
+                sig,
+            )
             .send()
             .await
             .context("sending submitAttestation")?
@@ -151,7 +168,10 @@ impl AttestorClient {
         // Sign the prehashed EIP-712 digest directly; eip712_signing_hash is the exact
         // value the golden test pins to the escrow's onchain attestationDigest.
         let digest = att.eip712_signing_hash(&self.domain());
-        let sig = self.signer.sign_hash_sync(&digest).context("signing attestation")?;
+        let sig = self
+            .signer
+            .sign_hash_sync(&digest)
+            .context("signing attestation")?;
         Ok(Bytes::from(encode_sig(&sig)))
     }
 }
@@ -189,7 +209,10 @@ mod tests {
             deadline: 4_000_000_000u64,
         };
         let got = att.eip712_signing_hash(&test_domain());
-        assert_eq!(got, b256!("6132a1316846f33d5f241f793988e1d0eeaf5a53c0b292560654b1b92102a25d"));
+        assert_eq!(
+            got,
+            b256!("6132a1316846f33d5f241f793988e1d0eeaf5a53c0b292560654b1b92102a25d")
+        );
     }
 
     // The signature must recover to the signer, and the v byte must be the legacy
@@ -207,6 +230,9 @@ mod tests {
         let sig = signer.sign_hash_sync(&digest).unwrap();
         let raw = encode_sig(&sig);
         assert!(raw[64] == 27 || raw[64] == 28, "v byte must be 27 or 28");
-        assert_eq!(sig.recover_address_from_prehash(&digest).unwrap(), signer.address());
+        assert_eq!(
+            sig.recover_address_from_prehash(&digest).unwrap(),
+            signer.address()
+        );
     }
 }

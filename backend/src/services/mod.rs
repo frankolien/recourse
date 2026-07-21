@@ -1,4 +1,5 @@
 pub mod attestor;
+pub mod auth;
 pub mod chain;
 pub mod evidence;
 
@@ -40,6 +41,9 @@ pub struct AppConfig {
     pub attestor_pk: Option<String>,
     // Filesystem directory for the content-addressed evidence blob store.
     pub evidence_dir: String,
+    // Shared secret guarding the privileged demo routes (attest/resolve). Absent means
+    // those routes fail closed: without it, no one can trigger settlement.
+    pub admin_api_key: Option<String>,
 }
 
 fn env_or(key: &str, default: &str) -> String {
@@ -48,22 +52,37 @@ fn env_or(key: &str, default: &str) -> String {
 
 impl AppConfig {
     pub fn from_env() -> Result<Self> {
-        let deployments_path = PathBuf::from(env_or("DEPLOYMENTS_PATH", "../deployments/arc-testnet.json"));
-        let raw = std::fs::read_to_string(&deployments_path)
-            .with_context(|| format!("reading deployment file at {}", deployments_path.display()))?;
-        let deployment: Deployment = serde_json::from_str(&raw).context("parsing deployment JSON")?;
+        let deployments_path = PathBuf::from(env_or(
+            "DEPLOYMENTS_PATH",
+            "../deployments/arc-testnet.json",
+        ));
+        let raw = std::fs::read_to_string(&deployments_path).with_context(|| {
+            format!("reading deployment file at {}", deployments_path.display())
+        })?;
+        let deployment: Deployment =
+            serde_json::from_str(&raw).context("parsing deployment JSON")?;
 
         Ok(Self {
-            database_url: env_or("DATABASE_URL", "postgres://recourse:recourse@localhost:5433/recourse"),
+            database_url: env_or(
+                "DATABASE_URL",
+                "postgres://recourse:recourse@localhost:5433/recourse",
+            ),
             rpc_url: env_or("ARC_RPC_URL", "https://arc-testnet.drpc.org"),
             port: env_or("PORT", "8080").parse().context("PORT")?,
-            index_interval_secs: env_or("INDEX_INTERVAL_SECS", "15").parse().context("INDEX_INTERVAL_SECS")?,
+            index_interval_secs: env_or("INDEX_INTERVAL_SECS", "15")
+                .parse()
+                .context("INDEX_INTERVAL_SECS")?,
             demo_mode: env_or("DEMO_MODE", "true") == "true",
             escrow: deployment.escrow,
             policy_registry: deployment.policy_registry,
             chain_id: deployment.chain_id,
-            attestor_pk: std::env::var("ATTESTOR_PK").ok().filter(|s| !s.trim().is_empty()),
+            attestor_pk: std::env::var("ATTESTOR_PK")
+                .ok()
+                .filter(|s| !s.trim().is_empty()),
             evidence_dir: env_or("EVIDENCE_DIR", "./evidence-store"),
+            admin_api_key: std::env::var("ADMIN_API_KEY")
+                .ok()
+                .filter(|s| !s.trim().is_empty()),
         })
     }
 }

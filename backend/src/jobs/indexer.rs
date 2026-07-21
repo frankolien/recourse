@@ -7,14 +7,22 @@ use tracing::{error, info, warn};
 // differs from what is stored (a redeploy, or a fresh DB), wipe payments and policies
 // so stale rows sharing paymentIds with the new deploy never linger, then record the
 // active identity. The chain is the source of truth, so a truncate loses nothing.
-pub async fn reset_if_deployment_changed(pool: &PgPool, escrow: &str, chain_id: i64) -> anyhow::Result<()> {
+pub async fn reset_if_deployment_changed(
+    pool: &PgPool,
+    escrow: &str,
+    chain_id: i64,
+) -> anyhow::Result<()> {
     let current: Option<(String, i64)> =
         sqlx::query_as("SELECT escrow, chain_id FROM index_meta WHERE id = 1")
             .fetch_optional(pool)
             .await?;
-    let changed = current.as_ref().is_none_or(|(e, c)| e != escrow || *c != chain_id);
+    let changed = current
+        .as_ref()
+        .is_none_or(|(e, c)| e != escrow || *c != chain_id);
     if changed {
-        sqlx::query("TRUNCATE payments, policies").execute(pool).await?;
+        sqlx::query("TRUNCATE payments, policies")
+            .execute(pool)
+            .await?;
         sqlx::query(
             r#"
             INSERT INTO index_meta (id, escrow, chain_id) VALUES (1, $1, $2)
@@ -83,7 +91,11 @@ async fn index_once(chain: &ChainClient, pool: &PgPool) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn upsert_payment(pool: &PgPool, p: &PaymentState, v: Option<&VerdictState>) -> anyhow::Result<()> {
+async fn upsert_payment(
+    pool: &PgPool,
+    p: &PaymentState,
+    v: Option<&VerdictState>,
+) -> anyhow::Result<()> {
     sqlx::query(
         r#"
         INSERT INTO payments (

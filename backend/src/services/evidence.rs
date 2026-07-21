@@ -83,7 +83,8 @@ fn normalize_hash(s: &str) -> Option<String> {
 
 impl EvidenceStore {
     pub fn new(dir: PathBuf) -> Result<Self> {
-        fs::create_dir_all(&dir).with_context(|| format!("creating evidence dir {}", dir.display()))?;
+        fs::create_dir_all(&dir)
+            .with_context(|| format!("creating evidence dir {}", dir.display()))?;
         Ok(Self { dir })
     }
 
@@ -95,7 +96,8 @@ impl EvidenceStore {
         // already the same data; skip the rewrite.
         if !blob_path.exists() {
             fs::write(&blob_path, bytes).context("writing evidence blob")?;
-            fs::write(&type_path, content_type.as_bytes()).context("writing evidence content-type")?;
+            fs::write(&type_path, content_type.as_bytes())
+                .context("writing evidence content-type")?;
         }
         Ok(StoredBlob {
             hash: format!("0x{hex}"),
@@ -113,7 +115,10 @@ impl EvidenceStore {
         let bytes = fs::read(&blob_path).context("reading evidence blob")?;
         let content_type = fs::read_to_string(self.dir.join(format!("{hex}.type")))
             .unwrap_or_else(|_| "application/octet-stream".to_string());
-        Ok(Some(BlobContent { bytes, content_type }))
+        Ok(Some(BlobContent {
+            bytes,
+            content_type,
+        }))
     }
 
     // Size and content-type of a stored blob without reading it into memory; used to
@@ -142,10 +147,20 @@ impl EvidenceStore {
         Ok(())
     }
 
-    pub fn get_manifest(&self, deployment: &str, payment_id: i64) -> Result<Option<EvidenceManifest>> {
-        let path = self.dir.join("manifests").join(deployment).join(format!("{payment_id}.json"));
+    pub fn get_manifest(
+        &self,
+        deployment: &str,
+        payment_id: i64,
+    ) -> Result<Option<EvidenceManifest>> {
+        let path = self
+            .dir
+            .join("manifests")
+            .join(deployment)
+            .join(format!("{payment_id}.json"));
         match fs::read(&path) {
-            Ok(bytes) => Ok(Some(serde_json::from_slice(&bytes).context("parsing manifest")?)),
+            Ok(bytes) => Ok(Some(
+                serde_json::from_slice(&bytes).context("parsing manifest")?,
+            )),
             Err(_) => Ok(None),
         }
     }
@@ -169,7 +184,10 @@ mod tests {
         let dir = std::env::temp_dir().join("recourse-evidence-test");
         let store = EvidenceStore::new(dir).unwrap();
         let stored = store.put(b"hello", "text/plain").unwrap();
-        assert_eq!(stored.hash, "0x1c8aff950685c2ed4bc3174f3472287b56d9517b9c948127319a09a7a36deac8");
+        assert_eq!(
+            stored.hash,
+            "0x1c8aff950685c2ed4bc3174f3472287b56d9517b9c948127319a09a7a36deac8"
+        );
         let got = store.get(&stored.hash).unwrap().unwrap();
         assert_eq!(got.bytes, b"hello");
         assert_eq!(got.content_type, "text/plain");
@@ -182,7 +200,10 @@ mod tests {
     const DESC: &str = "0x1596dc38e2ac5a6ddc5e019af4adcc1e017a04f510d57e69d6879d5d2996bb8e";
 
     fn item(ev_type: u8, hash: &str) -> ManifestItem {
-        ManifestItem { ev_type, hash: hash.to_string() }
+        ManifestItem {
+            ev_type,
+            hash: hash.to_string(),
+        }
     }
 
     #[test]
@@ -191,10 +212,16 @@ mod tests {
         assert_eq!(compute_evidence_root(&[]).unwrap(), B256::ZERO);
 
         let one = compute_evidence_root(&[item(1, PHOTO)]).unwrap();
-        assert_eq!(format!("{one:#x}"), "0xd0238185653e5f9582007ef867b8d6351dd4084a0934519138979055ba0917f8");
+        assert_eq!(
+            format!("{one:#x}"),
+            "0xd0238185653e5f9582007ef867b8d6351dd4084a0934519138979055ba0917f8"
+        );
 
         let two = compute_evidence_root(&[item(1, PHOTO), item(2, DESC)]).unwrap();
-        assert_eq!(format!("{two:#x}"), "0x2a4a7bdcd693631dbb90c86f4470068e26e0e4be090bb1412523fe0f9263ccd4");
+        assert_eq!(
+            format!("{two:#x}"),
+            "0x2a4a7bdcd693631dbb90c86f4470068e26e0e4be090bb1412523fe0f9263ccd4"
+        );
 
         // The fold is order-sensitive, so swapping the two items changes the root.
         let swapped = compute_evidence_root(&[item(2, DESC), item(1, PHOTO)]).unwrap();
@@ -209,7 +236,8 @@ mod tests {
         let deployment = "5042002_0x00000000000000000000000000000000000000ab";
         let manifest = EvidenceManifest {
             payment_id: 42,
-            evidence_root: "0xd0238185653e5f9582007ef867b8d6351dd4084a0934519138979055ba0917f8".to_string(),
+            evidence_root: "0xd0238185653e5f9582007ef867b8d6351dd4084a0934519138979055ba0917f8"
+                .to_string(),
             items: vec![item(1, PHOTO)],
         };
         store.put_manifest(deployment, &manifest).unwrap();

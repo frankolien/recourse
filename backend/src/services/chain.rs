@@ -107,7 +107,11 @@ impl ChainClient {
     pub fn new(rpc_url: &str, escrow: Address, registry: Address) -> Result<Self> {
         let url = rpc_url.parse()?;
         let provider = ProviderBuilder::new().connect_http(url).erased();
-        Ok(Self { provider, escrow, registry })
+        Ok(Self {
+            provider,
+            escrow,
+            registry,
+        })
     }
 
     pub async fn payment_count(&self) -> Result<u64> {

@@ -112,10 +112,65 @@ function disputeEvidence(paymentId) {
   ];
 }
 
+// EIP-712 typed data the backend recovers to authorize a buyer write. Field names and
+// order must match services/auth.rs::Authorization exactly.
+const AUTH_TYPES = {
+  Authorization: [
+    { name: "action", type: "string" },
+    { name: "paymentId", type: "uint256" },
+    { name: "walletAddress", type: "address" },
+    { name: "chainId", type: "uint256" },
+    { name: "bodyHash", type: "bytes32" },
+    { name: "nonce", type: "bytes32" },
+    { name: "expiresAt", type: "uint256" },
+  ],
+};
+
+// Build the X-Recourse-Auth header for one write: fetch a fresh single-use nonce, sign the
+// action + paymentId + body hash with the buyer key, and base64 the envelope. bodyBytes
+// must be the exact bytes sent as the request body (the signature commits to their hash).
+async function authHeader(action, paymentId, bodyBytes) {
+  const chRes = await fetch(`${backendUrl}/api/auth/challenge`, { method: "POST" });
+  if (!chRes.ok) throw new Error(`auth challenge failed (${chRes.status})`);
+  const { nonce, expiresAt } = await chRes.json();
+  const bodyHash = keccak256(new Uint8Array(bodyBytes));
+  const signature = await buyer.signTypedData({
+    domain: { name: "Recourse", version: "1", chainId: d.chainId },
+    types: AUTH_TYPES,
+    primaryType: "Authorization",
+    message: {
+      action,
+      paymentId: BigInt(paymentId),
+      walletAddress: buyer.address,
+      chainId: BigInt(d.chainId),
+      bodyHash,
+      nonce,
+      expiresAt: BigInt(expiresAt),
+    },
+  });
+  const envelope = {
+    action,
+    paymentId: Number(paymentId),
+    walletAddress: buyer.address,
+    chainId: d.chainId,
+    bodyHash,
+    nonce,
+    expiresAt,
+    signature,
+  };
+  return Buffer.from(JSON.stringify(envelope)).toString("base64");
+}
+
 // Stores a blob in the backend and returns its keccak256 hash, cross-checking the hash
-// locally so we never pin on-chain a hash we did not verify ourselves.
-async function uploadEvidence(bytes, contentType) {
-  const res = await fetch(`${backendUrl}/api/evidence`, { method: "POST", headers: { "content-type": contentType }, body: bytes });
+// locally so we never pin on-chain a hash we did not verify ourselves. Authorized as the
+// payment's buyer.
+async function uploadEvidence(paymentId, bytes, contentType) {
+  const auth = await authHeader("evidence.upload", paymentId, bytes);
+  const res = await fetch(`${backendUrl}/api/evidence`, {
+    method: "POST",
+    headers: { "content-type": contentType, "x-recourse-auth": auth },
+    body: bytes,
+  });
   if (!res.ok) throw new Error(`evidence upload failed (${res.status})`);
   const stored = await res.json();
   const local = keccak256(new Uint8Array(bytes));
@@ -125,13 +180,15 @@ async function uploadEvidence(bytes, contentType) {
   return stored.hash;
 }
 
-// Records the ordered evidence list; the backend accepts it only if its fold reproduces
-// the onchain evidenceRoot we just set in fileDispute.
+// Records the ordered evidence list; the backend accepts it only if the buyer signed for
+// it and its fold reproduces the onchain evidenceRoot we just set in fileDispute.
 async function postManifest(paymentId, items) {
+  const bodyStr = JSON.stringify({ paymentId: Number(paymentId), items });
+  const auth = await authHeader("evidence.manifest", paymentId, Buffer.from(bodyStr, "utf8"));
   const res = await fetch(`${backendUrl}/api/evidence/manifest`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ paymentId: Number(paymentId), items }),
+    headers: { "content-type": "application/json", "x-recourse-auth": auth },
+    body: bodyStr,
   });
   const body = await res.json();
   if (!res.ok) throw new Error(`manifest rejected (${res.status}): ${JSON.stringify(body)}`);
@@ -160,7 +217,7 @@ async function main() {
   let items = [];
   try {
     for (const b of disputeEvidence(paymentId)) {
-      const hash = await uploadEvidence(b.bytes, b.contentType);
+      const hash = await uploadEvidence(paymentId, b.bytes, b.contentType);
       items.push({ evType: b.evType, hash });
       console.log(`  evidence ${b.contentType} -> ${hash}`);
     }
@@ -180,9 +237,9 @@ async function main() {
   if (items.length > 0) {
     console.log(`  evidence: ${items.length} item(s), view: GET ${backendUrl}/api/payments/${paymentId}/evidence`);
   }
-  console.log(`finish it with the attestor bot:`);
-  console.log(`  curl -X POST ${backendUrl}/api/demo/attest  -H 'content-type: application/json' -d '{"paymentId":${paymentId},"value":2}'`);
-  console.log(`  curl -X POST ${backendUrl}/api/demo/resolve -H 'content-type: application/json' -d '{"paymentId":${paymentId}}'`);
+  console.log(`finish it with the attestor bot (operator only; needs ADMIN_API_KEY):`);
+  console.log(`  curl -X POST ${backendUrl}/api/demo/attest  -H "authorization: Bearer $ADMIN_API_KEY" -H 'content-type: application/json' -d '{"paymentId":${paymentId},"value":2}'`);
+  console.log(`  curl -X POST ${backendUrl}/api/demo/resolve -H "authorization: Bearer $ADMIN_API_KEY" -H 'content-type: application/json' -d '{"paymentId":${paymentId}}'`);
   console.log(`then verify at /verify/${paymentId}`);
 }
 
