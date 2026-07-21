@@ -1,0 +1,47 @@
+[
+  {
+    "type": "function",
+    "name": "getPolicy",
+    "inputs": [
+      { "name": "policyId", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct Policy",
+        "components": [
+          { "name": "merchant", "type": "address", "internalType": "address" },
+          { "name": "disputeWindow", "type": "uint32", "internalType": "uint32" },
+          { "name": "defaultRefundBps", "type": "uint16", "internalType": "uint16" },
+          {
+            "name": "rules",
+            "type": "tuple[]",
+            "internalType": "struct Rule[]",
+            "components": [
+              { "name": "claimType", "type": "uint8", "internalType": "uint8" },
+              { "name": "requiredEvidenceMask", "type": "uint16", "internalType": "uint16" },
+              { "name": "attType", "type": "uint8", "internalType": "uint8" },
+              { "name": "attExpected", "type": "uint8", "internalType": "uint8" },
+              { "name": "claimWindow", "type": "uint32", "internalType": "uint32" },
+              { "name": "refundBps", "type": "uint16", "internalType": "uint16" },
+              { "name": "requiresReturn", "type": "bool", "internalType": "bool" }
+            ]
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "policyHash",
+    "inputs": [
+      { "name": "policyId", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [
+      { "name": "", "type": "bytes32", "internalType": "bytes32" }
+    ],
+    "stateMutability": "view"
+  }
+]

@@ -1,0 +1,106 @@
+[
+  {
+    "type": "function",
+    "name": "fileDispute",
+    "inputs": [
+      { "name": "paymentId", "type": "uint256", "internalType": "uint256" },
+      { "name": "claimType", "type": "uint8", "internalType": "uint8" },
+      {
+        "name": "evidence",
+        "type": "tuple[]",
+        "internalType": "struct RecourseEscrow.EvidenceItem[]",
+        "components": [
+          { "name": "evType", "type": "uint8", "internalType": "uint8" },
+          { "name": "hash", "type": "bytes32", "internalType": "bytes32" }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getPayment",
+    "inputs": [
+      { "name": "paymentId", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct RecourseEscrow.Payment",
+        "components": [
+          { "name": "buyer", "type": "address", "internalType": "address" },
+          { "name": "merchant", "type": "address", "internalType": "address" },
+          { "name": "beneficiary", "type": "address", "internalType": "address" },
+          { "name": "policyId", "type": "uint256", "internalType": "uint256" },
+          { "name": "amount", "type": "uint128", "internalType": "uint128" },
+          { "name": "shares", "type": "uint128", "internalType": "uint128" },
+          { "name": "paidAt", "type": "uint64", "internalType": "uint64" },
+          { "name": "filedAt", "type": "uint64", "internalType": "uint64" },
+          { "name": "claimType", "type": "uint8", "internalType": "uint8" },
+          { "name": "evidenceMask", "type": "uint16", "internalType": "uint16" },
+          { "name": "attType", "type": "uint8", "internalType": "uint8" },
+          { "name": "attValue", "type": "uint8", "internalType": "uint8" },
+          { "name": "evidenceRoot", "type": "bytes32", "internalType": "bytes32" },
+          { "name": "verdictBps", "type": "uint16", "internalType": "uint16" },
+          { "name": "status", "type": "uint8", "internalType": "enum RecourseEscrow.Status" }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "pay",
+    "inputs": [
+      { "name": "policyId", "type": "uint256", "internalType": "uint256" },
+      { "name": "amount", "type": "uint128", "internalType": "uint128" },
+      { "name": "orderRef", "type": "bytes32", "internalType": "bytes32" }
+    ],
+    "outputs": [
+      { "name": "paymentId", "type": "uint256", "internalType": "uint256" }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "previewVerdict",
+    "inputs": [
+      { "name": "paymentId", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [
+      {
+        "name": "v",
+        "type": "tuple",
+        "internalType": "struct Verdict",
+        "components": [
+          { "name": "refundBps", "type": "uint16", "internalType": "uint16" },
+          { "name": "requiresReturn", "type": "bool", "internalType": "bool" },
+          { "name": "ruleIndex", "type": "uint8", "internalType": "uint8" },
+          { "name": "matched", "type": "bool", "internalType": "bool" }
+        ]
+      },
+      { "name": "verdictHash", "type": "bytes32", "internalType": "bytes32" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "resolve",
+    "inputs": [
+      { "name": "paymentId", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "resolveDelay",
+    "inputs": [],
+    "outputs": [
+      { "name": "", "type": "uint64", "internalType": "uint64" }
+    ],
+    "stateMutability": "view"
+  }
+]
