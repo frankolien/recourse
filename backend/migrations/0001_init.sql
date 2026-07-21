@@ -41,3 +41,14 @@ CREATE TABLE IF NOT EXISTS payments (
 CREATE INDEX IF NOT EXISTS idx_payments_merchant ON payments (merchant);
 CREATE INDEX IF NOT EXISTS idx_payments_status ON payments (status);
 CREATE INDEX IF NOT EXISTS idx_payments_filed_at ON payments (filed_at);
+
+-- The active deployment this projection mirrors. paymentIds restart at 1 on a
+-- contract redeploy, so rows from a prior escrow would masquerade as current. On
+-- startup we compare the configured escrow/chain to this single row and, if it
+-- changed, truncate the projection before reindexing.
+CREATE TABLE IF NOT EXISTS index_meta (
+    id INT PRIMARY KEY DEFAULT 1,
+    escrow TEXT NOT NULL,
+    chain_id BIGINT NOT NULL,
+    CONSTRAINT index_meta_single_row CHECK (id = 1)
+);

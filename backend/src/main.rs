@@ -18,6 +18,8 @@ async fn main() -> Result<()> {
 
     let config = config::Config::from_env()?;
     let pool = db::connect(&config.database_url).await?;
+    // Drop any projection left over from a different deployment before indexing.
+    db::reset_if_deployment_changed(&pool, &format!("{:#x}", config.escrow), config.chain_id as i64).await?;
     let chain = chain::ChainClient::new(&config.rpc_url, config.escrow, config.policy_registry)?;
 
     // Background indexer keeps Postgres in sync with Arc state.

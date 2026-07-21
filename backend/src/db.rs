@@ -10,6 +10,32 @@ pub async fn connect(database_url: &str) -> Result<PgPool> {
     Ok(pool)
 }
 
+// The projection mirrors exactly one deployment. If the configured escrow or chain
+// differs from what is stored (a redeploy, or a fresh DB), wipe payments and policies
+// so stale rows sharing paymentIds with the new deploy never linger, then record the
+// active identity. The chain is the source of truth, so a truncate loses nothing.
+pub async fn reset_if_deployment_changed(pool: &PgPool, escrow: &str, chain_id: i64) -> Result<()> {
+    let current: Option<(String, i64)> =
+        sqlx::query_as("SELECT escrow, chain_id FROM index_meta WHERE id = 1")
+            .fetch_optional(pool)
+            .await?;
+    let changed = current.as_ref().is_none_or(|(e, c)| e != escrow || *c != chain_id);
+    if changed {
+        sqlx::query("TRUNCATE payments, policies").execute(pool).await?;
+        sqlx::query(
+            r#"
+            INSERT INTO index_meta (id, escrow, chain_id) VALUES (1, $1, $2)
+            ON CONFLICT (id) DO UPDATE SET escrow = EXCLUDED.escrow, chain_id = EXCLUDED.chain_id
+            "#,
+        )
+        .bind(escrow)
+        .bind(chain_id)
+        .execute(pool)
+        .await?;
+    }
+    Ok(())
+}
+
 #[derive(Debug, Serialize, sqlx::FromRow)]
 #[serde(rename_all = "camelCase")]
 pub struct PaymentRow {
@@ -75,11 +101,14 @@ pub async fn upsert_payment(pool: &PgPool, p: &PaymentState, v: Option<&VerdictS
             evidence_root = EXCLUDED.evidence_root,
             verdict_bps = EXCLUDED.verdict_bps,
             status = EXCLUDED.status,
-            refund_bps = EXCLUDED.refund_bps,
-            requires_return = EXCLUDED.requires_return,
-            rule_index = EXCLUDED.rule_index,
-            matched = EXCLUDED.matched,
-            verdict_hash = EXCLUDED.verdict_hash,
+            -- Verdict columns keep their last-good value when the incoming row has
+            -- none (a transient previewVerdict read failure), never NULLing a cached
+            -- verdict. Verdicts are deterministic and one-way, so old is safe.
+            refund_bps = COALESCE(EXCLUDED.refund_bps, payments.refund_bps),
+            requires_return = COALESCE(EXCLUDED.requires_return, payments.requires_return),
+            rule_index = COALESCE(EXCLUDED.rule_index, payments.rule_index),
+            matched = COALESCE(EXCLUDED.matched, payments.matched),
+            verdict_hash = COALESCE(EXCLUDED.verdict_hash, payments.verdict_hash),
             updated_at = now()
         "#,
     )

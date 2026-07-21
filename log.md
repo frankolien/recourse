@@ -4,6 +4,18 @@ Convention: every session appends one entry above this line's predecessors. Form
 
 ---
 
+## 2026-07-21: Session 21, backend code-review pass (three P1 correctness fixes)
+
+Found: a review of the Session 20 backend flagged three real correctness bugs. (1) In indexer.rs the disputed-payment verdict came from preview_verdict(...).ok(), so a transient RPC failure became None and the upsert overwrote the cached verdict columns with NULL, blanking a disputed payment's verdict for a tick. (2) The projection tables were keyed by paymentId alone with no deployment scoping; paymentIds restart at 1 on a redeploy, so a prior escrow's rows could masquerade as current. (3) /health ran count_payments(...).unwrap_or(0) and returned 200 "ok" even when Postgres was unreachable. The review also raised P2s (state-poller cannot reconstruct tx hashes or events, serial per-record reads, raw startup SQL without migration history, permissive CORS once write routes land) and zero tests.
+
+Fixed: (1) preview failure now logs and yields None while the upsert COALESCEs each verdict column against the stored row, so a transient failure keeps the last-good verdict (verdicts are deterministic and one-way, so old is always safe). (2) added an index_meta single-row table recording the active escrow and chainId; on startup reset_if_deployment_changed truncates payments and policies when the configured deployment differs, so stale rows never linger (the chain is the source of truth, so a truncate loses nothing). (3) /health now depends on the DB probe and returns 503 degraded when the count query fails.
+
+Decided: accept the reviewer's strategic call. The backend stays a thin, rebuildable projection for the merchant lists and disputes; do not grow it into an event indexer for the demo. The P2s are acknowledged and deferred (tighten CORS when attestor write routes arrive; a full event indexer only if the receipts view needs tx hashes). Next backend value is the attestor bot, not more read plumbing. cargo clippy --all-targets clean (zero warnings). Still compile-verified only, not run against live Postgres plus Arc.
+
+Rules earned: a projection upsert must never let a transient source read erase a good cached value (COALESCE, do not overwrite with NULL), and a rebuildable projection of a single deployment should record and check that deployment's identity so a redeploy wipes rather than shadows the old rows.
+
+---
+
 ## 2026-07-21: Session 20, Rust backend indexer and read API (actix-web)
 
 Found: the merchant app surfaces still ran on mock arrays. The architecture calls for a Rust backend that indexes chain state, serves reads, stores evidence, and signs demo attestations, with no business logic (R4) and no third verdict implementation (R2). The owner asked for actix-web rather than axum.

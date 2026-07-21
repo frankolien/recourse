@@ -36,9 +36,17 @@ async fn index_once(chain: &ChainClient, pool: &PgPool) -> anyhow::Result<()> {
             }
         };
         // A verdict only exists once a claim is filed; take it from the onchain
-        // previewVerdict (R2), never recomputed here.
+        // previewVerdict (R2), never recomputed here. A transient read failure
+        // yields None, and the upsert keeps the last-good verdict (COALESCE) rather
+        // than erasing it, so a disputed payment never flickers to no-verdict.
         let verdict = if payment.filed_at != 0 {
-            chain.preview_verdict(id).await.ok()
+            match chain.preview_verdict(id).await {
+                Ok(v) => Some(v),
+                Err(e) => {
+                    warn!("verdict preview for payment {id} failed: {e:#}");
+                    None
+                }
+            }
         } else {
             None
         };

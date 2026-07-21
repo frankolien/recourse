@@ -15,15 +15,27 @@ fn server_error(context: &str, e: anyhow::Error) -> HttpResponse {
     HttpResponse::InternalServerError().json(json!({ "error": "query failed" }))
 }
 
+// Health reflects the DB: a probe that reads the payments count. If Postgres is
+// unreachable the count query fails and we report 503, so the endpoint never stays
+// green while the projection is actually down.
 #[get("/health")]
 async fn health(state: web::Data<AppState>) -> impl Responder {
-    let indexed = db::count_payments(&state.pool).await.unwrap_or(0);
-    HttpResponse::Ok().json(json!({
-        "status": "ok",
-        "chainId": state.config.chain_id,
-        "indexedPayments": indexed,
-        "demoMode": state.config.demo_mode,
-    }))
+    match db::count_payments(&state.pool).await {
+        Ok(indexed) => HttpResponse::Ok().json(json!({
+            "status": "ok",
+            "chainId": state.config.chain_id,
+            "indexedPayments": indexed,
+            "demoMode": state.config.demo_mode,
+        })),
+        Err(e) => {
+            tracing::error!("health db probe failed: {e:#}");
+            HttpResponse::ServiceUnavailable().json(json!({
+                "status": "degraded",
+                "error": "database unavailable",
+                "chainId": state.config.chain_id,
+            }))
+        }
+    }
 }
 
 #[derive(Deserialize)]
