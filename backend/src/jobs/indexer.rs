@@ -1,20 +1,13 @@
-use crate::chain::{PaymentState, PolicyState, VerdictState};
-use anyhow::Result;
-use chrono::{DateTime, Utc};
-use serde::Serialize;
-use sqlx::postgres::{PgPool, PgPoolOptions};
-
-pub async fn connect(database_url: &str) -> Result<PgPool> {
-    let pool = PgPoolOptions::new().max_connections(5).connect(database_url).await?;
-    sqlx::raw_sql(include_str!("../migrations/0001_init.sql")).execute(&pool).await?;
-    Ok(pool)
-}
+use crate::services::chain::{ChainClient, PaymentState, PolicyState, VerdictState};
+use sqlx::postgres::PgPool;
+use std::time::Duration;
+use tracing::{error, info, warn};
 
 // The projection mirrors exactly one deployment. If the configured escrow or chain
 // differs from what is stored (a redeploy, or a fresh DB), wipe payments and policies
 // so stale rows sharing paymentIds with the new deploy never linger, then record the
 // active identity. The chain is the source of truth, so a truncate loses nothing.
-pub async fn reset_if_deployment_changed(pool: &PgPool, escrow: &str, chain_id: i64) -> Result<()> {
+pub async fn reset_if_deployment_changed(pool: &PgPool, escrow: &str, chain_id: i64) -> anyhow::Result<()> {
     let current: Option<(String, i64)> =
         sqlx::query_as("SELECT escrow, chain_id FROM index_meta WHERE id = 1")
             .fetch_optional(pool)
@@ -36,46 +29,61 @@ pub async fn reset_if_deployment_changed(pool: &PgPool, escrow: &str, chain_id: 
     Ok(())
 }
 
-#[derive(Debug, Serialize, sqlx::FromRow)]
-#[serde(rename_all = "camelCase")]
-pub struct PaymentRow {
-    pub payment_id: i64,
-    pub buyer: String,
-    pub merchant: String,
-    pub beneficiary: String,
-    pub policy_id: i64,
-    pub amount: String,
-    pub shares: String,
-    pub paid_at: i64,
-    pub filed_at: i64,
-    pub claim_type: i32,
-    pub evidence_mask: i32,
-    pub att_type: i32,
-    pub att_value: i32,
-    pub evidence_root: String,
-    pub verdict_bps: i32,
-    pub status: i32,
-    pub refund_bps: Option<i32>,
-    pub requires_return: Option<bool>,
-    pub rule_index: Option<i32>,
-    pub matched: Option<bool>,
-    pub verdict_hash: Option<String>,
-    pub updated_at: DateTime<Utc>,
+// State-polling indexer: reads current onchain state into Postgres each tick. The chain
+// stays the source of truth; this is a queryable projection for the read API.
+pub async fn run(chain: ChainClient, pool: PgPool, interval_secs: u64) {
+    let mut ticker = tokio::time::interval(Duration::from_secs(interval_secs));
+    loop {
+        ticker.tick().await;
+        if let Err(e) = index_once(&chain, &pool).await {
+            error!("index cycle failed: {e:#}");
+        }
+    }
 }
 
-#[derive(Debug, Serialize, sqlx::FromRow)]
-#[serde(rename_all = "camelCase")]
-pub struct PolicyRow {
-    pub policy_id: i64,
-    pub merchant: String,
-    pub dispute_window: i64,
-    pub default_refund_bps: i32,
-    pub policy_hash: String,
-    pub rules: serde_json::Value,
-    pub updated_at: DateTime<Utc>,
+async fn index_once(chain: &ChainClient, pool: &PgPool) -> anyhow::Result<()> {
+    let policy_count = chain.policy_count().await?;
+    for id in 1..=policy_count {
+        match chain.get_policy(id).await {
+            Ok(policy) => upsert_policy(pool, &policy).await?,
+            Err(e) => warn!("policy {id} read failed: {e:#}"),
+        }
+    }
+
+    let payment_count = chain.payment_count().await?;
+    let mut indexed = 0u64;
+    for id in 1..=payment_count {
+        let payment = match chain.get_payment(id).await {
+            Ok(payment) => payment,
+            Err(e) => {
+                warn!("payment {id} read failed: {e:#}");
+                continue;
+            }
+        };
+        // A verdict only exists once a claim is filed; take it from the onchain
+        // previewVerdict (R2), never recomputed here. A transient read failure yields
+        // None, and the upsert keeps the last-good verdict (COALESCE) rather than
+        // erasing it, so a disputed payment never flickers to no-verdict.
+        let verdict = if payment.filed_at != 0 {
+            match chain.preview_verdict(id).await {
+                Ok(v) => Some(v),
+                Err(e) => {
+                    warn!("verdict preview for payment {id} failed: {e:#}");
+                    None
+                }
+            }
+        } else {
+            None
+        };
+        upsert_payment(pool, &payment, verdict.as_ref()).await?;
+        indexed += 1;
+    }
+
+    info!("indexed {indexed} payments, {policy_count} policies");
+    Ok(())
 }
 
-pub async fn upsert_payment(pool: &PgPool, p: &PaymentState, v: Option<&VerdictState>) -> Result<()> {
+async fn upsert_payment(pool: &PgPool, p: &PaymentState, v: Option<&VerdictState>) -> anyhow::Result<()> {
     sqlx::query(
         r#"
         INSERT INTO payments (
@@ -101,9 +109,9 @@ pub async fn upsert_payment(pool: &PgPool, p: &PaymentState, v: Option<&VerdictS
             evidence_root = EXCLUDED.evidence_root,
             verdict_bps = EXCLUDED.verdict_bps,
             status = EXCLUDED.status,
-            -- Verdict columns keep their last-good value when the incoming row has
-            -- none (a transient previewVerdict read failure), never NULLing a cached
-            -- verdict. Verdicts are deterministic and one-way, so old is safe.
+            -- Verdict columns keep their last-good value when the incoming row has none
+            -- (a transient previewVerdict read failure), never NULLing a cached verdict.
+            -- Verdicts are deterministic and one-way, so old is safe.
             refund_bps = COALESCE(EXCLUDED.refund_bps, payments.refund_bps),
             requires_return = COALESCE(EXCLUDED.requires_return, payments.requires_return),
             rule_index = COALESCE(EXCLUDED.rule_index, payments.rule_index),
@@ -138,7 +146,7 @@ pub async fn upsert_payment(pool: &PgPool, p: &PaymentState, v: Option<&VerdictS
     Ok(())
 }
 
-pub async fn upsert_policy(pool: &PgPool, p: &PolicyState) -> Result<()> {
+async fn upsert_policy(pool: &PgPool, p: &PolicyState) -> anyhow::Result<()> {
     sqlx::query(
         r#"
         INSERT INTO policies (policy_id, merchant, dispute_window, default_refund_bps, policy_hash, rules, updated_at)
@@ -161,49 +169,4 @@ pub async fn upsert_policy(pool: &PgPool, p: &PolicyState) -> Result<()> {
     .execute(pool)
     .await?;
     Ok(())
-}
-
-pub async fn list_payments(pool: &PgPool, merchant: Option<String>) -> Result<Vec<PaymentRow>> {
-    let rows = sqlx::query_as::<_, PaymentRow>(
-        "SELECT * FROM payments WHERE ($1::text IS NULL OR merchant = lower($1)) ORDER BY payment_id DESC",
-    )
-    .bind(merchant)
-    .fetch_all(pool)
-    .await?;
-    Ok(rows)
-}
-
-pub async fn get_payment(pool: &PgPool, id: i64) -> Result<Option<PaymentRow>> {
-    let row = sqlx::query_as::<_, PaymentRow>("SELECT * FROM payments WHERE payment_id = $1")
-        .bind(id)
-        .fetch_optional(pool)
-        .await?;
-    Ok(row)
-}
-
-pub async fn list_disputes(pool: &PgPool) -> Result<Vec<PaymentRow>> {
-    let rows = sqlx::query_as::<_, PaymentRow>("SELECT * FROM payments WHERE filed_at <> 0 ORDER BY filed_at DESC")
-        .fetch_all(pool)
-        .await?;
-    Ok(rows)
-}
-
-pub async fn list_policies(pool: &PgPool) -> Result<Vec<PolicyRow>> {
-    let rows = sqlx::query_as::<_, PolicyRow>("SELECT * FROM policies ORDER BY policy_id DESC")
-        .fetch_all(pool)
-        .await?;
-    Ok(rows)
-}
-
-pub async fn get_policy(pool: &PgPool, id: i64) -> Result<Option<PolicyRow>> {
-    let row = sqlx::query_as::<_, PolicyRow>("SELECT * FROM policies WHERE policy_id = $1")
-        .bind(id)
-        .fetch_optional(pool)
-        .await?;
-    Ok(row)
-}
-
-pub async fn count_payments(pool: &PgPool) -> Result<i64> {
-    let count: (i64,) = sqlx::query_as("SELECT count(*) FROM payments").fetch_one(pool).await?;
-    Ok(count.0)
 }

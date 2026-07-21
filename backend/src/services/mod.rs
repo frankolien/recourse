@@ -1,11 +1,15 @@
+pub mod attestor;
+pub mod chain;
+pub mod evidence;
+
 use alloy::primitives::Address;
 use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::path::PathBuf;
 
-// Addresses come only from deployments/arc-testnet.json (R3), never hardcoded.
-// Some fields are unused until the vault indexer and attestor bot land; kept so
-// the parsed shape documents the full deployment.
+// Addresses come only from deployments/arc-testnet.json (R3), never hardcoded. Some
+// fields are unused until the vault indexer lands; kept so the parsed shape documents
+// the full deployment.
 #[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct Deployment {
@@ -22,7 +26,7 @@ pub struct Deployment {
 }
 
 #[derive(Debug, Clone)]
-pub struct Config {
+pub struct AppConfig {
     pub database_url: String,
     pub rpc_url: String,
     pub port: u16,
@@ -42,7 +46,7 @@ fn env_or(key: &str, default: &str) -> String {
     std::env::var(key).unwrap_or_else(|_| default.to_string())
 }
 
-impl Config {
+impl AppConfig {
     pub fn from_env() -> Result<Self> {
         let deployments_path = PathBuf::from(env_or("DEPLOYMENTS_PATH", "../deployments/arc-testnet.json"));
         let raw = std::fs::read_to_string(&deployments_path)
