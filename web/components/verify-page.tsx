@@ -13,6 +13,7 @@ import {
   FlaskConical,
   Github,
   LockKeyhole,
+  Paperclip,
   RefreshCw,
   ShieldCheck,
   SlidersHorizontal,
@@ -36,6 +37,14 @@ import {
   registryAbi,
   registryAddress,
 } from "@/lib/contracts";
+import {
+  computeEvidenceRoot,
+  evidenceBlobUrl,
+  evidenceLabel,
+  fetchPaymentEvidence,
+  ZERO_ROOT,
+  type PaymentEvidence,
+} from "@/lib/evidence";
 
 const claimNames = ["Not delivered", "Damaged", "Not as described", "Wrong item", "Other"];
 const evidenceOptions = [
@@ -156,6 +165,8 @@ export function VerifyPage({ paymentId }: { paymentId: bigint }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sandboxInput, setSandboxInput] = useState<VerdictInput | null>(null);
+  const [evidence, setEvidence] = useState<PaymentEvidence | null>(null);
+  const [evidenceError, setEvidenceError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -181,6 +192,32 @@ export function VerifyPage({ paymentId }: { paymentId: bigint }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Evidence lives off-chain (the item list is calldata, not state), so it comes from the
+  // backend. Only fetch when the payment actually pinned evidence; the demo cases with an
+  // empty root need no backend at all.
+  const hasEvidence = Boolean(data && data.payment.evidenceRoot.toLowerCase() !== ZERO_ROOT);
+  useEffect(() => {
+    if (!hasEvidence) {
+      setEvidence(null);
+      setEvidenceError(null);
+      return;
+    }
+    let cancelled = false;
+    setEvidence(null);
+    setEvidenceError(null);
+    fetchPaymentEvidence(paymentId)
+      .then((result) => !cancelled && setEvidence(result))
+      .catch((err) => !cancelled && setEvidenceError(err instanceof Error ? err.message : "Evidence list unavailable."));
+    return () => {
+      cancelled = true;
+    };
+  }, [hasEvidence, paymentId]);
+
+  const localEvidenceRoot = useMemo(() => (evidence ? computeEvidenceRoot(evidence.items) : null), [evidence]);
+  const evidenceMatches = Boolean(
+    data && localEvidenceRoot && data.payment.evidenceRoot.toLowerCase() === localEvidenceRoot.toLowerCase(),
+  );
 
   const localInput = useMemo<VerdictInput | null>(() => {
     if (!data) return null;
@@ -279,6 +316,7 @@ export function VerifyPage({ paymentId }: { paymentId: bigint }) {
             <span>Demo cases</span>
             <Link className={paymentId === 5n ? "case-link active" : "case-link"} href="/verify/5">#5 Refunded</Link>
             <Link className={paymentId === 6n ? "case-link active" : "case-link"} href="/verify/6">#6 Denied</Link>
+            <Link className={paymentId === 10n ? "case-link active" : "case-link"} href="/verify/10">#10 Evidence</Link>
           </div>
         </section>
 
@@ -367,6 +405,65 @@ export function VerifyPage({ paymentId }: { paymentId: bigint }) {
                 </div>
               </article>
             </section>
+
+            {hasEvidence ? (
+              <section className="evidence-section" id="evidence">
+                <article className="panel evidence-panel">
+                  <div className="section-heading">
+                    <div className="icon-well green"><Paperclip size={20} /></div>
+                    <div><span>Evidence proof</span><h2>Re-folded in your browser</h2></div>
+                  </div>
+
+                  {evidence ? (
+                    <div className="evidence-list">
+                      {evidence.items.map((item, index) => (
+                        <div className="evidence-item" key={`${item.hash}-${index}`}>
+                          <span className="rule-number">{index + 1}</span>
+                          <div>
+                            <strong>{evidenceLabel(item.evType)}</strong>
+                            <code>{shortHash(item.hash, 8)}</code>
+                          </div>
+                          {item.available ? (
+                            <a className="evidence-view" href={evidenceBlobUrl(item.hash)} target="_blank" rel="noreferrer">
+                              View <ArrowUpRight size={13} />
+                            </a>
+                          ) : (
+                            <span className="evidence-missing">Unavailable</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : evidenceError ? (
+                    <p className="evidence-note">Evidence list unavailable ({evidenceError}). The root below is still committed onchain.</p>
+                  ) : (
+                    <p className="evidence-note">Loading evidence…</p>
+                  )}
+
+                  <div className="hash-row">
+                    <div><span>Onchain evidence root</span><code>{shortHash(data.payment.evidenceRoot, 12)}</code></div>
+                    <span className="source-tag">Solidity</span>
+                  </div>
+                  <div className="proof-connector"><span /><CheckCircle2 size={22} /><span /></div>
+                  <div className="hash-row">
+                    <div><span>Browser re-fold (keccak)</span><code>{localEvidenceRoot ? shortHash(localEvidenceRoot, 12) : "…"}</code></div>
+                    <span className="source-tag soft">TypeScript</span>
+                  </div>
+                  {evidence ? (
+                    <div className={evidenceMatches ? "match-banner" : "match-banner mismatch"}>
+                      {evidenceMatches ? <CheckCircle2 size={18} /> : <X size={18} />}
+                      <div>
+                        <strong>{evidenceMatches ? "Evidence root reproduced" : "Evidence root mismatch"}</strong>
+                        <span>
+                          {evidenceMatches
+                            ? `${evidence.items.length} item${evidence.items.length === 1 ? "" : "s"} fold to the onchain root.`
+                            : "The evidence list does not match the chain."}
+                        </span>
+                      </div>
+                    </div>
+                  ) : null}
+                </article>
+              </section>
+            ) : null}
 
             <section className="sandbox-section" id="sandbox">
               <div className="sandbox-copy">

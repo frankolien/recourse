@@ -1192,6 +1192,7 @@ code {
 
 .verdict-grid,
 .detail-grid,
+.evidence-section,
 .sandbox-section,
 .how-section,
 footer,
@@ -1610,6 +1611,66 @@ footer {
   font-weight: 700;
 }
 
+.evidence-section {
+  padding-bottom: 18px;
+}
+
+.evidence-panel {
+  padding: 25px;
+}
+
+.evidence-list {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 16px;
+}
+
+.evidence-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 9px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+}
+
+.evidence-item > div {
+  display: grid;
+  flex: 1;
+  gap: 4px;
+}
+
+.evidence-item strong {
+  font-size: 11px;
+}
+
+.evidence-item code {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.evidence-view {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.evidence-missing {
+  color: #a2aaa6;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.evidence-note {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
 .sandbox-section {
   display: grid;
   grid-template-columns: 0.72fr 1.28fr;
@@ -1938,6 +1999,7 @@ footer {
 @media (max-width: 1280px) {
   .verdict-grid,
   .detail-grid,
+  .evidence-section,
   .sandbox-section,
   .how-section,
   footer,
@@ -2008,6 +2070,7 @@ footer {
 
   .verdict-grid,
   .detail-grid,
+  .evidence-section,
   .sandbox-section,
   .how-section,
   footer,
