@@ -27,7 +27,7 @@ import { BrandMark } from "@/components/brand-mark";
 
 const navLinks = [
   { label: "Product", href: "#features", caret: true },
-  { label: "For Merchants", href: "/dashboard" },
+  { label: "For Merchants", href: "/signin" },
   { label: "Vault", href: "/vault" },
   { label: "Developers", href: "https://github.com/frankolien/recourse", external: true },
   { label: "Docs", href: "https://github.com/frankolien/recourse", external: true },
@@ -97,7 +97,7 @@ const audiences = [
     title: "Offer recourse without freezing cash flow",
     copy: "Accept protected USDC payments, publish reusable policies, and use the settlement vault to receive funds immediately.",
     points: ["Reusable policy templates", "T+0 merchant advances", "Evidence-based disputes"],
-    href: "/dashboard",
+    href: "/signin",
     cta: "Open merchant dashboard",
   },
   {
@@ -153,7 +153,7 @@ export function LandingPage() {
         </nav>
         <div className="landing-nav-actions">
           <span className="landing-chip"><span className="landing-dot" /> Arc Testnet</span>
-          <Link className="landing-launch" href="/dashboard">Launch App</Link>
+          <Link className="landing-launch" href="/signin">Launch App</Link>
         </div>
       </header>
 
@@ -377,7 +377,7 @@ export function LandingPage() {
           <p>Explore the dashboard, inspect a seeded payment, and change the evidence inputs yourself.</p>
         </div>
         <div>
-          <Link className="landing-cta light" href="/dashboard">Launch the app <ArrowRight size={16} /></Link>
+          <Link className="landing-cta light" href="/signin">Launch the app <ArrowRight size={16} /></Link>
           <Link className="landing-cta outline-light" href="/verify/5">Verify payment #5</Link>
         </div>
       </section>
@@ -386,7 +386,7 @@ export function LandingPage() {
         <div className="landing-footer-brand"><BrandMark /><span>Recourse</span></div>
         <p>Buyer protection for USDC payments on Arc. Testnet prototype.</p>
         <div className="landing-footer-links">
-          <Link href="/dashboard">Launch App</Link>
+          <Link href="/signin">Launch App</Link>
           <Link href="/verify/5">Verifier</Link>
           <a href="https://github.com/frankolien/recourse" target="_blank" rel="noreferrer">GitHub</a>
         </div>

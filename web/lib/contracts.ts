@@ -114,6 +114,25 @@ export const registryAbi = [
     inputs: [{ name: "policyId", type: "uint256" }],
     outputs: [{ name: "", type: "bytes32" }],
   },
+  {
+    type: "function",
+    name: "registerPolicy",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "disputeWindow", type: "uint32" },
+      { name: "defaultRefundBps", type: "uint16" },
+      { name: "rules", type: "tuple[]", components: ruleComponents },
+      { name: "metadataURI", type: "string" },
+    ],
+    outputs: [{ name: "policyId", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "policyCount",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
 ] as const;
 
 export const explorerPaymentUrl = `${arcTestnet.blockExplorers.default.url}/address/${escrowAddress}`;

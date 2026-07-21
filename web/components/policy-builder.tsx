@@ -12,17 +12,22 @@ import {
 } from "@recourse/engine";
 import {
   ArrowLeft,
+  ArrowUpRight,
   Check,
   Copy,
   FlaskConical,
+  LoaderCircle,
   Plus,
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { ConnectWallet, shortAddress } from "@/components/connect-wallet";
+import { explorerTxUrl, registryAbi, registryAddress } from "@/lib/contracts";
 import seed from "../../deployments/seed-arc-testnet.json";
 
-const MERCHANT = seed.merchant as `0x${string}`;
+const SEED_MERCHANT = seed.merchant as `0x${string}`;
 const DAY = 86_400;
 
 const CLAIM_LABELS: Record<ClaimTypeName, string> = {
@@ -90,15 +95,34 @@ export function PolicyBuilder() {
   const [testAttestation, setTestAttestation] = useState<AttestationChoice>("NOT_DELIVERED");
   const [copied, setCopied] = useState(false);
 
+  const { address, isConnected } = useAccount();
+  const { writeContract, data: txHash, isPending: publishing, error: publishError } = useWriteContract();
+  const { isLoading: confirming, isSuccess: confirmed } = useWaitForTransactionReceipt({ hash: txHash });
+
+  // The connected wallet is the policy merchant (msg.sender on registerPolicy), so
+  // the previewed hash matches what is pinned onchain. Falls back to the seed
+  // merchant for the preview before a wallet connects.
+  const merchant = (address ?? SEED_MERCHANT) as `0x${string}`;
+
   const compiled = useMemo(() => {
     try {
-      const policy = compilePolicy(spec, MERCHANT);
+      const policy = compilePolicy(spec, merchant);
       return { policy, hash: policyHash(policy), error: null as string | null };
     } catch (error) {
       const message = error instanceof PolicyCompileError ? error.message : "Could not compile this policy.";
       return { policy: null, hash: null, error: message };
     }
-  }, [spec]);
+  }, [spec, merchant]);
+
+  function publish() {
+    if (!compiled.policy) return;
+    writeContract({
+      address: registryAddress,
+      abi: registryAbi,
+      functionName: "registerPolicy",
+      args: [spec.disputeWindowSeconds, spec.defaultRefundBps, compiled.policy.rules, "ipfs://recourse-demo-policy"],
+    });
+  }
 
   const verdict = useMemo(() => {
     if (!compiled.policy) return null;
@@ -243,11 +267,33 @@ export function PolicyBuilder() {
             ) : (
               <>
                 <div className="policy-hash"><span>Compiles to</span><code>{compiled.hash ? `${compiled.hash.slice(0, 14)}…${compiled.hash.slice(-8)}` : ""}</code></div>
-                <p className="builder-hint">This is the exact hash registerPolicy would pin onchain for merchant {MERCHANT.slice(0, 6)}…{MERCHANT.slice(-4)}. Change a rule and it changes.</p>
+                <p className="builder-hint">This is the exact hash registerPolicy would pin onchain for merchant {shortAddress(merchant)}{isConnected ? " (your wallet)" : " (demo merchant)"}. Change a rule and it changes.</p>
                 <button className="page-cta ghost" onClick={() => void copyJson()}>{copied ? <><Check size={15} /> Copied</> : <><Copy size={15} /> Copy policy JSON</>}</button>
               </>
             )}
           </section>
+
+          {compiled.policy && (
+            <section className="dash-panel">
+              <div className="panel-heading compact"><h2>Publish to Arc</h2></div>
+              {confirmed ? (
+                <div className="panel-note"><Check size={16} /><span>Policy registered onchain.{txHash && <> <a href={explorerTxUrl(txHash)} target="_blank" rel="noreferrer">View transaction <ArrowUpRight size={12} /></a></>}</span></div>
+              ) : !isConnected ? (
+                <>
+                  <p className="builder-hint">Connect your wallet to register this policy onchain. The connected address becomes the policy merchant.</p>
+                  <ConnectWallet className="page-cta" />
+                </>
+              ) : (
+                <>
+                  <p className="builder-hint">Registering as {shortAddress(merchant)} on Arc Testnet. This calls registerPolicy and pins the hash above.</p>
+                  <button className="page-cta" onClick={publish} disabled={publishing || confirming}>
+                    {publishing ? <><LoaderCircle className="spin" size={15} /> Confirm in wallet</> : confirming ? <><LoaderCircle className="spin" size={15} /> Registering</> : "Publish policy"}
+                  </button>
+                  {publishError && <p className="builder-hint error-text">{publishError.message.split("\n")[0]}</p>}
+                </>
+              )}
+            </section>
+          )}
 
           {compiled.policy && (
             <section className="dash-panel">

@@ -17,10 +17,13 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAccount } from "wagmi";
 import { BrandMark } from "@/components/brand-mark";
+import { ConnectWallet, shortAddress } from "@/components/connect-wallet";
 import { LottiePlayer } from "@/components/lottie-player";
 import pingAnim from "@/lib/lottie/ping.json";
 import { arcTestnet } from "@/lib/contracts";
+import { useDemoProfile } from "@/lib/demo-profile";
 
 const GITHUB_URL = "https://github.com/frankolien/recourse";
 
@@ -64,6 +67,8 @@ function isActive(pathname: string, href: string) {
 
 export function MerchantShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const profile = useDemoProfile();
+  const { address, isConnected } = useAccount();
   const section = Object.keys(titles).find((href) => isActive(pathname, href));
   const title = section ? titles[section] : "Recourse";
 
@@ -128,15 +133,16 @@ export function MerchantShell({ children }: { children: React.ReactNode }) {
             <span className="network-select" title={`Chain ${arcTestnet.id}`}>
               <LottiePlayer animationData={pingAnim} className="lottie-ping" /> Arc Testnet
             </span>
+            <ConnectWallet />
             <Link className="notification-button" href="/disputes" aria-label="Notifications">
               <Bell size={17} />
               <span className="notification-dot" />
             </Link>
             <Link className="profile-button" href="/settings">
-              <span className="profile-avatar">FO</span>
+              <span className="profile-avatar">{profile.firstName.charAt(0)}{profile.lastName.charAt(0)}</span>
               <span>
-                <strong>Frank Olien</strong>
-                <small>0xD70b…A082</small>
+                <strong>{profile.firstName} {profile.lastName}</strong>
+                <small>{isConnected && address ? shortAddress(address) : "Not connected"}</small>
               </span>
               <ChevronDown size={14} />
             </Link>

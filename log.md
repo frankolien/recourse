@@ -4,6 +4,34 @@ Convention: every session appends one entry above this line's predecessors. Form
 
 ---
 
+## 2026-07-21: Session 17, wallet connect, onchain policy publish, and R5 reconcile
+
+Found: the onboarding (Session 16) set up an account but the web still had no real wallet. The PRD F1 specifies "connect wallet on web" with wagmi v2 and the injected connector for testnet, and publishing a policy onchain was the last open web item. The onboarding also offered Buyer as a web role, which conflicts with R5 (buyer lives on the Flutter mobile app; merchant and LP on the web).
+
+Decided: add wallet connect with wagmi v2 and the injected connector only, scoped to the (merchant) route group via a Providers wrapper so the marketing landing stays static and untouched. The connected address is the policy merchant, so the builder previews the exact hash that registerPolicy will pin. Reconcile R5 by making Merchant the web default, dropping Buyer as a selectable web workspace, and framing buyers as mobile. Hold the vault deposit transaction: it moves USDC, so per R13 it needs a funded wallet to verify, which is not possible here.
+
+Built: lib/wagmi.ts (Arc chain plus injected, ssr true), components/providers.tsx mounted in app/(merchant)/layout.tsx, components/connect-wallet.tsx (connect, disconnect, shortAddress) wired into the shell topbar with the connected address shown on the profile. The policy builder now reads the connected address as the merchant and gained a Publish to Arc panel that calls registerPolicy through useWriteContract and links the confirmed transaction. Added registerPolicy and policyCount to the registry ABI. R5: default role merchant, onboarding web roles are merchant and liquidity provider with a buyers-use-mobile note. next.config.ts ignores the optional connector deps that wagmi bundles but we never use (@x402/* via the Coinbase SDK, React Native async storage via the MetaMask SDK, pino-pretty via WalletConnect).
+
+Verified: tsc and eslint clean; production build green with zero module-not-found warnings, 16 routes, the landing still statically prerendered. The onchain publish path is ABI-correct and compiles, but the actual transaction needs a funded Arc wallet to exercise (untested against a live wallet here).
+
+Rules earned: when a wallet library bundles connectors you do not use, scope its provider to the routes that need it and ignore the unused connectors' optional deps rather than installing them, and keep the preview identity (merchant address) equal to the transaction signer so the previewed hash equals the onchain one.
+
+---
+
+## 2026-07-20: Session 16, fintech-style onboarding and profile-driven dashboard
+
+Found: the landing page previously skipped directly to a dashboard with a hardcoded user, so there was no credible path from first visit to "Good morning, Frank." Starting with wallet connection would also make the product feel like a DeFi console rather than payment infrastructure.
+
+Decided: D27, use a familiar fintech sequence: sign in, choose the first workspace role, complete a short profile, review role-specific setup, then enter the dashboard. Buyer, Merchant, and Liquidity Provider are product roles; developers continue through documentation rather than becoming an account type. Wallet connection remains secondary and appears only when an onchain action needs it. Until a real auth and embedded wallet provider is integrated, every auth action is explicitly labeled as a simulated testnet demo and no credentials are collected.
+
+Built: /signin with Google, passkey, email, and existing-wallet entry options; /onboarding with four responsive steps and tailored Buyer, Merchant, and Liquidity Provider setup content; a small localStorage-backed demo profile module; personalized dashboard greeting, initials, and profile name; and landing Launch App links routed through sign-in. Verified the complete click path with a renamed user through to the personalized dashboard. Mobile checks at 390px found zero horizontal overflow on both new routes and no console errors.
+
+Green: web typecheck, lint, production build, and git diff check.
+
+Rules earned: none new. Reinforced R6 by clearly separating simulated onboarding from real authentication and wallet infrastructure.
+
+---
+
 ## 2026-07-20: Session 15, marketing landing page at the root
 
 Found: the app had no front door. The root redirected straight to /dashboard, so there was nowhere to explain the product to a first-time visitor or a judge. The owner supplied a landing reference whose display headlines are a serif, which conflicts with the Geist-everywhere decision from Session 12.

@@ -1,3 +1,5 @@
+"use client";
+
 import {
   ArrowUpRight,
   Check,
@@ -21,6 +23,7 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
+import { useDemoProfile } from "@/lib/demo-profile";
 
 const protections = [
   {
@@ -77,11 +80,13 @@ const learnCards = [
 ];
 
 export function DashboardPage() {
+  const profile = useDemoProfile();
+
   return (
     <>
       <header className="dash-header">
         <div>
-          <h1>Good morning, Frank <span>👋</span></h1>
+          <h1>Good morning, {profile.firstName} <span>👋</span></h1>
           <p>Here is what is happening with your protected payments.</p>
         </div>
       </header>
