@@ -1,6 +1,7 @@
+use crate::attestor::AttestorClient;
 use crate::config::Config;
 use crate::db;
-use actix_web::{get, web, HttpResponse, Responder};
+use actix_web::{get, post, web, HttpResponse, Responder};
 use serde::Deserialize;
 use serde_json::json;
 use sqlx::postgres::PgPool;
@@ -8,6 +9,9 @@ use sqlx::postgres::PgPool;
 pub struct AppState {
     pub pool: PgPool,
     pub config: Config,
+    // Present only in DEMO_MODE with a configured key; drives the demo attest/resolve
+    // endpoints. None means those endpoints report disabled.
+    pub attestor: Option<AttestorClient>,
 }
 
 fn server_error(context: &str, e: anyhow::Error) -> HttpResponse {
@@ -85,11 +89,73 @@ async fn get_policy(state: web::Data<AppState>, path: web::Path<i64>) -> impl Re
     }
 }
 
+// Demo-only endpoints (R6). Gated behind DEMO_MODE via the presence of state.attestor
+// (built only when DEMO_MODE is on). The attestor signs objective delivery facts and
+// pushes txs; it never decides outcomes (the onchain PolicyEngine computes the verdict).
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AttestBody {
+    payment_id: u64,
+    // Delivery status: 1 DELIVERED, 2 NOT_DELIVERED.
+    value: u8,
+}
+
+#[post("/api/demo/attest")]
+async fn demo_attest(state: web::Data<AppState>, body: web::Json<AttestBody>) -> impl Responder {
+    let Some(attestor) = state.attestor.as_ref() else {
+        return HttpResponse::ServiceUnavailable()
+            .json(json!({ "error": "attestor disabled; set DEMO_MODE=true and ATTESTOR_PK" }));
+    };
+    if !(1..=2).contains(&body.value) {
+        return HttpResponse::BadRequest()
+            .json(json!({ "error": "value must be 1 (DELIVERED) or 2 (NOT_DELIVERED)" }));
+    }
+    // R8: log every attestor action against the deployment.
+    tracing::info!("DEMO attest: payment {} value {}", body.payment_id, body.value);
+    match attestor.attest(body.payment_id, body.value).await {
+        Ok(out) => HttpResponse::Ok().json(json!({
+            "demo": true,
+            "paymentId": body.payment_id,
+            "value": body.value,
+            "attestationTx": out.attestation_tx,
+            "digest": out.digest,
+        })),
+        Err(e) => server_error("demo_attest", e),
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ResolveBody {
+    payment_id: u64,
+}
+
+#[post("/api/demo/resolve")]
+async fn demo_resolve(state: web::Data<AppState>, body: web::Json<ResolveBody>) -> impl Responder {
+    let Some(attestor) = state.attestor.as_ref() else {
+        return HttpResponse::ServiceUnavailable()
+            .json(json!({ "error": "attestor disabled; set DEMO_MODE=true and ATTESTOR_PK" }));
+    };
+    // R8: resolve moves funds; log it explicitly.
+    tracing::info!("DEMO resolve (settlement): payment {}", body.payment_id);
+    match attestor.resolve(body.payment_id).await {
+        Ok(tx) => HttpResponse::Ok().json(json!({
+            "demo": true,
+            "paymentId": body.payment_id,
+            "resolveTx": tx,
+        })),
+        Err(e) => server_error("demo_resolve", e),
+    }
+}
+
 pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.service(health)
         .service(list_payments)
         .service(get_payment)
         .service(list_disputes)
         .service(list_policies)
-        .service(get_policy);
+        .service(get_policy)
+        .service(demo_attest)
+        .service(demo_resolve);
 }

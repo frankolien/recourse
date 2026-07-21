@@ -4,6 +4,18 @@ Convention: every session appends one entry above this line's predecessors. Form
 
 ---
 
+## 2026-07-21: Session 23, attestor bot (EIP-712 signer + demo endpoints)
+
+Found: the read backend was live but the dispute loop had no attestor. Per the docs the attestor is a binary in the backend crate that signs an objective delivery fact (EIP-712) and pushes the transaction; it never decides outcomes (R4, PRD "arbiter has no discretion"), the onchain PolicyEngine computes the verdict. Researched the exact mechanism with three subagents before coding (R12): the contract side (hand-rolled EIP-712, domain RecourseAttestor/1/chainId/escrow, struct Attestation(uint256 paymentId,uint8 attType,uint8 value,uint64 deadline), raw ecrecover requiring 65-byte r||s||v low-s v in {27,28}), the seeder's working viem signing as the byte-exact reference, and the doc spec (POST /api/demo/attest {paymentId,value}, DEMO_MODE-gated, value caller-supplied).
+
+Built: src/attestor.rs. An alloy sol! Attestation SolStruct plus an IEscrowWrite interface (submitAttestation, resolve, attestationDigest). AttestorClient holds a wallet-bearing provider and a PrivateKeySigner; attest() signs eip712_signing_hash via sign_hash_sync, lays out r||s||v with v = 27 + y-parity, and submits submitAttestation (moves no funds); resolve() settles (moves funds). Config gained ATTESTOR_PK (Option, testnet throwaway R7); main.rs builds the client only when DEMO_MODE and the key are set, running a boot self-check (local digest vs onchain attestationDigest) that warns rather than crashing reads. routes.rs added POST /api/demo/attest and /api/demo/resolve, gated on the attestor being present, logging each action (R8), with resolve's fund movement called out.
+
+Verified: byte-exact signing proven WITHOUT the attestor key. cast returned the onchain attestationDigest(5,1,2,4000000000) = 0x6132a1316846f33d5f241f793988e1d0eeaf5a53c0b292560654b1b92102a25d; a unit test asserts the local alloy eip712_signing_hash equals it, and a second test signs with a random key and confirms recover_address_from_prehash round-trips with v in {27,28}. So a signature from the real attestor recovers to the attestor onchain and submitAttestation accepts it. cargo test and clippy --all-targets clean. Ran the rebuilt server: with no ATTESTOR_PK the endpoints correctly report 503 disabled and the log says attestor bot disabled. Not yet exercised end to end against a live disputed payment (needs a fresh Disputed payment and the key; the seeded 5/6 are settled) and resolve is money-moving (R13: verify on anvil or a logged testnet run before a live demo).
+
+Rules earned: for a cross-language signer, pin correctness with a golden digest read from the deployed contract (cast) and a sign->recover round-trip, so byte-exact EIP-712 compatibility is proven without ever holding the production key. Sign the prehashed eip712_signing_hash rather than a typed-data sync helper, since that method is the one tied to the onchain digest.
+
+---
+
 ## 2026-07-21: Session 22, wire the merchant lists to the indexer read API
 
 Found: the payments, disputes, receipts, and protection pages still rendered hardcoded arrays (CloudCompute, FileStore, and similar fictional merchants) as Server Components. With the backend read API in place, these should show the real seeded onchain payments, which is the "not mocks" payoff the owner asked for.

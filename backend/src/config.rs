@@ -31,6 +31,9 @@ pub struct Config {
     pub escrow: Address,
     pub policy_registry: Address,
     pub chain_id: u64,
+    // Attestor signing key (testnet throwaway, R7). Only consumed when DEMO_MODE is on
+    // (R6). Absent means the demo attest/resolve endpoints stay disabled.
+    pub attestor_pk: Option<String>,
 }
 
 fn env_or(key: &str, default: &str) -> String {
@@ -53,6 +56,7 @@ impl Config {
             escrow: deployment.escrow,
             policy_registry: deployment.policy_registry,
             chain_id: deployment.chain_id,
+            attestor_pk: std::env::var("ATTESTOR_PK").ok().filter(|s| !s.trim().is_empty()),
         })
     }
 }

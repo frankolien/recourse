@@ -1,3 +1,4 @@
+mod attestor;
 mod chain;
 mod config;
 mod db;
@@ -22,6 +23,27 @@ async fn main() -> Result<()> {
     db::reset_if_deployment_changed(&pool, &format!("{:#x}", config.escrow), config.chain_id as i64).await?;
     let chain = chain::ChainClient::new(&config.rpc_url, config.escrow, config.policy_registry)?;
 
+    // Demo attestor bot (R6): only wired when DEMO_MODE is on and a key is set. It
+    // signs delivery attestations and pushes txs; the read API stays usable without it.
+    let attestor = if config.demo_mode {
+        match &config.attestor_pk {
+            Some(pk) => {
+                let client = attestor::AttestorClient::new(&config.rpc_url, config.escrow, config.chain_id, pk)?;
+                match client.self_check().await {
+                    Ok(()) => tracing::info!("attestor bot enabled, signer {} (digest verified)", client.attestor_address()),
+                    Err(e) => tracing::warn!("attestor enabled but self-check failed: {e:#}"),
+                }
+                Some(client)
+            }
+            None => {
+                tracing::info!("attestor bot disabled (ATTESTOR_PK not set)");
+                None
+            }
+        }
+    } else {
+        None
+    };
+
     // Background indexer keeps Postgres in sync with Arc state.
     {
         let chain = chain.clone();
@@ -36,7 +58,7 @@ async fn main() -> Result<()> {
     let chain_id = config.chain_id;
     tracing::info!("recourse-backend listening on :{port} (Arc chain {chain_id})");
 
-    let state = web::Data::new(routes::AppState { pool, config });
+    let state = web::Data::new(routes::AppState { pool, config, attestor });
     HttpServer::new(move || {
         App::new()
             .app_data(state.clone())
