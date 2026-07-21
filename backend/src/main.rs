@@ -45,10 +45,12 @@ async fn main() -> Result<()> {
 
     tracing::info!("recourse-backend listening on :{} (Arc chain {})", config.port, config.chain_id);
     let bind = ("0.0.0.0", config.port);
-    HttpServer::new(move || app::build_app(pool.clone(), config.clone(), attestor.clone(), evidence.clone()))
-        .bind(bind)?
-        .run()
-        .await?;
+    HttpServer::new(move || {
+        app::build_app(pool.clone(), config.clone(), chain.clone(), attestor.clone(), evidence.clone())
+    })
+    .bind(bind)?
+    .run()
+    .await?;
 
     Ok(())
 }

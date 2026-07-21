@@ -4,6 +4,7 @@ use sqlx::PgPool;
 
 use crate::handlers;
 use crate::services::attestor::AttestorClient;
+use crate::services::chain::ChainClient;
 use crate::services::evidence::EvidenceStore;
 use crate::services::AppConfig;
 
@@ -12,6 +13,7 @@ use crate::services::AppConfig;
 pub fn build_app(
     pool: PgPool,
     config: AppConfig,
+    chain: ChainClient,
     attestor: Option<AttestorClient>,
     evidence: EvidenceStore,
 ) -> App<
@@ -27,6 +29,7 @@ pub fn build_app(
         .wrap(Cors::permissive())
         .app_data(web::Data::new(pool))
         .app_data(web::Data::new(config))
+        .app_data(web::Data::new(chain))
         .app_data(web::Data::new(attestor))
         .app_data(web::Data::new(evidence))
         .route("/health", web::get().to(handlers::health::health_check))
@@ -34,11 +37,14 @@ pub fn build_app(
             web::scope("/api")
                 .route("/payments", web::get().to(handlers::payments::list_payments))
                 .route("/payments/{id}", web::get().to(handlers::payments::get_payment))
+                .route("/payments/{id}/evidence", web::get().to(handlers::evidence::get_payment_evidence))
                 .route("/disputes", web::get().to(handlers::disputes::list_disputes))
                 .route("/policies", web::get().to(handlers::policies::list_policies))
                 .route("/policies/{id}", web::get().to(handlers::policies::get_policy))
                 .route("/demo/attest", web::post().to(handlers::demo::attest))
                 .route("/demo/resolve", web::post().to(handlers::demo::resolve))
+                // Verify + record a payment's evidence list against the onchain root.
+                .route("/evidence/manifest", web::post().to(handlers::evidence::verify_manifest))
                 // Evidence uploads (photos) exceed the default 256 KB body cap.
                 .service(
                     web::resource("/evidence")

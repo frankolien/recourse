@@ -36,6 +36,8 @@ the contract's `previewVerdict`.
 | POST | `/api/demo/resolve` | DEMO_MODE: settle a disputed payment (moves funds) |
 | POST | `/api/evidence` | store an evidence blob, returns its keccak256 hash |
 | GET | `/api/evidence/{hash}` | fetch an evidence blob by hash |
+| POST | `/api/evidence/manifest` | verify an evidence list against the onchain `evidenceRoot`, then record it |
+| GET | `/api/payments/{id}/evidence` | the payment's verified evidence list (re-checked against chain on read) |
 
 Amounts are USDC (6 decimals) as decimal strings. Addresses are lowercased.
 
@@ -73,9 +75,37 @@ curl -X POST localhost:8080/api/evidence --data-binary @photo.jpg -H 'content-ty
 curl localhost:8080/api/evidence/0x<hash> --output out.jpg
 ```
 
+## Evidence manifest
+
+The escrow stores only the folded `evidenceRoot`; the ordered `(evType, hash)` list is
+calldata, never state, so it lives off-chain here. A manifest is only ever persisted
+after its fold is checked against the chain:
+
+```
+root = 0; for each item: root = keccak256(abi.encodePacked(root, evType, hash))
+```
+
+`POST /api/evidence/manifest` recomputes this fold and reads the payment's live
+`evidenceRoot` straight from the escrow (not the projection, so there is no indexer lag);
+it stores the list only on an exact match and returns `422` otherwise. `GET
+/api/payments/{id}/evidence` re-folds the stored list and re-checks it against the chain
+on every read, so a manifest tampered on disk is caught, not trusted. The fold is
+golden-tested against `cast keccak` vectors, so a drift from the contract fails `cargo
+test`. Manifests are keyed by deployment (`chainId_escrow`) because paymentIds restart at
+1 on a fresh escrow.
+
+```
+# after fileDispute pins the evidence, record the list (order must match the calldata)
+curl -X POST localhost:8080/api/evidence/manifest -H 'content-type: application/json' \
+  -d '{"paymentId":10,"items":[{"evType":1,"hash":"0x.."},{"evType":2,"hash":"0x.."}]}'
+curl localhost:8080/api/payments/10/evidence
+```
+
+`engine/scripts/open-dispute.mjs` exercises the whole chain on Arc: it uploads evidence,
+pins it in `fileDispute`, then posts the manifest and prints whether it verified.
+
 ## Not here yet
 
-Linking a payment to its verified evidence manifest (recompute the fold, check it
-against the onchain `evidenceRoot`) and surfacing evidence on the web verifier are the
-next steps. The web verifier and policy reads stay chain-direct on purpose, so they
-remain independently verifiable without trusting this service.
+Surfacing evidence on the web verifier, where the browser itself re-folds the list
+against the chain root. The web verifier and policy reads stay chain-direct on purpose,
+so they remain independently verifiable without trusting this service.
