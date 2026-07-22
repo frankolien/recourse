@@ -24,28 +24,44 @@ app_target = project.new_target(:application, "Recourse", :ios, "17.0")
 test_target = project.new_target(:unit_test_bundle, "RecourseTests", :ios, "17.0")
 test_target.add_dependency(app_target)
 
-def add_sources(project, target, group_name, directory)
-  group = project.main_group.new_group(group_name, group_name)
+def nested_group(root_group, relative_directory)
+  return root_group if relative_directory == "."
+
+  relative_directory.split(File::SEPARATOR).inject(root_group) do |parent, component|
+    parent.groups.find { |group| group.display_name == component } || parent.new_group(component, component)
+  end
+end
+
+def add_sources(target, root_group, directory)
   Dir.glob(File.join(directory, "**", "*.swift")).sort.each do |path|
     relative_path = Pathname.new(path).relative_path_from(Pathname.new(directory)).to_s
-    reference = group.new_file(relative_path)
+    parent = nested_group(root_group, File.dirname(relative_path))
+    reference = parent.new_file(File.basename(relative_path))
     target.source_build_phase.add_file_reference(reference)
   end
 end
 
-def add_resources(project, target, group_name, directory, root)
-  group_path = Pathname.new(directory).relative_path_from(Pathname.new(root)).to_s
-  group = project.main_group.new_group(group_name, group_path)
+def add_resources(target, root_group, directory)
   Dir.glob(File.join(directory, "**", "*.json")).sort.each do |path|
     relative_path = Pathname.new(path).relative_path_from(Pathname.new(directory)).to_s
-    reference = group.new_file(relative_path)
+    parent = nested_group(root_group, File.dirname(relative_path))
+    reference = parent.new_file(File.basename(relative_path))
     target.resources_build_phase.add_file_reference(reference)
   end
 end
 
-add_sources(project, app_target, "Recourse", File.join(root, "Recourse"))
-add_sources(project, test_target, "RecourseTests", File.join(root, "RecourseTests"))
-add_resources(project, app_target, "ABI", File.join(root, "Recourse", "Resources", "ABI"), root)
+app_group = project.main_group.new_group("Recourse", "Recourse")
+test_group = project.main_group.new_group("RecourseTests", "RecourseTests")
+add_sources(app_target, app_group, File.join(root, "Recourse"))
+add_sources(test_target, test_group, File.join(root, "RecourseTests"))
+app_group.new_file("Recourse.entitlements")
+
+resources_group = nested_group(app_group, "Resources")
+abi_group = nested_group(resources_group, "ABI")
+add_resources(app_target, abi_group, File.join(root, "Recourse", "Resources", "ABI"))
+assets_path = File.join(root, "Recourse", "Resources", "Images.xcassets")
+assets_reference = resources_group.new_file("Images.xcassets")
+app_target.resources_build_phase.add_file_reference(assets_reference)
 
 web3swift_package = project.new(Xcodeproj::Project::Object::XCRemoteSwiftPackageReference)
 web3swift_package.repositoryURL = "https://github.com/web3swift-team/web3swift.git"
@@ -73,6 +89,7 @@ app_target.build_configurations.each do |configuration|
   configuration.build_settings.merge!(
     "ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS" => "YES",
     "CODE_SIGN_STYLE" => "Automatic",
+    "CODE_SIGN_ENTITLEMENTS" => "Recourse/Recourse.entitlements",
     "CURRENT_PROJECT_VERSION" => "1",
     "DEVELOPMENT_TEAM" => "",
     "ENABLE_PREVIEWS" => "YES",
@@ -81,6 +98,8 @@ app_target.build_configurations.each do |configuration|
     "INFOPLIST_KEY_LSApplicationCategoryType" => "public.app-category.finance",
     "INFOPLIST_KEY_NSCameraUsageDescription" => "Scan protected payment requests and capture dispute evidence.",
     "INFOPLIST_KEY_NSFaceIDUsageDescription" => "Confirm protected payment transactions.",
+    "INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking" => "YES",
+    "INFOPLIST_KEY_NSLocalNetworkUsageDescription" => "Connect to the Recourse development backend on your local network.",
     "INFOPLIST_KEY_UIApplicationSceneManifest_Generation" => "YES",
     "INFOPLIST_KEY_UILaunchScreen_Generation" => "YES",
     "MARKETING_VERSION" => "0.1.0",
@@ -93,6 +112,12 @@ app_target.build_configurations.each do |configuration|
     "TARGETED_DEVICE_FAMILY" => "1"
   )
 end
+
+project.root_object.attributes["TargetAttributes"] ||= {}
+project.root_object.attributes["TargetAttributes"][app_target.uuid] ||= {}
+project.root_object.attributes["TargetAttributes"][app_target.uuid]["SystemCapabilities"] = {
+  "com.apple.SignInWithApple" => { "enabled" => 1 }
+}
 
 test_target.build_configurations.each do |configuration|
   configuration.build_settings.merge!(
@@ -135,6 +160,7 @@ end
 scheme = Xcodeproj::XCScheme.new
 scheme.add_build_target(app_target)
 scheme.add_test_target(test_target)
+scheme.set_launch_target(app_target)
 if ENV["MOBILE_LOCAL_WRITE_TESTS"] == "1"
   variables = %w[
     MOBILE_LOCAL_WRITE_TESTS
