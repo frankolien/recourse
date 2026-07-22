@@ -23,6 +23,10 @@ final class DisputeWorkflowTests: XCTestCase {
         XCTAssertEqual(result.payment.claimType, .damaged)
         let uploadedKinds = await evidenceRepository.kinds()
         XCTAssertEqual(uploadedKinds, [.photo])
+        let paymentIDs = await evidenceRepository.paymentIDs()
+        XCTAssertEqual(paymentIDs, [payment.id])
+        let manifests = await evidenceRepository.manifests()
+        XCTAssertEqual(manifests, [result.uploadedEvidence])
     }
 
     func testClosedWindowRejectsBeforeEvidenceUpload() async {

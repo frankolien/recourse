@@ -5,6 +5,7 @@ enum DisputeProgress: Equatable, Sendable {
     case uploading(completed: Int, total: Int)
     case filing
     case submitted(ChainHash)
+    case publishingManifest
     case confirmed(paymentID: UInt64, transactionHash: ChainHash)
 }
 
@@ -50,7 +51,7 @@ struct DisputeWorkflow: Sendable {
         var uploaded: [UploadedEvidence] = []
         uploaded.reserveCapacity(drafts.count)
         for draft in drafts {
-            uploaded.append(try await evidenceRepository.upload(draft))
+            uploaded.append(try await evidenceRepository.upload(draft, paymentID: paymentID))
             await onProgress(.uploading(completed: uploaded.count, total: drafts.count))
         }
 
@@ -71,6 +72,15 @@ struct DisputeWorkflow: Sendable {
               disputedPayment.buyer == buyer,
               disputedPayment.claimType == claimType else {
             throw BuyerWorkflowError.paymentMismatch
+        }
+
+        await onProgress(.publishingManifest)
+        let manifest = try await evidenceRepository.publishManifest(
+            paymentID: paymentID,
+            evidence: uploaded
+        )
+        guard manifest.matches else {
+            throw BuyerWorkflowError.evidenceManifestMismatch
         }
 
         await onProgress(.confirmed(paymentID: paymentID, transactionHash: transactionHash))

@@ -161,9 +161,12 @@ actor FakeContractGateway: ContractGateway {
 
 actor FakeEvidenceRepository: EvidenceRepository {
     private(set) var uploadedKinds: [EvidenceKind] = []
+    private(set) var uploadedPaymentIDs: [UInt64] = []
+    private(set) var publishedManifests: [[UploadedEvidence]] = []
 
-    func upload(_ evidence: EvidenceDraft) async throws -> UploadedEvidence {
+    func upload(_ evidence: EvidenceDraft, paymentID: UInt64) async throws -> UploadedEvidence {
         uploadedKinds.append(evidence.kind)
+        uploadedPaymentIDs.append(paymentID)
         let byte = String(format: "%02x", uploadedKinds.count + 16)
         return UploadedEvidence(
             kind: evidence.kind,
@@ -171,7 +174,23 @@ actor FakeEvidenceRepository: EvidenceRepository {
         )
     }
 
+    func publishManifest(
+        paymentID: UInt64,
+        evidence: [UploadedEvidence]
+    ) async throws -> EvidenceManifestReceipt {
+        publishedManifests.append(evidence)
+        let root = ChainHash(trusted: "0x" + String(repeating: "44", count: 32))
+        return EvidenceManifestReceipt(
+            paymentID: paymentID,
+            matches: true,
+            computedRoot: root,
+            onchainRoot: root
+        )
+    }
+
     func kinds() -> [EvidenceKind] { uploadedKinds }
+    func paymentIDs() -> [UInt64] { uploadedPaymentIDs }
+    func manifests() -> [[UploadedEvidence]] { publishedManifests }
 }
 
 struct FixedTimeProvider: UnixTimeProvider {

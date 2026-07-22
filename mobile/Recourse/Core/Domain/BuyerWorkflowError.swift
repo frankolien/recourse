@@ -11,6 +11,7 @@ enum BuyerWorkflowError: Error, Equatable {
     case paymentNotDisputed
     case disputeWindowClosed
     case emptyEvidence
+    case evidenceManifestMismatch
     case awaitingAttestation(until: UInt64)
     case settlementNotConfirmed
 }

@@ -41,6 +41,33 @@ final class TestnetLocalSignerTests: XCTestCase {
         XCTAssertEqual(authorizationCount, 2)
     }
 
+    func testSignsEIP712AuthorizationWithDeviceOwnerApproval() async throws {
+        let authorizer = AllowingTransactionAuthorizer()
+        let signer = TestnetLocalSigner(
+            store: InMemorySecureDataStore(),
+            authorizer: authorizer
+        )
+        let address = try await signer.address()
+        let request = EvidenceAuthorizationRequest(
+            action: .upload,
+            paymentID: 11,
+            walletAddress: address,
+            chainID: Deployment.chainID,
+            bodyHash: Data("evidence".utf8).keccak256Hash,
+            nonce: ChainHash(trusted: "0x" + String(repeating: "00", count: 31) + "01"),
+            expiresAt: 4_000_000_000
+        )
+        let payload = try request.typedDataJSON()
+
+        let first = try await signer.signEIP712(payload)
+        let second = try await signer.signEIP712(payload)
+        let authorizationCount = await authorizer.authorizationCount()
+
+        XCTAssertEqual(first.count, 65)
+        XCTAssertEqual(first, second)
+        XCTAssertEqual(authorizationCount, 2)
+    }
+
     func testResetCreatesANewAccount() async throws {
         let signer = TestnetLocalSigner(
             store: InMemorySecureDataStore(),

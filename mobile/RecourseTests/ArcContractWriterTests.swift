@@ -88,6 +88,7 @@ final class ArcContractWriterTests: XCTestCase {
 private actor FixtureBuyerSigner: BuyerSigner {
     func address() async throws -> EthereumAddress { DomainFixture.buyer }
     func sign(_ transaction: UnsignedTransaction) async throws -> Data { Data([0xaa, 0xbb]) }
+    func signEIP712(_ typedData: Data) async throws -> Data { Data(repeating: 0x11, count: 65) }
     func reset() async throws {}
 }
 

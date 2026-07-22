@@ -35,7 +35,11 @@ protocol ContractWriting: Sendable {
 protocol ContractGateway: ContractReading, ContractWriting {}
 
 protocol EvidenceRepository: Sendable {
-    func upload(_ evidence: EvidenceDraft) async throws -> UploadedEvidence
+    func upload(_ evidence: EvidenceDraft, paymentID: UInt64) async throws -> UploadedEvidence
+    func publishManifest(
+        paymentID: UInt64,
+        evidence: [UploadedEvidence]
+    ) async throws -> EvidenceManifestReceipt
 }
 
 protocol BuyerPaymentRepository: Sendable {

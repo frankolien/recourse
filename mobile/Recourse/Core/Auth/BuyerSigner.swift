@@ -3,6 +3,7 @@ import Foundation
 protocol BuyerSigner: Sendable {
     func address() async throws -> EthereumAddress
     func sign(_ transaction: UnsignedTransaction) async throws -> Data
+    func signEIP712(_ typedData: Data) async throws -> Data
     func reset() async throws
 }
 

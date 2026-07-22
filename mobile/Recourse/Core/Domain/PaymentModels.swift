@@ -64,15 +64,37 @@ struct VerdictPreview: Codable, Hashable, Sendable {
 struct EvidenceDraft: Hashable, Sendable {
     let kind: EvidenceKind
     let content: Data
+    let contentType: String
 
-    init(kind: EvidenceKind, content: Data) throws {
+    init(kind: EvidenceKind, content: Data, contentType: String? = nil) throws {
         guard !content.isEmpty else { throw BuyerWorkflowError.emptyEvidence }
         self.kind = kind
         self.content = content
+        self.contentType = contentType ?? kind.defaultContentType
     }
 }
 
 struct UploadedEvidence: Codable, Hashable, Sendable {
     let kind: EvidenceKind
     let hash: ChainHash
+}
+
+struct EvidenceManifestReceipt: Codable, Hashable, Sendable {
+    let paymentID: UInt64
+    let matches: Bool
+    let computedRoot: ChainHash
+    let onchainRoot: ChainHash
+}
+
+private extension EvidenceKind {
+    var defaultContentType: String {
+        switch self {
+        case .photo:
+            "image/jpeg"
+        case .description, .trackingReference:
+            "text/plain; charset=utf-8"
+        case .video:
+            "video/mp4"
+        }
+    }
 }

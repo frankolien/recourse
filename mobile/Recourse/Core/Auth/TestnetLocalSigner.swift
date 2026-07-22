@@ -66,6 +66,26 @@ actor TestnetLocalSigner: BuyerSigner {
         return encoded
     }
 
+    func signEIP712(_ typedData: Data) async throws -> Data {
+        try await authorizer.authorizeTransaction()
+        let (keystore, password) = try await loadCredentials()
+        guard let account = keystore.addresses?.first else {
+            throw BuyerSignerError.invalidAccount
+        }
+
+        do {
+            let payload = try EIP712Parser.parse(typedData)
+            return try Web3Signer.signEIP712(
+                payload,
+                keystore: keystore,
+                account: account,
+                password: password
+            )
+        } catch {
+            throw BuyerSignerError.signingFailed
+        }
+    }
+
     func reset() async throws {
         try await store.delete(account: AccountKey.keystore)
         try await store.delete(account: AccountKey.password)
