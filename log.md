@@ -4,6 +4,20 @@ Convention: every session appends one entry above this line's predecessors. Form
 
 ---
 
+## 2026-07-22: Session 34, Sign in with Google and real web account sessions
+
+Found: Codex had shipped Sign in with Apple account sessions on the backend (opaque access/refresh tokens, only token hashes stored) but that verifier is iOS-bound (aud = the app bundle com.recourse.buyer), and the web still ran the simulated localStorage demo profile. The owner asked to wire real auth on the web and to add Google. Apple on the web is a different Apple product (needs a Services ID and a backend audience change), so it stays deferred; Google is the web-native path (a Google OAuth client id from Cloud Console).
+
+Built (backend): generalized account identity from Apple-only to any provider. Migration 0004 renames accounts.apple_subject to provider_subject, adds a provider column (existing rows backfill 'apple'), and keys accounts by UNIQUE(provider, provider_subject). account_sessions::upsert_account is now provider-aware, AccountProfile carries provider, and a new create_provider_session mints a session for a self-verifying provider without the Apple-style server challenge. services/google_auth verifies a Google Identity Services ID token (RS256 over Google's JWKS, issuer google, aud = GOOGLE_CLIENT_ID, unexpired). POST /api/auth/google exchanges the ID token for a Recourse session; 503 until GOOGLE_CLIENT_ID is set. Reused Codex's jsonwebtoken/reqwest deps; did not touch the Apple path's contract.
+
+Built (web): lib/session (opaque token store, silent access-token refresh via the refresh token, authFetch, /api/me hydration, Google exchange, logout), SessionProvider + useSession, and a real Google Identity Services button (clear disabled state until NEXT_PUBLIC_GOOGLE_CLIENT_ID is set). The merchant workspace is now account-gated and redirects to /signin; the landing and public verifier stay open. Onboarding seeds name and email from the signed-in account; role and workspace remain local workspace preferences. The dashboard greeting and topbar profile read the real account.
+
+Verified: migration 0004 applied on boot; /api/auth/google is 503 without a client id; /api/me and /api/auth/refresh return 401 (not 500) against the migrated schema, proving the rewritten provider_subject queries agree with it; cargo test 12 pass, clippy and fmt clean. Web: tsc and lint clean; landing, /signin (Google button correctly shows not-configured with no client id), and the public verifier serve, and guarded routes gate to sign-in. Full Google login is untestable here without the client id and a browser, so it is left for the owner to exercise after setting NEXT_PUBLIC_GOOGLE_CLIENT_ID and GOOGLE_CLIENT_ID (same value) and adding the web origin as an authorized JavaScript origin in Google Cloud.
+
+Rules earned: when a second provider lands, generalize the identity model (provider, provider_subject) rather than special-casing the first; a provider that verifies its own signed, audience-bound token needs no server challenge, but one that echoes a client nonce (Apple) does. Keep account identity separate from payment authorization: sessions say who you are, wallet signatures authorize the money. Gate only what must be private; the public verifier and landing stay open so the demo weapon needs no login.
+
+---
+
 ## 2026-07-21: Session 33, wrong-wallet auth test and the automated settlement worker
 
 Found: two follow-ups after the auth work. One, the unit tests prove signature recovery but never exercise the recovered != payment.buyer branch (a valid signature from the wrong wallet). Two, Codex asked to convert the attestor from manual demo-gated curls into an internal automated service, and to defer profile/session auth. Corrected an overstatement from Session 32: the golden viem test proves backend and JS agree, but the iOS client does not yet sign this (the Swift signer signs transactions, not arbitrary EIP-712), so mobile/ still has to implement the request-challenge, body-hash, EIP-712 Authorization signing, and X-Recourse-Auth encoding.
