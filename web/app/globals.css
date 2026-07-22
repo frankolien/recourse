@@ -290,6 +290,77 @@
   text-align: center;
 }
 
+/* Real account sessions: Google sign-in slot, busy/error states, gate. */
+.google-signin-slot {
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
+  margin-bottom: 12px;
+}
+
+.auth-busy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  margin-bottom: 12px;
+  color: #5b655f;
+  font-size: 13px;
+  font-weight: 550;
+}
+
+.auth-error {
+  margin: 2px 6px 10px;
+  color: #b5443f;
+  font-size: 12px;
+  text-align: center;
+}
+
+.auth-mobile-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin: 16px 0 0;
+  color: #84908a;
+  font-size: 11px;
+}
+
+.dash-gate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 100vh;
+  color: #5b655f;
+  font-size: 14px;
+  font-weight: 550;
+}
+
+button.dash-nav-item {
+  width: 100%;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dash-nav-item.sign-out {
+  color: #b5443f;
+}
+
+.spin {
+  animation: recourse-spin 0.9s linear infinite;
+}
+
+@keyframes recourse-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .onboarding-page {
   min-height: 100vh;
   color: #13241e;

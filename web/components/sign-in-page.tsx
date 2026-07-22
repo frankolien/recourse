@@ -1,12 +1,13 @@
 "use client";
 
-import { ArrowRight, Check, KeyRound, Mail, ShieldCheck, Wallet } from "lucide-react";
+import { Apple, Check, Loader2, ShieldCheck, Smartphone } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { BrandMark } from "@/components/brand-mark";
-import { GoogleMark } from "@/components/google-mark";
-import { defaultDemoProfile, saveDemoProfile } from "@/lib/demo-profile";
+import { GoogleSignInButton } from "@/components/google-signin";
+import { useSession } from "@/components/session-provider";
+import { readDemoProfile } from "@/lib/demo-profile";
 
 const benefits = [
   "Protection terms locked before payment",
@@ -16,19 +17,31 @@ const benefits = [
 
 export function SignInPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const { account, loading, signInWithGoogle } = useSession();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function begin(emailAddress = defaultDemoProfile.email) {
-    const localName = emailAddress.split("@")[0].split(/[._-]/)[0];
-    const firstName = localName ? localName.charAt(0).toUpperCase() + localName.slice(1) : "Frank";
-    saveDemoProfile({ ...defaultDemoProfile, firstName, email: emailAddress });
-    router.push("/onboarding");
-  }
+  // Already signed in: skip the form. New accounts finish onboarding first.
+  useEffect(() => {
+    if (!loading && account) {
+      router.replace(readDemoProfile().onboardingComplete ? "/dashboard" : "/onboarding");
+    }
+  }, [account, loading, router]);
 
-  function submitEmail(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    begin(email || defaultDemoProfile.email);
-  }
+  const onGoogle = useCallback(
+    async (idToken: string) => {
+      setBusy(true);
+      setError(null);
+      try {
+        await signInWithGoogle(idToken);
+        router.replace(readDemoProfile().onboardingComplete ? "/dashboard" : "/onboarding");
+      } catch (signInError) {
+        setError(signInError instanceof Error ? signInError.message : "Sign-in failed");
+        setBusy(false);
+      }
+    },
+    [router, signInWithGoogle],
+  );
 
   return (
     <main className="auth-page">
@@ -47,27 +60,22 @@ export function SignInPage() {
 
       <section className="auth-panel-wrap">
         <div className="auth-panel">
-          <span className="demo-label">Interactive demo</span>
           <h2>Welcome to Recourse</h2>
-          <p>Create an account or sign in to continue.</p>
+          <p>Sign in to your merchant workspace.</p>
 
-          <button className="auth-provider" onClick={() => begin()}>
-            <GoogleMark /> Continue with Google
+          {busy ? (
+            <div className="auth-busy"><Loader2 className="spin" size={18} /> Signing you in…</div>
+          ) : (
+            <GoogleSignInButton onCredential={onGoogle} onError={setError} />
+          )}
+
+          {error && <p className="auth-error">{error}</p>}
+
+          <button className="auth-provider" type="button" disabled title="Sign in with Apple runs in the Recourse iOS app">
+            <Apple size={18} /> Continue with Apple
           </button>
-          <button className="auth-provider" onClick={() => begin()}>
-            <KeyRound size={18} /> Sign in with passkey
-          </button>
 
-          <div className="auth-divider"><span>or continue with email</span></div>
-
-          <form onSubmit={submitEmail}>
-            <label htmlFor="email">Email address</label>
-            <div className="auth-input"><Mail size={17} /><input id="email" type="email" placeholder="you@company.com" value={email} onChange={(event) => setEmail(event.target.value)} /></div>
-            <button className="auth-submit" type="submit">Continue <ArrowRight size={16} /></button>
-          </form>
-
-          <button className="auth-wallet" onClick={() => begin()}><Wallet size={17} /> Connect an existing wallet</button>
-          <small className="auth-disclaimer">Authentication is simulated for this testnet prototype. No credentials are collected.</small>
+          <p className="auth-mobile-note"><Smartphone size={15} /> Buying on Recourse? Sign in happens in the mobile app.</p>
           <p className="auth-terms">By continuing, you agree to the Terms and Privacy Policy.</p>
         </div>
       </section>

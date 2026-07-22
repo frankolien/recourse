@@ -19,6 +19,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { BrandMark } from "@/components/brand-mark";
+import { useSession } from "@/components/session-provider";
 import { defaultDemoProfile, readDemoProfile, RecourseRole, saveDemoProfile } from "@/lib/demo-profile";
 
 // Web onboarding covers merchants and liquidity providers only. Per R5 the buyer
@@ -62,21 +63,29 @@ const previewContent = [
 
 export function OnboardingPage() {
   const router = useRouter();
+  const { account, loading } = useSession();
   const [step, setStep] = useState(0);
   const [role, setRole] = useState<RecourseRole>("merchant");
-  const [firstName, setFirstName] = useState("Frank");
-  const [lastName, setLastName] = useState("Olien");
-  const [email, setEmail] = useState(defaultDemoProfile.email);
-  const [workspace, setWorkspace] = useState("Acme Store");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [workspace, setWorkspace] = useState("");
 
+  // Onboarding requires an account; identity (name, email) is seeded from the signed-in
+  // provider, while role and workspace are local workspace preferences.
   useEffect(() => {
+    if (loading) return;
+    if (!account) {
+      router.replace("/signin");
+      return;
+    }
     const profile = readDemoProfile();
     setRole(profile.role === "liquidity" ? "liquidity" : "merchant");
-    setFirstName(profile.firstName);
-    setLastName(profile.lastName);
-    setEmail(profile.email);
-    setWorkspace(profile.workspace);
-  }, []);
+    setFirstName(account.givenName ?? profile.firstName);
+    setLastName(account.familyName ?? profile.lastName);
+    setEmail(account.email ?? profile.email);
+    setWorkspace(profile.workspace || defaultDemoProfile.workspace);
+  }, [account, loading, router]);
 
   function persist(nextStep: number) {
     saveDemoProfile({ firstName, lastName, email, role, workspace, onboardingComplete: nextStep === 3 });

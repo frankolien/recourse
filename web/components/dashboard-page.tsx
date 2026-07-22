@@ -23,7 +23,7 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
-import { useDemoProfile } from "@/lib/demo-profile";
+import { useSession } from "@/components/session-provider";
 import { ProtectionMark } from "@/components/live-pulse";
 
 const protections = [
@@ -81,13 +81,14 @@ const learnCards = [
 ];
 
 export function DashboardPage() {
-  const profile = useDemoProfile();
+  const { account } = useSession();
+  const greetingName = account?.givenName ?? "there";
 
   return (
     <>
       <header className="dash-header">
         <div>
-          <h1>Good morning, {profile.firstName} <span>👋</span></h1>
+          <h1>Good morning, {greetingName} <span>👋</span></h1>
           <p>Here is what is happening with your protected payments.</p>
         </div>
       </header>

@@ -8,7 +8,9 @@ import {
   CircleHelp,
   FileText,
   Home,
+  Loader2,
   LockKeyhole,
+  LogOut,
   ReceiptText,
   Settings,
   ShieldCheck,
@@ -16,14 +18,16 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { useAccount } from "wagmi";
 import { BrandMark } from "@/components/brand-mark";
 import { ConnectWallet, shortAddress } from "@/components/connect-wallet";
+import { useSession } from "@/components/session-provider";
 import { LottiePlayer } from "@/components/lottie-player";
 import pingAnim from "@/lib/lottie/ping.json";
 import { arcTestnet } from "@/lib/contracts";
-import { useDemoProfile } from "@/lib/demo-profile";
+import { accountInitials, accountName } from "@/lib/session";
 
 const GITHUB_URL = "https://github.com/frankolien/recourse";
 
@@ -67,10 +71,29 @@ function isActive(pathname: string, href: string) {
 
 export function MerchantShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const profile = useDemoProfile();
+  const router = useRouter();
+  const { account, loading, signOut } = useSession();
   const { address, isConnected } = useAccount();
   const section = Object.keys(titles).find((href) => isActive(pathname, href));
   const title = section ? titles[section] : "Recourse";
+
+  // The merchant workspace is account-gated. Public pages (landing, verifier) are not.
+  useEffect(() => {
+    if (!loading && !account) router.replace("/signin");
+  }, [loading, account, router]);
+
+  async function handleSignOut() {
+    await signOut();
+    router.replace("/signin");
+  }
+
+  if (loading || !account) {
+    return (
+      <div className="dash-gate">
+        <Loader2 className="spin" size={20} /> {loading ? "Loading your workspace…" : "Redirecting to sign in…"}
+      </div>
+    );
+  }
 
   return (
     <div className="dash-shell">
@@ -120,6 +143,9 @@ export function MerchantShell({ children }: { children: React.ReactNode }) {
           <Link className="switch-role" href="/verify/5">
             <ShieldCheck size={18} /> Open public verifier
           </Link>
+          <button className="dash-nav-item sign-out" type="button" onClick={handleSignOut}>
+            <LogOut size={18} /> Sign out
+          </button>
         </div>
       </aside>
 
@@ -139,10 +165,10 @@ export function MerchantShell({ children }: { children: React.ReactNode }) {
               <span className="notification-dot" />
             </Link>
             <Link className="profile-button" href="/settings">
-              <span className="profile-avatar">{profile.firstName.charAt(0)}{profile.lastName.charAt(0)}</span>
+              <span className="profile-avatar">{accountInitials(account)}</span>
               <span>
-                <strong>{profile.firstName} {profile.lastName}</strong>
-                <small>{isConnected && address ? shortAddress(address) : "Not connected"}</small>
+                <strong>{accountName(account)}</strong>
+                <small>{isConnected && address ? shortAddress(address) : account.email ?? "Not connected"}</small>
               </span>
               <ChevronDown size={14} />
             </Link>
