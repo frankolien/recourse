@@ -18,6 +18,18 @@ cp .env.example .env        # defaults point at local Postgres and Arc dRPC
 cargo run
 ```
 
+### Sign in with Apple key
+
+The local backend configuration expects the downloaded Apple private key at:
+
+```text
+backend/secrets/AuthKey_XY9C96WBZL.p8
+```
+
+The `backend/secrets/` directory ignores private keys. Keep the key on the backend only.
+The local `.env` references it through `APPLE_PRIVATE_KEY_PATH`; deployed environments
+should store the same key in their secret manager rather than the repository.
+
 The indexer polls Arc every `INDEX_INTERVAL_SECS` (default 15), reading every
 payment and policy into Postgres and pulling each disputed payment's verdict from
 the contract's `previewVerdict`.
@@ -34,6 +46,11 @@ the contract's `previewVerdict`.
 | GET | `/api/policies` | none | all indexed policies |
 | GET | `/api/policies/{id}` | none | one policy with its rules and hash |
 | POST | `/api/auth/challenge` | none | issue a one-time nonce for wallet-signature auth |
+| POST | `/api/auth/apple/challenge` | none | issue a one-time nonce for native Apple authentication |
+| POST | `/api/auth/apple` | Apple code | verify Apple and issue a Recourse account session |
+| POST | `/api/auth/refresh` | refresh token | rotate an account session |
+| POST | `/api/auth/logout` | account bearer | revoke an account session |
+| GET | `/api/me` | account bearer | current Recourse account profile |
 | POST | `/api/evidence` | buyer sig | store an evidence blob, returns its keccak256 hash |
 | POST | `/api/evidence/manifest` | buyer sig | verify an evidence list against the onchain `evidenceRoot`, then record it |
 | POST | `/api/demo/attest` | admin | DEMO_MODE: sign a delivery attestation and submit it |
@@ -46,6 +63,17 @@ Lists page with `?limit=` (default 100, max 500) and `?offset=`.
 ## Authentication
 
 Two boundaries, chosen so each matches who is really acting:
+
+**Account sessions** use native Sign in with Apple. The iPhone first requests
+`POST /api/auth/apple/challenge`, hashes that server nonce into Apple's authorization
+request, then sends Apple's one-time authorization code back to `POST /api/auth/apple`.
+The backend creates an ES256 client secret from the local `.p8` key, exchanges the code
+directly with Apple, verifies Apple's RS256 identity token, audience, expiry, and nonce,
+then returns opaque access and refresh tokens. Only token hashes are stored in Postgres.
+Access tokens last 15 minutes; refresh tokens last 30 days and rotate on every refresh.
+
+These account tokens authorize profile and onboarding APIs only. They do not replace the
+wallet signature required for payment-scoped writes.
 
 **Buyer writes** (evidence upload, manifest) use a wallet EIP-712 signature. The caller has
 no account: they prove they are the payment's on-chain buyer by signing. Flow:

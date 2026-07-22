@@ -1,3 +1,5 @@
+pub mod account_sessions;
+pub mod apple_auth;
 pub mod attestor;
 pub mod auth;
 pub mod chain;
@@ -48,10 +50,27 @@ pub struct AppConfig {
     // due (attested, or past resolveDelay). Off by default so it never surprise-settles.
     pub auto_resolve: bool,
     pub auto_resolve_interval_secs: u64,
+    // Sign in with Apple server identifiers and the local private-key path. These are
+    // consumed by the account-session endpoint; the private key never reaches clients.
+    #[allow(dead_code)]
+    pub apple_team_id: Option<String>,
+    #[allow(dead_code)]
+    pub apple_key_id: Option<String>,
+    #[allow(dead_code)]
+    pub apple_client_id: Option<String>,
+    #[allow(dead_code)]
+    pub apple_private_key_path: Option<PathBuf>,
 }
 
 fn env_or(key: &str, default: &str) -> String {
     std::env::var(key).unwrap_or_else(|_| default.to_string())
+}
+
+fn optional_env(key: &str) -> Option<String> {
+    std::env::var(key)
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
 }
 
 impl AppConfig {
@@ -91,6 +110,10 @@ impl AppConfig {
             auto_resolve_interval_secs: env_or("ATTESTOR_AUTO_RESOLVE_INTERVAL_SECS", "30")
                 .parse()
                 .context("ATTESTOR_AUTO_RESOLVE_INTERVAL_SECS")?,
+            apple_team_id: optional_env("APPLE_TEAM_ID"),
+            apple_key_id: optional_env("APPLE_KEY_ID"),
+            apple_client_id: optional_env("APPLE_CLIENT_ID"),
+            apple_private_key_path: optional_env("APPLE_PRIVATE_KEY_PATH").map(PathBuf::from),
         })
     }
 }

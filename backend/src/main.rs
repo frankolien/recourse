@@ -9,6 +9,7 @@ use anyhow::Result;
 use sqlx::postgres::PgPoolOptions;
 use tracing_subscriber::EnvFilter;
 
+use crate::services::apple_auth::AppleAuthService;
 use crate::services::attestor::AttestorClient;
 use crate::services::chain::ChainClient;
 use crate::services::evidence::EvidenceStore;
@@ -39,6 +40,7 @@ async fn main() -> Result<()> {
 
     let chain = ChainClient::new(&config.rpc_url, config.escrow, config.policy_registry)?;
     let attestor = build_attestor(&config).await?;
+    let apple_auth = AppleAuthService::from_config(&config)?;
 
     // Background indexer keeps Postgres in sync with Arc state.
     {
@@ -86,6 +88,7 @@ async fn main() -> Result<()> {
             config.clone(),
             chain.clone(),
             attestor.clone(),
+            apple_auth.clone(),
             evidence.clone(),
         )
     })

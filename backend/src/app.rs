@@ -3,6 +3,7 @@ use actix_web::{web, App};
 use sqlx::PgPool;
 
 use crate::handlers;
+use crate::services::apple_auth::AppleAuthService;
 use crate::services::attestor::AttestorClient;
 use crate::services::chain::ChainClient;
 use crate::services::evidence::EvidenceStore;
@@ -15,6 +16,7 @@ pub fn build_app(
     config: AppConfig,
     chain: ChainClient,
     attestor: Option<AttestorClient>,
+    apple_auth: Option<AppleAuthService>,
     evidence: EvidenceStore,
 ) -> App<
     impl actix_web::dev::ServiceFactory<
@@ -31,6 +33,7 @@ pub fn build_app(
         .app_data(web::Data::new(config))
         .app_data(web::Data::new(chain))
         .app_data(web::Data::new(attestor))
+        .app_data(web::Data::new(apple_auth))
         .app_data(web::Data::new(evidence))
         .route("/health", web::get().to(handlers::health::health_check))
         .service(
@@ -63,6 +66,17 @@ pub fn build_app(
                 .route("/demo/resolve", web::post().to(handlers::demo::resolve))
                 // Issue a one-time nonce for wallet-signature auth on write routes.
                 .route("/auth/challenge", web::post().to(handlers::auth::challenge))
+                .route(
+                    "/auth/apple/challenge",
+                    web::post().to(handlers::auth::apple_challenge),
+                )
+                .route(
+                    "/auth/apple",
+                    web::post().to(handlers::auth::apple_exchange),
+                )
+                .route("/auth/refresh", web::post().to(handlers::auth::refresh))
+                .route("/auth/logout", web::post().to(handlers::auth::logout))
+                .route("/me", web::get().to(handlers::auth::me))
                 // Verify + record a payment's evidence list against the onchain root.
                 .route(
                     "/evidence/manifest",

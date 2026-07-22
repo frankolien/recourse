@@ -43,3 +43,7 @@ engine/src/addresses.ts
 # Backend evidence blob store (user data, not committed)
 evidence-store/
 backend/evidence-store/
+
+# Apple authentication private keys. Keep only documentation in this directory.
+backend/secrets/*
+!backend/secrets/README.md
