@@ -32,7 +32,7 @@ Arc mainnet is expected summer 2026. The judges are Circle and Arc ecosystem peo
 
 ## 3. Users and jobs
 
-**Buyer (Flutter mobile app).** Pay a merchant with protection, hold receipts, understand exactly what the refund policy guarantees before paying, file a dispute with photo evidence from the camera, watch the verdict compute, get refunded.
+**Buyer (native iPhone app).** Pay a merchant with protection, hold receipts, understand exactly what the refund policy guarantees before paying, file a dispute with photo evidence from the camera, watch the verdict compute, get refunded.
 
 **Merchant (Next.js web dashboard).** Author a refund policy once, publish it onchain, take protected payments via link, QR, or the checkout SDK, get paid at T+0 through the vault, watch disputes resolve without touching them, collect escrow yield on the happy path.
 
@@ -42,7 +42,7 @@ Arc mainnet is expected summer 2026. The judges are Circle and Arc ecosystem peo
 
 ## 4. Product surfaces
 
-1. **Flutter mobile app (buyer only).** Scan-to-pay, receipts, policy card, dispute filing with camera, verdict view.
+1. **Native iPhone app (buyer only).** SwiftUI scan-to-pay, receipts, policy card, dispute filing with camera, and verdict view. Android is deferred and may use Flutter later.
 2. **Next.js web.** Merchant dashboard, policy builder, dispute console (read and evidence view), LP vault page, public verify page at /verify/[paymentId], and a demo storefront using the SDK.
 3. **React checkout SDK.** A small package exposing a RecourseCheckout component and a QR payload generator so any storefront can take protected payments.
 4. **Rust backend.** Event indexer, REST API, evidence blob store (hash onchain, blob offchain), demo attestor bot, demo data seeder. No business logic.
@@ -146,13 +146,13 @@ Light editorial, in the house style: cream and off-white grounds, ink-dark text,
 | Jul 22 to 24 | M1: Escrow, adapters, vault, forge tests green against vectors, deploy to Arc testnet | |
 | Jul 25 to 26 | M2: TS engine parity, verify page skeleton, seed script, progress writeup | CP2 Sun Jul 26 |
 | Jul 27 to 31 | M3: Rust indexer, API, evidence store, attestor bot; merchant dashboard and policy builder | |
-| Aug 1 to 3 | M4: Flutter buyer app core (pay, receipts, dispute with camera, verdict) | |
+| Aug 1 to 3 | M4: native iPhone buyer app core (pay, receipts, dispute with camera, verdict) | |
 | Aug 4 to 5 | M5: vault UI, SDK package, stretch gate (Gateway pay-in, EIP-3009 single-tx pay, agent-track demo) | |
 | Aug 6 to 8 | M6: Remotion video, deck, final seed data, rehearse aloud, deploy, submit | Final Sun Aug 9, submit by Aug 7 |
 
 ## 13. Risks and fallbacks
 
-USYC testnet access requires approval before the Teller can be called: apply on day one, build behind an IYieldAdapter interface, ship MockUSYCAdapter (identical interface, simulated 4.5 percent APY) as insurance; the narrative survives either path. USDC on Arc has 6 decimals on the ERC-20 interface and 18 as native gas: product logic uses the ERC-20 interface only. Do not depend on StableFX or confidential transfers. If contracts slip past Jul 25, cut vault UI polish before engine parity. If Flutter slips past Aug 3, ship dispute filing only on mobile and let receipts fall back to web. At CP2, scan the Encode project gallery for refund-adjacent entries; if any exist, lean the framing harder into the deterministic engine plus the vault, which nobody else will have.
+USYC testnet access requires approval before the Teller can be called: apply on day one, build behind an IYieldAdapter interface, ship MockUSYCAdapter (identical interface, simulated 4.5 percent APY) as insurance; the narrative survives either path. USDC on Arc has 6 decimals on the ERC-20 interface and 18 as native gas: product logic uses the ERC-20 interface only. Do not depend on StableFX or confidential transfers. If contracts slip past Jul 25, cut vault UI polish before engine parity. If the iPhone app slips past Aug 3, ship dispute filing only on mobile and let receipts fall back to web. At CP2, scan the Encode project gallery for refund-adjacent entries; if any exist, lean the framing harder into the deterministic engine plus the vault, which nobody else will have.
 
 ## 14. Open questions
 

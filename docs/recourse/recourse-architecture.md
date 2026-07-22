@@ -3,7 +3,7 @@ project: recourse
 doc: ARCHITECTURE
 version: 0.1.0
 date: 2026-07-20
-stack: Solidity (Foundry) + TypeScript engine mirror + Rust backend (axum/alloy/sqlx) + Next.js web + Flutter mobile
+stack: Solidity (Foundry) + TypeScript engine mirror + Rust backend (actix-web/alloy/sqlx) + Next.js web + native Swift iOS
 chain: Arc Testnet (chainId 5042002)
 ---
 
@@ -21,7 +21,7 @@ flowchart LR
     USDC[(USDC ERC-20)]
     USYC[(USYC)]
   end
-  MOB[Flutter buyer app] -->|sign txs, eth_call| Arc
+  MOB[Native iPhone buyer app] -->|sign txs, eth_call| Arc
   WEB[Next.js: dashboard, verify, vault, storefront+SDK] -->|wagmi/viem| Arc
   BE[Rust backend: indexer, API, evidence, attestor bot] -->|alloy: logs + eth_call + tx| Arc
   MOB -->|evidence upload, reads| BE
@@ -31,7 +31,7 @@ flowchart LR
   GW[Circle Gateway / CCTP pay-in, stretch] --> USDC
 ```
 
-Principles. Business logic lives onchain. The verdict engine has one canonical implementation (Solidity) and one mirror (TypeScript, for in-browser recompute). Rust and Dart never reimplement the engine; they eth_call it or read the API. The backend is a thin read layer plus blob store plus demo attestor. Everything downstream consumes addresses from one generated file.
+Principles. Business logic lives onchain. The verdict engine has one canonical implementation (Solidity) and one mirror (TypeScript, for in-browser recompute). Rust and Swift never reimplement the engine; they eth_call it or read the API. The backend is a thin read layer plus blob store plus demo attestor. Everything downstream consumes addresses from one generated file.
 
 ## 1. Monorepo layout
 
@@ -40,9 +40,9 @@ recourse/
   contracts/            Foundry project (src, test, script)
   engine/               TS canonical mirror + policy compiler + verdict hash utils
   packages/vectors/     golden test vectors (JSON), consumed by forge AND vitest
-  backend/              Rust: axum API, alloy indexer, sqlx models, attestor bot, seeder
+  backend/              Rust: actix-web API, alloy indexer, sqlx models, attestor bot, seeder
   web/                  Next.js app (dashboard, verify, vault, storefront) + sdk/ package
-  mobile/               Flutter buyer app
+  mobile/               Native SwiftUI iPhone buyer app
   deployments/          arc-testnet.json (single source of addresses) + codegen outputs
   ops/                  docker-compose (postgres), seed scripts, demo runbook
   log.md                append-only decisions, newest first
@@ -173,7 +173,7 @@ function assign(uint256 paymentId, address newBeneficiary) external;
 // only current beneficiary; used by the vault after advancing the merchant; emit Assigned
 
 function previewVerdict(uint256 paymentId) external view returns (Verdict memory, bytes32 verdictHash);
-// public view for the verify page, Rust, and Flutter; the eth_call surface
+// public view for the verify page, Rust, and Swift; the eth_call surface
 ```
 
 Reentrancy guards on all fund-moving functions. Pull-style accounting is unnecessary because transfers are USDC push at settle, but keep nonReentrant everywhere anyway.
@@ -224,11 +224,11 @@ One canonical engine (Solidity PolicyEngine.compute). One mirror (engine/ in Typ
 }
 ```
 
-CI gates: forge test loads vectors via stdJson and asserts PolicyEngine output; vitest loads the same file and asserts the TS engine. Any engine change ships with updated vectors and both suites green in the same commit. Rust and Flutter consume verdicts exclusively through escrow.previewVerdict (eth_call) or the API. There is no third or fourth implementation, ever.
+CI gates: forge test loads vectors via stdJson and asserts PolicyEngine output; vitest loads the same file and asserts the TS engine. Any engine change ships with updated vectors and both suites green in the same commit. Rust and Swift consume verdicts exclusively through escrow.previewVerdict (eth_call) or the API. There is no third or fourth implementation, ever.
 
 ## 5. Backend (Rust)
 
-Crates: axum, tokio, sqlx (postgres), alloy (provider, contract bindings, EIP-712 signing), serde, tower-http (cors), tracing, anyhow. Postgres via ops/docker-compose. Evidence blobs on local disk at data/evidence/<keccak256>, hash stored in DB, hash submitted onchain.
+Crates: actix-web, actix-cors, tokio, sqlx (postgres), alloy (provider, contract bindings, EIP-712 signing), serde, tracing, anyhow. Postgres via ops/docker-compose. Evidence blobs on local disk at data/evidence/<keccak256>, hash stored in DB, hash submitted onchain.
 
 Indexer: poll eth_getLogs every second from a persisted cursor (sub-second finality makes simple polling correct; no reorg handling needed beyond a 1-block lag). Decodes PolicyRegistered, Paid, DisputeFiled, Attested, Resolved, Released, Assigned, vault Deposit/Withdraw/Advance/Reconcile into tables.
 
@@ -256,9 +256,9 @@ App Router, wagmi v2 + viem, Tailwind. Pages: / (thin landing), /dashboard (merc
 
 web/sdk: a tiny package exporting RecourseCheckout (React) and buildPaymentRequest(). Publishing to npm is optional polish; existing as a package in the repo is enough for the pitch.
 
-## 7. Mobile (Flutter, buyer only)
+## 7. Mobile (native iPhone, buyer only)
 
-Packages: web3dart (Arc is standard EVM via Reth, legacy and 1559 txs both fine), flutter_secure_storage (local key), flutter_riverpod, mobile_scanner (QR), image_picker (camera evidence), dio (API), qr_flutter (receipts).
+The iPhone app uses SwiftUI, Observation, structured concurrency, AVFoundation, PhotosUI, Keychain, LocalAuthentication, URLSession, and a protocol-isolated EVM adapter. The full blueprint is `docs/recourse/recourse-ios-architecture.md`. Android is deferred and may use Flutter later against the same QR, API, and contract boundaries.
 
 Screens: Onboarding (generate or import key, store securely, show address + faucet pointer), Scan, Checkout Review (policy card rendered from /api/policies/:id, amount, merchant), Pay (approve + pay; two txs is fine for MVP), Receipts (list from /api/payments?buyer=), Receipt Detail (status timeline, escrow yield ticker via previewRedeem, dispute button inside window), File Dispute (claim type picker, camera capture, description; upload blobs to /api/evidence, collect hashes, sign fileDispute), Verdict (stamp treatment, refundBps, rule id, "verify on web" link to /verify/[paymentId]).
 
@@ -272,7 +272,7 @@ Amounts always strings in 6-decimal base units.
 
 ## 8. Addresses and codegen
 
-deployments/arc-testnet.json is written by the Foundry deploy script and is the only source of truth. A codegen script (ops/) emits: engine/src/addresses.ts, backend/src/addresses.rs, mobile/lib/addresses.dart. Nothing hardcodes an address. Ever.
+deployments/arc-testnet.json is written by the Foundry deploy script and is the only source of truth. A codegen script (ops/) emits: engine/src/addresses.ts, backend/src/addresses.rs, mobile/Recourse/Generated/Deployment.swift. Nothing hardcodes an address. Ever.
 
 ## 9. Environments
 
@@ -283,7 +283,7 @@ deployments/arc-testnet.json is written by the Foundry deploy script and is the 
 | DATABASE_URL | backend | Postgres from docker-compose |
 | DEMO_MODE | backend | Gates demo routes |
 | NEXT_PUBLIC_API_URL, NEXT_PUBLIC_RPC | web | |
-| API_URL, RPC_URL | mobile (dart-define) | |
+| API_URL, RPC_URL | mobile (.xcconfig) | Non-secret endpoints only |
 
 ## 10. Security posture (hackathon-grade, stated honestly)
 
