@@ -2,7 +2,7 @@ import SwiftUI
 
 enum RecourseTypography {
     static func display(size: CGFloat) -> Font {
-        .system(size: size, weight: .regular, design: .serif)
+        .system(size: size, weight: .semibold, design: .default)
     }
 }
 
