@@ -2,17 +2,37 @@ import SwiftUI
 
 struct RootView: View {
     let environment: AppEnvironment
+    @AppStorage("recourse.hasCompletedOnboarding") private var hasCompletedOnboarding = false
 
     var body: some View {
         @Bindable var router = environment.router
 
-        NavigationStack(path: $router.path) {
-            AppShellView(environment: environment)
-                .navigationDestination(for: AppRoute.self) { route in
-                    destination(for: route)
+        Group {
+            if environment.accountSession.isRestoring {
+                ProgressView()
+                    .tint(RecourseColor.ledger)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if hasCompletedOnboarding, environment.accountSession.isAuthenticated {
+                NavigationStack(path: $router.path) {
+                    AppShellView(environment: environment)
+                        .navigationDestination(for: AppRoute.self) { route in
+                            destination(for: route)
+                        }
                 }
+                .transition(.opacity)
+            } else {
+                OnboardingFlowView(accountSession: environment.accountSession) {
+                    withAnimation(.easeInOut(duration: 0.35)) {
+                        hasCompletedOnboarding = true
+                    }
+                }
+                .transition(.opacity)
+            }
         }
         .background(RecourseColor.canvas)
+        .task {
+            await environment.accountSession.restore()
+        }
     }
 
     @ViewBuilder
@@ -43,7 +63,10 @@ struct RootView: View {
                 message: "The app will read previewVerdict from Arc."
             )
         case .account:
-            AccountFoundationView(configuration: environment.configuration)
+            AccountFoundationView(
+                configuration: environment.configuration,
+                accountSession: environment.accountSession
+            )
         case .support:
             PlaceholderDetailView(
                 eyebrow: "SUPPORT",
