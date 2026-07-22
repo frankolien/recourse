@@ -8,6 +8,7 @@ use sqlx::PgPool;
 use crate::services::account_sessions;
 use crate::services::apple_auth::AppleAuthService;
 use crate::services::auth;
+use crate::services::google_auth::GoogleAuthService;
 use crate::services::AppConfig;
 
 // Buyer-signed authorization travels in this header as base64 JSON, keeping it out of the
@@ -27,6 +28,12 @@ pub struct AppleExchangeRequest {
 #[serde(rename_all = "camelCase")]
 pub struct RefreshRequest {
     refresh_token: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GoogleExchangeRequest {
+    id_token: String,
 }
 
 /// POST /api/auth/challenge - issue a one-time nonce for wallet-signature auth. Public: a
@@ -94,6 +101,39 @@ pub async fn apple_exchange(
         identity,
         body.given_name.clone(),
         body.family_name.clone(),
+    )
+    .await
+    {
+        Ok(grant) => HttpResponse::Ok().json(grant),
+        Err(error) => account_error_response("creating account session", error),
+    }
+}
+
+/// POST /api/auth/google - verify a Google Identity Services ID token and issue a Recourse
+/// account session. Google's RS256-signed, audience-bound ID token is the proof; no server
+/// nonce is needed.
+pub async fn google_exchange(
+    pool: web::Data<PgPool>,
+    google: web::Data<Option<GoogleAuthService>>,
+    body: web::Json<GoogleExchangeRequest>,
+) -> HttpResponse {
+    let Some(google) = google.get_ref().as_ref() else {
+        return error_response(503, "Sign in with Google is not configured");
+    };
+    let identity = match google.verify_id_token(&body.id_token).await {
+        Ok(identity) => identity,
+        Err(error) => {
+            tracing::warn!("Google token verification failed: {error:#}");
+            return error_response(401, "Google sign-in could not be verified");
+        }
+    };
+    match account_sessions::create_provider_session(
+        pool.get_ref(),
+        "google",
+        identity.subject,
+        identity.email,
+        identity.given_name,
+        identity.family_name,
     )
     .await
     {

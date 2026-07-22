@@ -7,6 +7,7 @@ use crate::services::apple_auth::AppleAuthService;
 use crate::services::attestor::AttestorClient;
 use crate::services::chain::ChainClient;
 use crate::services::evidence::EvidenceStore;
+use crate::services::google_auth::GoogleAuthService;
 use crate::services::AppConfig;
 
 // Assembles the actix app: CORS, shared state (one web::Data per dependency), and the
@@ -17,6 +18,7 @@ pub fn build_app(
     chain: ChainClient,
     attestor: Option<AttestorClient>,
     apple_auth: Option<AppleAuthService>,
+    google_auth: Option<GoogleAuthService>,
     evidence: EvidenceStore,
 ) -> App<
     impl actix_web::dev::ServiceFactory<
@@ -34,6 +36,7 @@ pub fn build_app(
         .app_data(web::Data::new(chain))
         .app_data(web::Data::new(attestor))
         .app_data(web::Data::new(apple_auth))
+        .app_data(web::Data::new(google_auth))
         .app_data(web::Data::new(evidence))
         .route("/health", web::get().to(handlers::health::health_check))
         .service(
@@ -73,6 +76,10 @@ pub fn build_app(
                 .route(
                     "/auth/apple",
                     web::post().to(handlers::auth::apple_exchange),
+                )
+                .route(
+                    "/auth/google",
+                    web::post().to(handlers::auth::google_exchange),
                 )
                 .route("/auth/refresh", web::post().to(handlers::auth::refresh))
                 .route("/auth/logout", web::post().to(handlers::auth::logout))

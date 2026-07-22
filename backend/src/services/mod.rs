@@ -4,6 +4,7 @@ pub mod attestor;
 pub mod auth;
 pub mod chain;
 pub mod evidence;
+pub mod google_auth;
 
 use alloy::primitives::Address;
 use anyhow::{Context, Result};
@@ -60,6 +61,9 @@ pub struct AppConfig {
     pub apple_client_id: Option<String>,
     #[allow(dead_code)]
     pub apple_private_key_path: Option<PathBuf>,
+    // Google OAuth client id (the aud of ID tokens from Google Identity Services). Absent
+    // means the Google sign-in endpoint stays disabled.
+    pub google_client_id: Option<String>,
 }
 
 fn env_or(key: &str, default: &str) -> String {
@@ -114,6 +118,7 @@ impl AppConfig {
             apple_key_id: optional_env("APPLE_KEY_ID"),
             apple_client_id: optional_env("APPLE_CLIENT_ID"),
             apple_private_key_path: optional_env("APPLE_PRIVATE_KEY_PATH").map(PathBuf::from),
+            google_client_id: optional_env("GOOGLE_CLIENT_ID"),
         })
     }
 }

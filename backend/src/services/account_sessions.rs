@@ -39,6 +39,8 @@ pub struct AppleChallenge {
 #[serde(rename_all = "camelCase")]
 pub struct AccountProfile {
     pub account_id: i64,
+    // Which social provider identifies this account ("apple" or "google").
+    pub provider: String,
     pub provider_user_id: String,
     pub email: Option<String>,
     pub given_name: Option<String>,
@@ -116,7 +118,43 @@ pub async fn create_session(
     consume_challenge(&mut transaction, nonce, now).await?;
     let account = upsert_account(
         &mut transaction,
-        identity,
+        "apple",
+        identity.subject,
+        identity.email,
+        clean_optional(given_name),
+        clean_optional(family_name),
+    )
+    .await?;
+    let grant = insert_session(&mut transaction, account, now).await?;
+
+    transaction
+        .commit()
+        .await
+        .map_err(|error| AccountAuthError::Internal(format!("committing auth session: {error}")))?;
+    Ok(grant)
+}
+
+// Session creation for a provider that verifies its own token (e.g. Google), without an
+// Apple-style server challenge. The provider's ID token is the freshness and audience
+// proof; here we only upsert the account and mint the opaque Recourse session tokens.
+pub async fn create_provider_session(
+    pool: &PgPool,
+    provider: &str,
+    subject: String,
+    email: Option<String>,
+    given_name: Option<String>,
+    family_name: Option<String>,
+) -> Result<SessionGrant, AccountAuthError> {
+    let now = now_secs();
+    let mut transaction = pool.begin().await.map_err(|error| {
+        AccountAuthError::Internal(format!("starting auth transaction: {error}"))
+    })?;
+
+    let account = upsert_account(
+        &mut transaction,
+        provider,
+        subject,
+        email,
         clean_optional(given_name),
         clean_optional(family_name),
     )
@@ -145,12 +183,13 @@ pub async fn refresh_session(
             i64,
             i64,
             String,
+            String,
             Option<String>,
             Option<String>,
             Option<String>,
         ),
     >(
-        "SELECT s.session_id, a.account_id, a.apple_subject, a.email, a.given_name, a.family_name \
+        "SELECT s.session_id, a.account_id, a.provider, a.provider_subject, a.email, a.given_name, a.family_name \
          FROM account_sessions s JOIN accounts a ON a.account_id = s.account_id \
          WHERE s.refresh_token_hash = $1 AND s.revoked_at IS NULL AND s.refresh_expires_at > $2 \
          FOR UPDATE",
@@ -164,10 +203,11 @@ pub async fn refresh_session(
 
     let account = AccountProfile {
         account_id: row.1,
-        provider_user_id: row.2,
-        email: row.3,
-        given_name: row.4,
-        family_name: row.5,
+        provider: row.2,
+        provider_user_id: row.3,
+        email: row.4,
+        given_name: row.5,
+        family_name: row.6,
     };
     let access_token = random_token();
     let replacement_refresh_token = random_token();
@@ -204,8 +244,8 @@ pub async fn account_for_access_token(
     pool: &PgPool,
     access_token: &str,
 ) -> Result<AccountProfile, AccountAuthError> {
-    let row = sqlx::query_as::<_, (i64, String, Option<String>, Option<String>, Option<String>)>(
-        "SELECT a.account_id, a.apple_subject, a.email, a.given_name, a.family_name \
+    let row = sqlx::query_as::<_, (i64, String, String, Option<String>, Option<String>, Option<String>)>(
+        "SELECT a.account_id, a.provider, a.provider_subject, a.email, a.given_name, a.family_name \
          FROM account_sessions s JOIN accounts a ON a.account_id = s.account_id \
          WHERE s.access_token_hash = $1 AND s.revoked_at IS NULL AND s.access_expires_at > $2",
     )
@@ -218,10 +258,11 @@ pub async fn account_for_access_token(
 
     Ok(AccountProfile {
         account_id: row.0,
-        provider_user_id: row.1,
-        email: row.2,
-        given_name: row.3,
-        family_name: row.4,
+        provider: row.1,
+        provider_user_id: row.2,
+        email: row.3,
+        given_name: row.4,
+        family_name: row.5,
     })
 }
 
@@ -265,34 +306,48 @@ async fn consume_challenge(
 
 async fn upsert_account(
     transaction: &mut Transaction<'_, Postgres>,
-    identity: VerifiedAppleIdentity,
+    provider: &str,
+    subject: String,
+    email: Option<String>,
     given_name: Option<String>,
     family_name: Option<String>,
 ) -> Result<AccountProfile, AccountAuthError> {
-    let row = sqlx::query_as::<_, (i64, String, Option<String>, Option<String>, Option<String>)>(
-        "INSERT INTO accounts (apple_subject, email, given_name, family_name) \
-         VALUES ($1, $2, $3, $4) \
-         ON CONFLICT (apple_subject) DO UPDATE SET \
+    let row = sqlx::query_as::<
+        _,
+        (
+            i64,
+            String,
+            String,
+            Option<String>,
+            Option<String>,
+            Option<String>,
+        ),
+    >(
+        "INSERT INTO accounts (provider, provider_subject, email, given_name, family_name) \
+         VALUES ($1, $2, $3, $4, $5) \
+         ON CONFLICT (provider, provider_subject) DO UPDATE SET \
            email = COALESCE(EXCLUDED.email, accounts.email), \
            given_name = COALESCE(EXCLUDED.given_name, accounts.given_name), \
            family_name = COALESCE(EXCLUDED.family_name, accounts.family_name), \
            updated_at = now() \
-         RETURNING account_id, apple_subject, email, given_name, family_name",
+         RETURNING account_id, provider, provider_subject, email, given_name, family_name",
     )
-    .bind(identity.subject)
-    .bind(identity.email)
+    .bind(provider)
+    .bind(subject)
+    .bind(email)
     .bind(given_name)
     .bind(family_name)
     .fetch_one(&mut **transaction)
     .await
-    .map_err(|error| AccountAuthError::Internal(format!("saving Apple account: {error}")))?;
+    .map_err(|error| AccountAuthError::Internal(format!("saving {provider} account: {error}")))?;
 
     Ok(AccountProfile {
         account_id: row.0,
-        provider_user_id: row.1,
-        email: row.2,
-        given_name: row.3,
-        family_name: row.4,
+        provider: row.1,
+        provider_user_id: row.2,
+        email: row.3,
+        given_name: row.4,
+        family_name: row.5,
     })
 }
 
