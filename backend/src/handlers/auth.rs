@@ -4,11 +4,17 @@ use base64::Engine;
 use serde::Deserialize;
 use serde_json::json;
 use sqlx::PgPool;
+use uuid::Uuid;
+use webauthn_rs::prelude::{
+    Passkey, PasskeyAuthentication, PasskeyRegistration, PublicKeyCredential,
+    RegisterPublicKeyCredential,
+};
 
 use crate::services::account_sessions;
 use crate::services::apple_auth::AppleAuthService;
 use crate::services::auth;
 use crate::services::google_auth::GoogleAuthService;
+use crate::services::passkey::PasskeyService;
 use crate::services::AppConfig;
 
 // Buyer-signed authorization travels in this header as base64 JSON, keeping it out of the
@@ -34,6 +40,49 @@ pub struct RefreshRequest {
 #[serde(rename_all = "camelCase")]
 pub struct GoogleExchangeRequest {
     id_token: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EmailRegisterRequest {
+    email: String,
+    password: String,
+    given_name: Option<String>,
+    family_name: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct EmailLoginRequest {
+    email: String,
+    password: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PasskeyRegisterStartRequest {
+    email: String,
+    given_name: Option<String>,
+    family_name: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PasskeyRegisterFinishRequest {
+    challenge_id: String,
+    credential: RegisterPublicKeyCredential,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PasskeyLoginStartRequest {
+    email: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PasskeyLoginFinishRequest {
+    challenge_id: String,
+    credential: PublicKeyCredential,
 }
 
 /// POST /api/auth/challenge - issue a one-time nonce for wallet-signature auth. Public: a
@@ -142,6 +191,294 @@ pub async fn google_exchange(
     }
 }
 
+/// POST /api/auth/email/register - create an email+password account and issue a session.
+/// 409 if the email is already registered, 400 for a malformed email or short password.
+pub async fn email_register(
+    pool: web::Data<PgPool>,
+    body: web::Json<EmailRegisterRequest>,
+) -> HttpResponse {
+    match account_sessions::register_email(
+        pool.get_ref(),
+        &body.email,
+        &body.password,
+        body.given_name.clone(),
+        body.family_name.clone(),
+    )
+    .await
+    {
+        Ok(grant) => HttpResponse::Ok().json(grant),
+        Err(error) => account_error_response("registering email account", error),
+    }
+}
+
+/// POST /api/auth/email/login - verify an email+password pair and issue a session.
+pub async fn email_login(
+    pool: web::Data<PgPool>,
+    body: web::Json<EmailLoginRequest>,
+) -> HttpResponse {
+    match account_sessions::login_email(pool.get_ref(), &body.email, &body.password).await {
+        Ok(grant) => HttpResponse::Ok().json(grant),
+        Err(error) => account_error_response("email login", error),
+    }
+}
+
+/// POST /api/auth/passkey/register/start - begin a WebAuthn registration for an email. The
+/// account is created only on finish; here we just check the email is free and hand back the
+/// creation options plus a single-use challenge id.
+pub async fn passkey_register_start(
+    pool: web::Data<PgPool>,
+    passkey: web::Data<Option<PasskeyService>>,
+    body: web::Json<PasskeyRegisterStartRequest>,
+) -> HttpResponse {
+    let Some(service) = passkey.get_ref().as_ref() else {
+        return error_response(503, "Passkeys are not configured");
+    };
+    let email = match account_sessions::normalize_email(&body.email) {
+        Ok(email) => email,
+        Err(error) => return account_error_response("passkey registration", error),
+    };
+    match account_sessions::passkey_account_id(pool.get_ref(), &email).await {
+        Ok(Some(_)) => {
+            return error_response(409, "a passkey is already registered for this email")
+        }
+        Ok(None) => {}
+        Err(error) => return account_error_response("passkey registration", error),
+    }
+
+    let user_id = Uuid::new_v4();
+    let display = display_name(
+        body.given_name.as_deref(),
+        body.family_name.as_deref(),
+        &email,
+    );
+    let (challenge, state) = match service.start_registration(user_id, &email, &display, None) {
+        Ok(pair) => pair,
+        Err(error) => {
+            tracing::warn!("passkey register start: {error:?}");
+            return error_response(400, "could not start passkey registration");
+        }
+    };
+    let state_json = match serde_json::to_value(&state) {
+        Ok(value) => value,
+        Err(error) => {
+            tracing::error!("serializing passkey registration state: {error}");
+            return error_response(500, "internal error");
+        }
+    };
+    let challenge_id = account_sessions::new_challenge_id();
+    if let Err(error) = account_sessions::store_webauthn_ceremony(
+        pool.get_ref(),
+        &challenge_id,
+        "register",
+        Some(&email),
+        body.given_name.as_deref(),
+        body.family_name.as_deref(),
+        None,
+        &state_json,
+    )
+    .await
+    {
+        return account_error_response("passkey registration", error);
+    }
+    match passkey_start_payload(&challenge, &challenge_id) {
+        Ok(payload) => HttpResponse::Ok().json(payload),
+        Err(error) => {
+            tracing::error!("serializing passkey options: {error}");
+            error_response(500, "internal error")
+        }
+    }
+}
+
+/// POST /api/auth/passkey/register/finish - verify the authenticator's attestation, create
+/// the passkey account, store the credential, and issue a session.
+pub async fn passkey_register_finish(
+    pool: web::Data<PgPool>,
+    passkey: web::Data<Option<PasskeyService>>,
+    body: web::Json<PasskeyRegisterFinishRequest>,
+) -> HttpResponse {
+    let Some(service) = passkey.get_ref().as_ref() else {
+        return error_response(503, "Passkeys are not configured");
+    };
+    let ceremony = match account_sessions::take_webauthn_ceremony(
+        pool.get_ref(),
+        &body.challenge_id,
+        "register",
+    )
+    .await
+    {
+        Ok(ceremony) => ceremony,
+        Err(error) => return account_error_response("passkey registration", error),
+    };
+    let Some(email) = ceremony.email else {
+        return error_response(
+            400,
+            "passkey challenge is missing its registration identity",
+        );
+    };
+    let state: PasskeyRegistration = match serde_json::from_value(ceremony.state) {
+        Ok(state) => state,
+        Err(error) => {
+            tracing::error!("deserializing passkey registration state: {error}");
+            return error_response(400, "invalid passkey challenge state");
+        }
+    };
+    let credential = match service.finish_registration(&body.credential, &state) {
+        Ok(credential) => credential,
+        Err(error) => {
+            tracing::warn!("passkey register finish: {error:?}");
+            return error_response(400, "passkey registration could not be verified");
+        }
+    };
+    let credential_id = credential.cred_id().as_ref().to_vec();
+    let passkey_json = match serde_json::to_value(&credential) {
+        Ok(value) => value,
+        Err(error) => {
+            tracing::error!("serializing passkey: {error}");
+            return error_response(500, "internal error");
+        }
+    };
+    match account_sessions::create_passkey_account(
+        pool.get_ref(),
+        &email,
+        ceremony.given_name,
+        ceremony.family_name,
+        credential_id,
+        passkey_json,
+    )
+    .await
+    {
+        Ok(grant) => HttpResponse::Ok().json(grant),
+        Err(error) => account_error_response("creating passkey account", error),
+    }
+}
+
+/// POST /api/auth/passkey/login/start - begin authentication for an email's registered
+/// passkeys, returning the request options and a single-use challenge id.
+pub async fn passkey_login_start(
+    pool: web::Data<PgPool>,
+    passkey: web::Data<Option<PasskeyService>>,
+    body: web::Json<PasskeyLoginStartRequest>,
+) -> HttpResponse {
+    let Some(service) = passkey.get_ref().as_ref() else {
+        return error_response(503, "Passkeys are not configured");
+    };
+    let account =
+        match account_sessions::passkey_account_by_email(pool.get_ref(), &body.email).await {
+            Ok(Some(account)) => account,
+            Ok(None) => return error_response(404, "no passkey is registered for this email"),
+            Err(error) => return account_error_response("passkey login", error),
+        };
+    let account_id = account.account.account_id;
+    let credentials: Vec<Passkey> = account
+        .passkeys
+        .into_iter()
+        .filter_map(|value| serde_json::from_value(value).ok())
+        .collect();
+    if credentials.is_empty() {
+        return error_response(404, "no passkey is registered for this email");
+    }
+    let (challenge, state) = match service.start_authentication(&credentials) {
+        Ok(pair) => pair,
+        Err(error) => {
+            tracing::warn!("passkey login start: {error:?}");
+            return error_response(400, "could not start passkey authentication");
+        }
+    };
+    let state_json = match serde_json::to_value(&state) {
+        Ok(value) => value,
+        Err(error) => {
+            tracing::error!("serializing passkey authentication state: {error}");
+            return error_response(500, "internal error");
+        }
+    };
+    let challenge_id = account_sessions::new_challenge_id();
+    if let Err(error) = account_sessions::store_webauthn_ceremony(
+        pool.get_ref(),
+        &challenge_id,
+        "authenticate",
+        None,
+        None,
+        None,
+        Some(account_id),
+        &state_json,
+    )
+    .await
+    {
+        return account_error_response("passkey login", error);
+    }
+    match passkey_start_payload(&challenge, &challenge_id) {
+        Ok(payload) => HttpResponse::Ok().json(payload),
+        Err(error) => {
+            tracing::error!("serializing passkey options: {error}");
+            error_response(500, "internal error")
+        }
+    }
+}
+
+/// POST /api/auth/passkey/login/finish - verify the assertion, bump the credential's
+/// signature counter, and issue a session.
+pub async fn passkey_login_finish(
+    pool: web::Data<PgPool>,
+    passkey: web::Data<Option<PasskeyService>>,
+    body: web::Json<PasskeyLoginFinishRequest>,
+) -> HttpResponse {
+    let Some(service) = passkey.get_ref().as_ref() else {
+        return error_response(503, "Passkeys are not configured");
+    };
+    let ceremony = match account_sessions::take_webauthn_ceremony(
+        pool.get_ref(),
+        &body.challenge_id,
+        "authenticate",
+    )
+    .await
+    {
+        Ok(ceremony) => ceremony,
+        Err(error) => return account_error_response("passkey login", error),
+    };
+    let Some(account_id) = ceremony.account_id else {
+        return error_response(400, "passkey challenge is missing its account");
+    };
+    let state: PasskeyAuthentication = match serde_json::from_value(ceremony.state) {
+        Ok(state) => state,
+        Err(error) => {
+            tracing::error!("deserializing passkey authentication state: {error}");
+            return error_response(400, "invalid passkey challenge state");
+        }
+    };
+    let result = match service.finish_authentication(&body.credential, &state) {
+        Ok(result) => result,
+        Err(error) => {
+            tracing::warn!("passkey login finish: {error:?}");
+            return error_response(401, "passkey authentication could not be verified");
+        }
+    };
+    let account = match account_sessions::passkey_account_by_id(pool.get_ref(), account_id).await {
+        Ok(Some(account)) => account,
+        Ok(None) => return error_response(401, "passkey account no longer exists"),
+        Err(error) => return account_error_response("passkey login", error),
+    };
+    // Persist the bumped signature counter for the credential that just authenticated.
+    let mut updated: Option<(Vec<u8>, serde_json::Value)> = None;
+    for value in &account.passkeys {
+        let Ok(mut stored) = serde_json::from_value::<Passkey>(value.clone()) else {
+            continue;
+        };
+        if let Some(true) = stored.update_credential(&result) {
+            match serde_json::to_value(&stored) {
+                Ok(json) => updated = Some((stored.cred_id().as_ref().to_vec(), json)),
+                Err(error) => {
+                    tracing::error!("serializing updated passkey: {error}");
+                    return error_response(500, "internal error");
+                }
+            }
+        }
+    }
+    match account_sessions::issue_passkey_login(pool.get_ref(), account.account, updated).await {
+        Ok(grant) => HttpResponse::Ok().json(grant),
+        Err(error) => account_error_response("passkey login", error),
+    }
+}
+
 /// POST /api/auth/refresh - rotate both opaque tokens. A refresh token is single-use
 /// because the stored hash is replaced atomically under a row lock.
 pub async fn refresh(pool: web::Data<PgPool>, body: web::Json<RefreshRequest>) -> HttpResponse {
@@ -217,6 +554,36 @@ fn bearer_token(req: &HttpRequest) -> Result<&str, (u16, String)> {
         .and_then(|value| value.strip_prefix("Bearer "))
         .filter(|value| !value.trim().is_empty())
         .ok_or((401, "bearer access token required".to_string()))
+}
+
+// The WebAuthn options (CreationChallengeResponse / RequestChallengeResponse) already
+// serialize to { "publicKey": {...} } for the platform authenticator API; we merge the
+// correlation id in as a sibling so the client receives { publicKey: <options>, challengeId }.
+fn passkey_start_payload(
+    options: &impl serde::Serialize,
+    challenge_id: &str,
+) -> Result<serde_json::Value, serde_json::Error> {
+    let mut value = serde_json::to_value(options)?;
+    if let Some(object) = value.as_object_mut() {
+        object.insert("challengeId".to_string(), json!(challenge_id));
+    }
+    Ok(value)
+}
+
+// The passkey's human-facing label: the person's name if we have it, else their email.
+fn display_name(given: Option<&str>, family: Option<&str>, email: &str) -> String {
+    let full = [given, family]
+        .into_iter()
+        .flatten()
+        .map(str::trim)
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ");
+    if full.is_empty() {
+        email.to_string()
+    } else {
+        full
+    }
 }
 
 fn account_error_response(

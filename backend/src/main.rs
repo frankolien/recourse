@@ -14,6 +14,7 @@ use crate::services::attestor::AttestorClient;
 use crate::services::chain::ChainClient;
 use crate::services::evidence::EvidenceStore;
 use crate::services::google_auth::GoogleAuthService;
+use crate::services::passkey::PasskeyService;
 use crate::services::AppConfig;
 
 #[actix_web::main]
@@ -43,6 +44,7 @@ async fn main() -> Result<()> {
     let attestor = build_attestor(&config).await?;
     let apple_auth = AppleAuthService::from_config(&config)?;
     let google_auth = GoogleAuthService::from_config(&config)?;
+    let passkey = PasskeyService::from_config(&config)?;
 
     // Background indexer keeps Postgres in sync with Arc state.
     {
@@ -92,6 +94,7 @@ async fn main() -> Result<()> {
             attestor.clone(),
             apple_auth.clone(),
             google_auth.clone(),
+            passkey.clone(),
             evidence.clone(),
         )
     })

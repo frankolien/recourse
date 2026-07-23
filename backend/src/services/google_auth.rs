@@ -20,7 +20,10 @@ const GOOGLE_KEYS_URL: &str = "https://www.googleapis.com/oauth2/v3/certs";
 #[derive(Clone)]
 pub struct GoogleAuthService {
     client: Client,
-    client_id: String,
+    // Every OAuth client id we accept as the token audience: the web client, and (for the
+    // iOS app) the iOS client. Google mints a different aud per platform, so a backend
+    // serving both must trust the whole set.
+    audiences: Vec<String>,
     cached_keys: Arc<RwLock<Option<JwkSet>>>,
 }
 
@@ -45,19 +48,26 @@ struct GoogleIdentityClaims {
 
 impl GoogleAuthService {
     pub fn from_config(config: &AppConfig) -> Result<Option<Self>> {
-        match config.google_client_id.as_deref() {
-            Some(client_id) => Self::new(client_id).map(Some),
-            None => Ok(None),
+        let mut audiences = Vec::new();
+        if let Some(web) = config.google_client_id.as_deref() {
+            audiences.push(web.to_string());
         }
+        if let Some(ios) = config.google_ios_client_id.as_deref() {
+            audiences.push(ios.to_string());
+        }
+        if audiences.is_empty() {
+            return Ok(None);
+        }
+        Self::new(audiences).map(Some)
     }
 
-    fn new(client_id: &str) -> Result<Self> {
+    fn new(audiences: Vec<String>) -> Result<Self> {
         Ok(Self {
             client: Client::builder()
                 .https_only(true)
                 .build()
                 .context("building Google auth HTTP client")?,
-            client_id: client_id.to_string(),
+            audiences,
             cached_keys: Arc::new(RwLock::new(None)),
         })
     }
@@ -71,7 +81,7 @@ impl GoogleAuthService {
         let decoding_key = self.decoding_key(&key_id).await?;
         let mut validation = Validation::new(Algorithm::RS256);
         validation.set_issuer(&GOOGLE_ISSUERS);
-        validation.set_audience(&[self.client_id.as_str()]);
+        validation.set_audience(&self.audiences);
         validation.set_required_spec_claims(&["exp", "iss", "aud", "sub"]);
         validation.leeway = 30;
 
@@ -79,7 +89,7 @@ impl GoogleAuthService {
             .context("verifying Google identity token")?;
         let claims = token_data.claims;
         if !GOOGLE_ISSUERS.contains(&claims.iss.as_str())
-            || claims.aud != self.client_id
+            || !self.audiences.iter().any(|aud| aud == &claims.aud)
             || claims.exp <= now_secs()
         {
             bail!("Google identity-token claims are invalid");
@@ -141,7 +151,8 @@ mod tests {
 
     #[tokio::test]
     async fn rejects_non_jwt() {
-        let service = GoogleAuthService::new("test.apps.googleusercontent.com").unwrap();
+        let service =
+            GoogleAuthService::new(vec!["test.apps.googleusercontent.com".to_string()]).unwrap();
         assert!(service.verify_id_token("not-a-jwt").await.is_err());
     }
 }

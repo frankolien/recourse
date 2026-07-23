@@ -5,6 +5,7 @@ pub mod auth;
 pub mod chain;
 pub mod evidence;
 pub mod google_auth;
+pub mod passkey;
 
 use alloy::primitives::Address;
 use anyhow::{Context, Result};
@@ -61,9 +62,20 @@ pub struct AppConfig {
     pub apple_client_id: Option<String>,
     #[allow(dead_code)]
     pub apple_private_key_path: Option<PathBuf>,
-    // Google OAuth client id (the aud of ID tokens from Google Identity Services). Absent
-    // means the Google sign-in endpoint stays disabled.
+    // Google OAuth client id (the aud of ID tokens from Google Identity Services on web).
+    // Absent means the Google sign-in endpoint stays disabled.
     pub google_client_id: Option<String>,
+    // Google OAuth iOS client id. iOS Google Sign-In mints ID tokens with the iOS client
+    // as aud, so the verifier accepts this in addition to the web client id.
+    pub google_ios_client_id: Option<String>,
+    // Allowed browser origins for CORS. Empty means permissive (dev/demo fallback); set
+    // CORS_ALLOWED_ORIGINS (comma-separated) in production to lock it to the web app.
+    pub cors_allowed_origins: Vec<String>,
+    // WebAuthn / passkeys. rp_id is the bare domain the iOS app is associated with (its
+    // apple-app-site-association webcredentials domain, e.g. recourse.app); rp_origin is
+    // https://<rp_id>. Both absent means the passkey endpoints stay disabled.
+    pub webauthn_rp_id: Option<String>,
+    pub webauthn_rp_origin: Option<String>,
 }
 
 fn env_or(key: &str, default: &str) -> String {
@@ -119,6 +131,17 @@ impl AppConfig {
             apple_client_id: optional_env("APPLE_CLIENT_ID"),
             apple_private_key_path: optional_env("APPLE_PRIVATE_KEY_PATH").map(PathBuf::from),
             google_client_id: optional_env("GOOGLE_CLIENT_ID"),
+            google_ios_client_id: optional_env("GOOGLE_IOS_CLIENT_ID"),
+            cors_allowed_origins: optional_env("CORS_ALLOWED_ORIGINS")
+                .map(|raw| {
+                    raw.split(',')
+                        .map(|origin| origin.trim().to_string())
+                        .filter(|origin| !origin.is_empty())
+                        .collect()
+                })
+                .unwrap_or_default(),
+            webauthn_rp_id: optional_env("WEBAUTHN_RP_ID"),
+            webauthn_rp_origin: optional_env("WEBAUTHN_RP_ORIGIN"),
         })
     }
 }

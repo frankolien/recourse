@@ -1,0 +1,14 @@
+# Keep the build context small: only backend/ source and deployments/ are copied.
+**/target
+**/node_modules
+**/.next
+**/.env
+**/.env.local
+**/evidence-store
+web
+ios
+docs
+engine
+ops
+.git
+*.log

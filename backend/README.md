@@ -34,6 +34,44 @@ The indexer polls Arc every `INDEX_INTERVAL_SECS` (default 15), reading every
 payment and policy into Postgres and pulling each disputed payment's verdict from
 the contract's `previewVerdict`.
 
+## Deploy (Railway)
+
+`Dockerfile` (repo root, build context = repo root) and `railway.json` drive the deploy.
+Railway builds the Dockerfile; the image bundles `deployments/arc-testnet.json` (contract
+addresses are read from it at runtime, R3), and `sqlx::migrate!` runs the migrations on
+boot, so a fresh database self-provisions. Railway injects `PORT` and the app binds to it;
+`/health` is the healthcheck (pinned in `railway.json`). Testnet only (R7).
+
+1. **New project -> Deploy from repo.** Leave the service root directory at the repo root:
+   the Dockerfile copies from `backend/` and `deployments/`, so it needs the whole repo as
+   build context. `railway.json` pins the Dockerfile builder.
+2. **Add a PostgreSQL database** to the project. In the backend service Variables, set
+   `DATABASE_URL = ${{Postgres.DATABASE_URL}}` (a reference to the DB service).
+3. **Add a Volume** to the backend service mounted at `/data`. The image already points
+   `EVIDENCE_DIR` at `/data/evidence-store`, so evidence blobs survive redeploys.
+4. **Set the service Variables** (secrets):
+
+   ```
+   CORS_ALLOWED_ORIGINS=https://<your-web-domain>
+   GOOGLE_CLIENT_ID=<web-client-id>.apps.googleusercontent.com
+   GOOGLE_IOS_CLIENT_ID=<ios-client-id>.apps.googleusercontent.com
+   ADMIN_API_KEY=<openssl rand -hex 32>
+   WEBAUTHN_RP_ID=<your-domain>            # passkeys; see below
+   WEBAUTHN_RP_ORIGIN=https://<your-domain>
+   # Optional attestor + automated resolver:
+   ATTESTOR_PK=0x<testnet-throwaway>
+   ATTESTOR_AUTO_RESOLVE=true
+   # Optional Sign in with Apple: APPLE_TEAM_ID / APPLE_KEY_ID / APPLE_CLIENT_ID (+ the .p8)
+   ```
+5. **Deploy**, then generate a public domain (service Settings -> Networking -> Generate
+   Domain). Confirm `https://<app>.up.railway.app/health` returns status/chainId/indexedPayments,
+   and check the deploy logs for "listening on" and the indexer ticking.
+
+Point the web and iOS clients at the generated Railway URL. **iOS passkeys need a custom
+domain**, not `*.up.railway.app`: `WEBAUTHN_RP_ID` must be a domain you control and can serve
+`/.well-known/apple-app-site-association` from, so attach a custom domain in Railway and use
+it for the WebAuthn RP id/origin.
+
 ## Endpoints
 
 | Method | Path | Auth | Returns |
@@ -48,6 +86,13 @@ the contract's `previewVerdict`.
 | POST | `/api/auth/challenge` | none | issue a one-time nonce for wallet-signature auth |
 | POST | `/api/auth/apple/challenge` | none | issue a one-time nonce for native Apple authentication |
 | POST | `/api/auth/apple` | Apple code | verify Apple and issue a Recourse account session |
+| POST | `/api/auth/google` | Google ID token | verify a Google ID token (web or iOS audience) and issue a session |
+| POST | `/api/auth/email/register` | email + password | create an email/password account and issue a session |
+| POST | `/api/auth/email/login` | email + password | verify an email/password pair and issue a session |
+| POST | `/api/auth/passkey/register/start` | none | begin a WebAuthn registration for an email; returns creation options + a challenge id |
+| POST | `/api/auth/passkey/register/finish` | passkey attestation | verify the authenticator, create the account, issue a session |
+| POST | `/api/auth/passkey/login/start` | none | begin authentication for an email's passkeys; returns request options + a challenge id |
+| POST | `/api/auth/passkey/login/finish` | passkey assertion | verify the assertion, bump the counter, issue a session |
 | POST | `/api/auth/refresh` | refresh token | rotate an account session |
 | POST | `/api/auth/logout` | account bearer | revoke an account session |
 | GET | `/api/me` | account bearer | current Recourse account profile |
@@ -72,6 +117,39 @@ directly with Apple, verifies Apple's RS256 identity token, audience, expiry, an
 then returns opaque access and refresh tokens. Only token hashes are stored in Postgres.
 Access tokens last 15 minutes; refresh tokens last 30 days and rotate on every refresh.
 
+**Sign in with Google** (`POST /api/auth/google`) takes the ID token from Google Identity
+Services. The backend verifies its RS256 signature against Google's JWKS, the issuer, the
+expiry, and that the audience is one of the configured OAuth client ids. Set
+`GOOGLE_CLIENT_ID` (web) and, for the iOS app, `GOOGLE_IOS_CLIENT_ID`; the same endpoint
+serves both because it accepts either audience. No server nonce is needed: Google's token
+is already short-lived and audience-bound.
+
+**Email and password** (`POST /api/auth/email/register`, `.../login`) is the no-provider
+path. The account (`provider='email'`) stores an Argon2id hash, never the plaintext.
+Register returns `409` if the email is taken and `400` for a malformed email or a password
+under 8 characters; login returns a uniform `401` so it never reveals which emails exist.
+This build has no verification email; the address is trusted on submission.
+
+**Passkeys (WebAuthn)** are an email-first ceremony in two round-trips each. Register:
+`register/start` checks the email is free and returns the WebAuthn creation options plus a
+single-use `challengeId`; the authenticator (iOS platform passkey) produces an attestation
+that `register/finish` verifies before creating the `provider='passkey'` account, storing
+the credential, and issuing a session. Login mirrors it (`login/start` → `login/finish`),
+verifying the assertion and bumping the credential's signature counter. The in-flight
+ceremony state (`PasskeyRegistration`/`PasskeyAuthentication`) is parked in a single-use,
+5-minute `webauthn_ceremonies` row, consumed by `DELETE ... RETURNING` so a challenge is
+good for exactly one finish. Passkeys are enabled only when `WEBAUTHN_RP_ID` and
+`WEBAUTHN_RP_ORIGIN` are set (otherwise the endpoints return `503`).
+
+For **iOS** passkeys, `WEBAUTHN_RP_ID` is the bare domain the app is associated with (e.g.
+`recourse.app`) and `WEBAUTHN_RP_ORIGIN` is `https://<rp_id>` (iOS platform passkeys set the
+clientData origin to exactly that). The app needs the `Associated Domains` entitlement
+(`webcredentials:recourse.app`) and an `apple-app-site-association` file served at
+`https://recourse.app/.well-known/apple-app-site-association` listing `TEAMID.bundle.id`
+under `webcredentials`. Because that requires a real HTTPS domain, iOS passkeys are tested
+against the deployed backend, not localhost.
+
+All of these sign-in paths mint the same opaque access + refresh tokens as Apple.
 These account tokens authorize profile and onboarding APIs only. They do not replace the
 wallet signature required for payment-scoped writes.
 

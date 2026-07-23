@@ -1,6 +1,27 @@
 use actix_cors::Cors;
+use actix_web::http::header::{self, HeaderName};
 use actix_web::{web, App};
 use sqlx::PgPool;
+
+// Build the CORS layer. With no configured origins we fall back to permissive so local
+// dev and the demo just work; in production CORS_ALLOWED_ORIGINS locks it to the web app.
+fn build_cors(origins: &[String]) -> Cors {
+    if origins.is_empty() {
+        return Cors::permissive();
+    }
+    let mut cors = Cors::default()
+        .allowed_methods(vec!["GET", "POST", "OPTIONS"])
+        .allowed_headers(vec![
+            header::CONTENT_TYPE,
+            header::AUTHORIZATION,
+            HeaderName::from_static("x-recourse-auth"),
+        ])
+        .max_age(3600);
+    for origin in origins {
+        cors = cors.allowed_origin(origin);
+    }
+    cors
+}
 
 use crate::handlers;
 use crate::services::apple_auth::AppleAuthService;
@@ -8,10 +29,13 @@ use crate::services::attestor::AttestorClient;
 use crate::services::chain::ChainClient;
 use crate::services::evidence::EvidenceStore;
 use crate::services::google_auth::GoogleAuthService;
+use crate::services::passkey::PasskeyService;
 use crate::services::AppConfig;
 
 // Assembles the actix app: CORS, shared state (one web::Data per dependency), and the
-// route table. main.rs stays thin; all routing lives here.
+// route table. main.rs stays thin; all routing lives here. The dependencies are injected
+// one web::Data each, hence the argument count.
+#[allow(clippy::too_many_arguments)]
 pub fn build_app(
     pool: PgPool,
     config: AppConfig,
@@ -19,6 +43,7 @@ pub fn build_app(
     attestor: Option<AttestorClient>,
     apple_auth: Option<AppleAuthService>,
     google_auth: Option<GoogleAuthService>,
+    passkey: Option<PasskeyService>,
     evidence: EvidenceStore,
 ) -> App<
     impl actix_web::dev::ServiceFactory<
@@ -30,13 +55,14 @@ pub fn build_app(
     >,
 > {
     App::new()
-        .wrap(Cors::permissive())
+        .wrap(build_cors(&config.cors_allowed_origins))
         .app_data(web::Data::new(pool))
         .app_data(web::Data::new(config))
         .app_data(web::Data::new(chain))
         .app_data(web::Data::new(attestor))
         .app_data(web::Data::new(apple_auth))
         .app_data(web::Data::new(google_auth))
+        .app_data(web::Data::new(passkey))
         .app_data(web::Data::new(evidence))
         .route("/health", web::get().to(handlers::health::health_check))
         .service(
@@ -80,6 +106,30 @@ pub fn build_app(
                 .route(
                     "/auth/google",
                     web::post().to(handlers::auth::google_exchange),
+                )
+                .route(
+                    "/auth/email/register",
+                    web::post().to(handlers::auth::email_register),
+                )
+                .route(
+                    "/auth/email/login",
+                    web::post().to(handlers::auth::email_login),
+                )
+                .route(
+                    "/auth/passkey/register/start",
+                    web::post().to(handlers::auth::passkey_register_start),
+                )
+                .route(
+                    "/auth/passkey/register/finish",
+                    web::post().to(handlers::auth::passkey_register_finish),
+                )
+                .route(
+                    "/auth/passkey/login/start",
+                    web::post().to(handlers::auth::passkey_login_start),
+                )
+                .route(
+                    "/auth/passkey/login/finish",
+                    web::post().to(handlers::auth::passkey_login_finish),
                 )
                 .route("/auth/refresh", web::post().to(handlers::auth::refresh))
                 .route("/auth/logout", web::post().to(handlers::auth::logout))
