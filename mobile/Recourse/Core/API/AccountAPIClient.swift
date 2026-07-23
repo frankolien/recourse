@@ -177,3 +177,52 @@ private struct APIErrorBody: Decodable {
 private struct EmptyResponse: Decodable {
     init() {}
 }
+
+#if DEBUG
+actor PreviewAccountAPI: AccountAPI {
+    private let account = AuthenticatedAccount(
+        accountID: 1,
+        providerUserID: "preview-apple-user",
+        email: "frank@recourse.app",
+        givenName: "Frank",
+        familyName: "Olien"
+    )
+
+    func appleChallenge() async throws -> AppleAuthChallenge {
+        AppleAuthChallenge(
+            nonce: "preview-authentication-nonce",
+            expiresAt: 4_000_000_000,
+            ttlSecs: 300
+        )
+    }
+
+    func exchangeAppleCode(
+        authorizationCode: String,
+        nonce: String,
+        givenName: String?,
+        familyName: String?
+    ) async throws -> AccountSessionGrant {
+        grant
+    }
+
+    func refresh(refreshToken: String) async throws -> AccountSessionGrant {
+        grant
+    }
+
+    func me(accessToken: String) async throws -> AuthenticatedAccount {
+        account
+    }
+
+    func logout(accessToken: String) async throws {}
+
+    private var grant: AccountSessionGrant {
+        AccountSessionGrant(
+            accessToken: "preview-access-token",
+            refreshToken: "preview-refresh-token",
+            accessExpiresAt: 4_000_000_000,
+            refreshExpiresAt: 4_100_000_000,
+            account: account
+        )
+    }
+}
+#endif

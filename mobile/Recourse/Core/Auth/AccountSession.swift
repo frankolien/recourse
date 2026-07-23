@@ -242,3 +242,11 @@ private extension String {
             .joined()
     }
 }
+
+#if DEBUG
+extension AccountSession {
+    static func preview() -> AccountSession {
+        AccountSession(api: PreviewAccountAPI())
+    }
+}
+#endif

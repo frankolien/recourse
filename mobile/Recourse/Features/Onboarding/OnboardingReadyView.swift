@@ -2,6 +2,7 @@ import SwiftUI
 
 struct OnboardingReadyView: View {
     let role: OnboardingRole
+    let walletAddress: EthereumAddress?
     let onComplete: () -> Void
 
     @State private var hasAppeared = false
@@ -108,11 +109,11 @@ struct OnboardingReadyView: View {
             Spacer(minLength: compact ? 28 : 42)
 
             VStack(spacing: 8) {
-                Text("Your \(role.rawValue.lowercased()) workspace is ready.")
+                Text(readyTitle)
                     .font(RecourseTypography.display(size: compact ? 31 : 36))
                     .foregroundStyle(RecourseColor.ink)
                     .multilineTextAlignment(.center)
-                Text("Review the terms, approve the payment, and keep a receipt that can prove its own outcome.")
+                Text(readyMessage)
                     .font(.system(size: 14))
                     .foregroundStyle(RecourseColor.muted)
                     .multilineTextAlignment(.center)
@@ -127,7 +128,7 @@ struct OnboardingReadyView: View {
 
             Spacer(minLength: 4)
 
-            Button("Open Recourse", action: onComplete)
+            Button(role == .buyer ? "Open Recourse" : "Continue to merchant workspace", action: onComplete)
                 .buttonStyle(RecoursePrimaryButtonStyle())
         }
         .padding(.horizontal, 22)
@@ -147,8 +148,22 @@ struct OnboardingReadyView: View {
         }
         .frame(maxWidth: .infinity)
     }
+
+    private var readyTitle: String {
+        role == .buyer ? "Your buyer wallet is ready." : "Your merchant workspace is ready."
+    }
+
+    private var readyMessage: String {
+        if role == .merchant {
+            return "Merchant operations continue in the Recourse web dashboard, using this same account."
+        }
+        if let walletAddress {
+            return "\(walletAddress.value.prefix(8))...\(walletAddress.value.suffix(6)) is ready for protected Arc payments."
+        }
+        return "Review the terms, approve the payment, and keep a receipt that can prove its own outcome."
+    }
 }
 
 #Preview("Ready") {
-    OnboardingReadyView(role: .buyer, onComplete: {})
+    OnboardingReadyView(role: .buyer, walletAddress: nil, onComplete: {})
 }

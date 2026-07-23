@@ -114,6 +114,62 @@ final class AccountSessionTests: XCTestCase {
     }
 }
 
+final class WorkspaceRoutingTests: XCTestCase {
+    func testRestoringAlwaysShowsTheRestorationBoundary() {
+        let destination = WorkspaceRouting.destination(
+            isRestoring: true,
+            isAuthenticated: true,
+            hasCompletedOnboarding: true,
+            storedRole: OnboardingRole.buyer.rawValue
+        )
+
+        XCTAssertEqual(destination, .restoring)
+    }
+
+    func testBuyerRoleRoutesToTheNativeBuyerApp() {
+        let destination = WorkspaceRouting.destination(
+            isRestoring: false,
+            isAuthenticated: true,
+            hasCompletedOnboarding: true,
+            storedRole: OnboardingRole.buyer.rawValue
+        )
+
+        XCTAssertEqual(destination, .buyerApp)
+    }
+
+    func testMerchantRoleRoutesToTheWebHandoff() {
+        let destination = WorkspaceRouting.destination(
+            isRestoring: false,
+            isAuthenticated: true,
+            hasCompletedOnboarding: true,
+            storedRole: OnboardingRole.merchant.rawValue
+        )
+
+        XCTAssertEqual(destination, .merchantWeb)
+    }
+
+    func testMissingOrInvalidRoleReturnsToOnboarding() {
+        XCTAssertEqual(
+            WorkspaceRouting.destination(
+                isRestoring: false,
+                isAuthenticated: true,
+                hasCompletedOnboarding: true,
+                storedRole: ""
+            ),
+            .onboarding
+        )
+        XCTAssertEqual(
+            WorkspaceRouting.destination(
+                isRestoring: false,
+                isAuthenticated: false,
+                hasCompletedOnboarding: true,
+                storedRole: OnboardingRole.buyer.rawValue
+            ),
+            .onboarding
+        )
+    }
+}
+
 private actor AccountSessionMemoryStore: SecureDataStore {
     private var values: [String: Data] = [:]
 

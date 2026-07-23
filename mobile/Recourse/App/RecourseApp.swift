@@ -12,6 +12,6 @@ struct RecourseApp: App {
     }
 }
 
-#Preview("First launc") {
-    OnboardingFlowView(accountSession: AccountSession(), onComplete: {})
+#Preview("First launch") {
+    OnboardingFlowView(accountSession: .preview(), onComplete: { _ in })
 }

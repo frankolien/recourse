@@ -290,10 +290,12 @@ struct OnboardingSignInView: View {
                     .font(RecourseTypography.display(size: compact ? 29 : 33))
                     .foregroundStyle(RecourseColor.ink)
                     .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(mode.subtitle)
                     .font(.system(size: 14))
                     .foregroundStyle(RecourseColor.muted)
                     .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             SignInWithAppleButton(
@@ -396,7 +398,7 @@ struct OnboardingSignInView: View {
 #Preview("Authentication") {
     OnboardingSignInView(
         mode: .signIn,
-        accountSession: AccountSession(),
+        accountSession: .preview(),
         onBack: {},
         onAuthenticated: {}
     )

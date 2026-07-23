@@ -5,16 +5,29 @@ private enum OnboardingStage: Int {
     case signupStory
     case authentication
     case role
+    case wallet
     case ready
 }
 
 struct OnboardingFlowView: View {
     let accountSession: AccountSession
-    let onComplete: () -> Void
+    let onComplete: (OnboardingRole) -> Void
+    private let buyerSigner: any BuyerSigner
     @State private var stage: OnboardingStage = .welcome
     @State private var authenticationMode: OnboardingAuthenticationMode = .signUp
     @State private var authenticationBackTarget: OnboardingStage = .welcome
     @State private var selectedRole: OnboardingRole = .buyer
+    @State private var walletAddress: EthereumAddress?
+
+    init(
+        accountSession: AccountSession,
+        buyerSigner: any BuyerSigner = TestnetLocalSigner(),
+        onComplete: @escaping (OnboardingRole) -> Void
+    ) {
+        self.accountSession = accountSession
+        self.buyerSigner = buyerSigner
+        self.onComplete = onComplete
+    }
 
     var body: some View {
         ZStack {
@@ -46,11 +59,24 @@ struct OnboardingFlowView: View {
                         onBack: { advance(to: .authentication) },
                         onContinue: { role in
                             selectedRole = role
+                            advance(to: role == .buyer ? .wallet : .ready)
+                        }
+                    )
+                case .wallet:
+                    OnboardingWalletSetupView(
+                        signer: buyerSigner,
+                        onBack: { advance(to: .role) },
+                        onContinue: { address in
+                            walletAddress = address
                             advance(to: .ready)
                         }
                     )
                 case .ready:
-                    OnboardingReadyView(role: selectedRole, onComplete: onComplete)
+                    OnboardingReadyView(
+                        role: selectedRole,
+                        walletAddress: walletAddress,
+                        onComplete: { onComplete(selectedRole) }
+                    )
                 }
             }
             .id(stage)

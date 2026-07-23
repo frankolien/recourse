@@ -1,6 +1,6 @@
 import SwiftUI
 
-enum OnboardingRole: String, CaseIterable {
+enum OnboardingRole: String, CaseIterable, Codable, Sendable {
     case buyer = "Buyer"
     case merchant = "Merchant"
 
@@ -16,6 +16,155 @@ enum OnboardingRole: String, CaseIterable {
         case .buyer: "person.crop.circle.fill"
         case .merchant: "storefront.fill"
         }
+    }
+}
+
+struct OnboardingWalletSetupView: View {
+    let signer: any BuyerSigner
+    let onBack: () -> Void
+    let onContinue: (EthereumAddress) -> Void
+
+    @State private var walletAddress: EthereumAddress?
+    @State private var errorMessage: String?
+    @State private var isPreparing = false
+    @State private var hasAppeared = false
+
+    var body: some View {
+        GeometryReader { proxy in
+            let compact = proxy.size.height < 760
+
+            VStack(alignment: .leading, spacing: compact ? 18 : 24) {
+                HStack {
+                    RecourseGlassIconButton(
+                        systemName: "chevron.left",
+                        accessibilityLabel: "Back",
+                        action: onBack
+                    )
+                    Spacer()
+                    Label("SECURE SETUP", systemImage: "lock.fill")
+                        .font(.system(size: 11, weight: .bold))
+                        .tracking(0.8)
+                        .foregroundStyle(RecourseColor.ledger)
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("BUYER WALLET")
+                        .recourseEyebrow()
+                    Text("Your payment key stays on this iPhone.")
+                        .font(RecourseTypography.display(size: compact ? 32 : 38))
+                        .foregroundStyle(RecourseColor.ink)
+                    Text("Recourse creates a testnet wallet in Keychain. Face ID confirms every protected payment action.")
+                        .font(.system(size: 15))
+                        .foregroundStyle(RecourseColor.muted)
+                        .lineSpacing(2)
+                }
+
+                walletCard
+
+                if let errorMessage {
+                    HStack(spacing: 12) {
+                        Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(.red)
+                        Spacer()
+                        Button("Try again") {
+                            Task { await prepareWallet() }
+                        }
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(RecourseColor.ledger)
+                    }
+                }
+
+                Spacer(minLength: 8)
+
+                Button {
+                    if let walletAddress {
+                        onContinue(walletAddress)
+                    }
+                } label: {
+                    if isPreparing {
+                        ProgressView()
+                            .tint(.white)
+                    } else {
+                        Text("Continue with this wallet")
+                    }
+                }
+                .buttonStyle(RecoursePrimaryButtonStyle())
+                .disabled(walletAddress == nil || isPreparing)
+                .opacity(walletAddress == nil ? 0.55 : 1)
+            }
+            .padding(.horizontal, 22)
+            .padding(.top, max(proxy.safeAreaInsets.top, 18))
+            .padding(.bottom, max(proxy.safeAreaInsets.bottom, 18))
+            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
+            .offset(y: hasAppeared ? 0 : 22)
+            .opacity(hasAppeared ? 1 : 0)
+        }
+        .background(RecourseColor.canvas.ignoresSafeArea())
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.6)) {
+                hasAppeared = true
+            }
+        }
+        .task {
+            await prepareWallet()
+        }
+    }
+
+    private var walletCard: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack {
+                Image(systemName: "iphone.gen3.radiowaves.left.and.right")
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(RecourseColor.ledger)
+                Spacer()
+                Text("ARC TESTNET")
+                    .font(.system(size: 10, weight: .bold))
+                    .tracking(0.8)
+                    .foregroundStyle(RecourseColor.muted)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(walletAddress == nil ? "Preparing secure wallet" : "Wallet ready")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(RecourseColor.ink)
+                Text(walletAddress.map(shortAddress) ?? "Generating your encrypted device key...")
+                    .font(.system(size: 14, weight: .medium, design: .monospaced))
+                    .foregroundStyle(RecourseColor.muted)
+                    .contentTransition(.numericText())
+            }
+
+            Divider()
+
+            Label("Encrypted in Keychain and unavailable to the Recourse server", systemImage: "checkmark.shield.fill")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(RecourseColor.ledger)
+        }
+        .padding(22)
+        .background(RecourseColor.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(RecourseColor.line, lineWidth: 1)
+        }
+    }
+
+    @MainActor
+    private func prepareWallet() async {
+        guard walletAddress == nil, !isPreparing else { return }
+        isPreparing = true
+        errorMessage = nil
+        defer { isPreparing = false }
+
+        do {
+            walletAddress = try await signer.address()
+        } catch {
+            errorMessage = "Recourse could not create the local wallet. Please try again."
+        }
+    }
+
+    private func shortAddress(_ address: EthereumAddress) -> String {
+        let value = address.value
+        return "\(value.prefix(8))...\(value.suffix(6))"
     }
 }
 

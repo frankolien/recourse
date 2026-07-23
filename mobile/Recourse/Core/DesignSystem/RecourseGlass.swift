@@ -1,5 +1,13 @@
 import SwiftUI
 
+struct RecourseScrollOffsetPreferenceKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 struct RecourseGlassIconButton: View {
     let systemName: String
     let accessibilityLabel: String
@@ -37,6 +45,26 @@ private struct RecourseGlassCircle: ViewModifier {
 extension View {
     func recourseGlassCapsule() -> some View {
         modifier(RecourseGlassCapsule())
+    }
+
+    func recourseGlassBar() -> some View {
+        modifier(RecourseGlassBar())
+    }
+}
+
+private struct RecourseGlassBar: ViewModifier {
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.glassEffect(.regular.interactive(), in: Capsule())
+        } else {
+            content
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay {
+                    Capsule().stroke(.white.opacity(0.7), lineWidth: 0.8)
+                }
+                .shadow(color: .black.opacity(0.12), radius: 24, y: 10)
+        }
     }
 }
 
