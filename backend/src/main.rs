@@ -26,12 +26,22 @@ async fn main() -> Result<()> {
         )
         .init();
 
+    // Boot-progress logs so a hang before the server binds is visible (e.g. a hosted DB
+    // that never answers), instead of the process going silent until the healthcheck fails.
+    tracing::info!("recourse-backend booting");
     let config = AppConfig::from_env()?;
+    tracing::info!("config loaded; connecting to Postgres");
+    // acquire_timeout bounds the initial connection: an unreachable DB errors loudly in a
+    // few seconds rather than hanging (on Railway, the private *.railway.internal host can
+    // hang; if it does, use the public database URL instead).
     let pool = PgPoolOptions::new()
         .max_connections(5)
+        .acquire_timeout(std::time::Duration::from_secs(10))
         .connect(&config.database_url)
         .await?;
+    tracing::info!("Postgres connected; applying migrations");
     sqlx::migrate!("./migrations").run(&pool).await?;
+    tracing::info!("migrations applied");
     // Drop any projection left over from a different deployment before indexing.
     jobs::indexer::reset_if_deployment_changed(
         &pool,
