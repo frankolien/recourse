@@ -6,7 +6,6 @@ use jsonwebtoken::{
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::RwLock;
@@ -62,29 +61,41 @@ struct AppleIdentityClaims {
 
 impl AppleAuthService {
     pub fn from_config(config: &AppConfig) -> Result<Option<Self>> {
-        let values = (
+        let identifiers = (
             config.apple_team_id.as_deref(),
             config.apple_key_id.as_deref(),
             config.apple_client_id.as_deref(),
-            config.apple_private_key_path.as_ref(),
         );
+        let has_key =
+            config.apple_private_key_path.is_some() || config.apple_private_key_p8.is_some();
 
-        let (team_id, key_id, client_id, key_path) = match values {
-            (None, None, None, None) => return Ok(None),
-            (Some(team_id), Some(key_id), Some(client_id), Some(key_path)) => {
-                (team_id, key_id, client_id, key_path)
+        let (team_id, key_id, client_id) = match identifiers {
+            (None, None, None) if !has_key => return Ok(None),
+            (Some(team_id), Some(key_id), Some(client_id)) if has_key => {
+                (team_id, key_id, client_id)
             }
             _ => bail!("Sign in with Apple is partially configured; set all APPLE_* variables"),
         };
 
-        Self::new(team_id, key_id, client_id, key_path.clone()).map(Some)
+        let private_key = match (
+            config.apple_private_key_path.as_ref(),
+            config.apple_private_key_p8.as_deref(),
+        ) {
+            (Some(_), Some(_)) => {
+                bail!("set only one of APPLE_PRIVATE_KEY_PATH or APPLE_PRIVATE_KEY_P8")
+            }
+            (Some(key_path), None) => std::fs::read(key_path)
+                .with_context(|| format!("reading Apple private key at {}", key_path.display()))?,
+            (None, Some(value)) => value.replace("\\n", "\n").into_bytes(),
+            (None, None) => unreachable!("Apple key presence checked above"),
+        };
+
+        Self::new(team_id, key_id, client_id, &private_key).map(Some)
     }
 
-    fn new(team_id: &str, key_id: &str, client_id: &str, key_path: PathBuf) -> Result<Self> {
-        let private_key = std::fs::read(&key_path)
-            .with_context(|| format!("reading Apple private key at {}", key_path.display()))?;
+    fn new(team_id: &str, key_id: &str, client_id: &str, private_key: &[u8]) -> Result<Self> {
         let signing_key =
-            EncodingKey::from_ec_pem(&private_key).context("parsing Apple Sign in private key")?;
+            EncodingKey::from_ec_pem(private_key).context("parsing Apple Sign in private key")?;
 
         Ok(Self {
             client: Client::builder()
