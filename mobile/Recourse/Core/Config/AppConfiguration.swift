@@ -58,4 +58,10 @@ struct AppConfiguration: Sendable {
         string: ProcessInfo.processInfo.environment["RECOURSE_MERCHANT_URL"]
             ?? "https://recourse.frankolien.com/dashboard"
     )!
+
+    // Google iOS OAuth client id: a public identifier (it ships in every Google-enabled
+    // app bundle), overridable for a different Google project. The backend accepts this
+    // audience via GOOGLE_IOS_CLIENT_ID.
+    static let googleIOSClientID = ProcessInfo.processInfo.environment["RECOURSE_GOOGLE_IOS_CLIENT_ID"]
+        ?? "181083896548-8f527b3qmqb9oc6iqqsduc53214lenqm.apps.googleusercontent.com"
 }

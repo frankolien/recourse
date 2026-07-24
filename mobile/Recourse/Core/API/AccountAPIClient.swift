@@ -34,6 +34,7 @@ protocol AccountAPI: Sendable {
         givenName: String?,
         familyName: String?
     ) async throws -> AccountSessionGrant
+    func exchangeGoogleToken(idToken: String) async throws -> AccountSessionGrant
     func refresh(refreshToken: String) async throws -> AccountSessionGrant
     func me(accessToken: String) async throws -> AuthenticatedAccount
     func updateProfile(
@@ -72,6 +73,16 @@ actor AccountAPIClient: AccountAPI {
             familyName: familyName
         )
         return try await send(path: "api/auth/apple", method: "POST", body: body)
+    }
+
+    // The backend verifies the Google ID token itself (signature, issuer, audience),
+    // so this exchange carries the token and nothing else.
+    func exchangeGoogleToken(idToken: String) async throws -> AccountSessionGrant {
+        try await send(
+            path: "api/auth/google",
+            method: "POST",
+            body: GoogleExchangeBody(idToken: idToken)
+        )
     }
 
     func refresh(refreshToken: String) async throws -> AccountSessionGrant {
@@ -189,6 +200,10 @@ private struct RefreshBody: Encodable {
     let refreshToken: String
 }
 
+private struct GoogleExchangeBody: Encodable {
+    let idToken: String
+}
+
 private struct ProfileUpdateBody: Encodable {
     let givenName: String?
     let familyName: String?
@@ -226,6 +241,10 @@ actor PreviewAccountAPI: AccountAPI {
         givenName: String?,
         familyName: String?
     ) async throws -> AccountSessionGrant {
+        grant
+    }
+
+    func exchangeGoogleToken(idToken: String) async throws -> AccountSessionGrant {
         grant
     }
 

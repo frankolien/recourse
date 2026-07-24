@@ -362,23 +362,32 @@ struct OnboardingSignInView: View {
             .allowsHitTesting(accountSession.isAppleSignInReady)
             .opacity(accountSession.isAppleSignInReady ? 1 : 0.55)
 
-            HStack(spacing: 12) {
-                Image("GoogleG")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 20, height: 20)
-                Text("Google sign-in coming next")
-                    .font(.system(size: 14, weight: .semibold))
-                Spacer()
+            Button {
+                Task {
+                    await accountSession.signInWithGoogle(
+                        clientID: AppConfiguration.googleIOSClientID
+                    )
+                }
+            } label: {
+                HStack(spacing: 12) {
+                    Image("GoogleG")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 20, height: 20)
+                    Text("Continue with Google")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(RecourseColor.ink)
+                    Spacer()
+                }
+                .padding(.horizontal, 18)
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
+                .background(RecourseColor.surface, in: Capsule())
+                .overlay {
+                    Capsule().stroke(RecourseColor.line, lineWidth: 1)
+                }
             }
-            .foregroundStyle(RecourseColor.muted)
-            .padding(.horizontal, 18)
-            .frame(maxWidth: .infinity)
-            .frame(height: 52)
-            .background(RecourseColor.surface, in: Capsule())
-            .overlay {
-                Capsule().stroke(RecourseColor.line, lineWidth: 1)
-            }
+            .buttonStyle(.plain)
 
             HStack(spacing: 10) {
                 authenticationOption("Email", icon: "envelope")

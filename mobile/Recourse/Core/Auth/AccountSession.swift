@@ -211,6 +211,32 @@ final class AccountSession {
         }
     }
 
+    // Full native Google flow: browser round trip with PKCE, then the backend exchange
+    // that mints the same opaque session every other provider uses.
+    func signInWithGoogle(clientID: String) async {
+        guard !isAuthenticating else { return }
+        errorMessage = nil
+        let coordinator = GoogleSignInCoordinator(clientID: clientID)
+        do {
+            let idToken = try await coordinator.signIn()
+            isAuthenticating = true
+            defer { isAuthenticating = false }
+            let sessionGrant = try await api.exchangeGoogleToken(idToken: idToken)
+            try await accept(sessionGrant)
+        } catch GoogleSignInCoordinator.GoogleSignInError.cancelled {
+            // The user closed the sheet; not an error worth a banner.
+        } catch let error as AccountAPIError {
+            switch error {
+            case .rejected(_, let message):
+                errorMessage = message
+            case .invalidResponse:
+                errorMessage = "Recourse received an invalid Google sign-in response."
+            }
+        } catch {
+            errorMessage = "Google sign-in could not be completed. Please try again."
+        }
+    }
+
     // Persists the profile on the backend and refreshes the local account from the
     // response. Returns a user-facing error message, or nil on success. Retries once
     // through the refresh token so an expired access token does not surface as a failure.

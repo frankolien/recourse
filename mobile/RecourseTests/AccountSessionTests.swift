@@ -214,6 +214,10 @@ private actor AccountAPIMock: AccountAPI {
         refreshedGrant
     }
 
+    func exchangeGoogleToken(idToken: String) async throws -> AccountSessionGrant {
+        refreshedGrant
+    }
+
     func refresh(refreshToken: String) async throws -> AccountSessionGrant {
         refreshedGrant
     }
