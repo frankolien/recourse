@@ -29,8 +29,8 @@ struct RootView: View {
                 .transition(.opacity)
             case .merchantWeb:
                 MerchantWorkspaceView(
+                    environment: environment,
                     accountLabel: environment.accountSession.account?.accountLabel ?? "Merchant account",
-                    dashboardURL: environment.configuration.merchantWebURL,
                     onUseBuyerApp: {
                         storedWorkspaceRole = OnboardingRole.buyer.rawValue
                     },
@@ -70,19 +70,23 @@ struct RootView: View {
         case .checkout(let request):
             CheckoutReviewView(request: request, environment: environment)
         case .payment(let paymentID):
-            PaymentDetailView(
-                payment: environment.paymentStore.payment(id: paymentID) ?? DemoCatalog.payment(id: paymentID),
-                router: environment.router
-            )
+            if let payment = environment.paymentStore.payment(id: paymentID) {
+                PaymentDetailView(payment: payment, router: environment.router)
+            } else {
+                missingPayment(paymentID)
+            }
         case .dispute(let paymentID):
-            DisputeFilingView(
-                payment: environment.paymentStore.payment(id: paymentID) ?? DemoCatalog.payment(id: paymentID),
-                environment: environment
-            )
+            if let payment = environment.paymentStore.payment(id: paymentID) {
+                DisputeFilingView(payment: payment, environment: environment)
+            } else {
+                missingPayment(paymentID)
+            }
         case .verdict(let paymentID):
-            VerdictDetailView(
-                payment: environment.paymentStore.payment(id: paymentID) ?? DemoCatalog.payment(id: paymentID)
-            )
+            if let payment = environment.paymentStore.payment(id: paymentID) {
+                VerdictDetailView(payment: payment)
+            } else {
+                missingPayment(paymentID)
+            }
         case .account:
             AccountFoundationView(
                 configuration: environment.configuration,
@@ -90,6 +94,17 @@ struct RootView: View {
             )
         case .support:
             SupportView()
+        }
+    }
+
+    private func missingPayment(_ paymentID: UInt64) -> some View {
+        ContentUnavailableView(
+            "Payment not indexed yet",
+            systemImage: "arrow.trianglehead.2.clockwise.rotate.90",
+            description: Text("Payment #\(paymentID) is not available from the live Arc indexer.")
+        )
+        .task {
+            await environment.paymentStore.refreshBuyer()
         }
     }
 }

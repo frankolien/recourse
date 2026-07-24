@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 enum OnboardingRole: String, CaseIterable, Codable, Sendable {
     case buyer = "Buyer"
@@ -28,6 +29,7 @@ struct OnboardingWalletSetupView: View {
     @State private var errorMessage: String?
     @State private var isPreparing = false
     @State private var hasAppeared = false
+    @State private var hasCopiedAddress = false
 
     var body: some View {
         GeometryReader { proxy in
@@ -136,10 +138,24 @@ struct OnboardingWalletSetupView: View {
                 Text(walletAddress == nil ? "Preparing secure wallet" : "Wallet ready")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(RecourseColor.ink)
-                Text(walletAddress.map(shortAddress) ?? "Generating your encrypted device key...")
-                    .font(.system(size: 12, weight: .medium, design: .monospaced))
-                    .foregroundStyle(RecourseColor.muted)
-                    .contentTransition(.numericText())
+                HStack(spacing: 10) {
+                    Text(walletAddress.map(shortAddress) ?? "Generating your encrypted device key...")
+                        .font(.system(size: 12, weight: .medium, design: .monospaced))
+                        .foregroundStyle(RecourseColor.muted)
+                        .contentTransition(.numericText())
+                    Spacer()
+                    if walletAddress != nil {
+                        Button(action: copyWalletAddress) {
+                            Label(
+                                hasCopiedAddress ? "Copied" : "Copy",
+                                systemImage: hasCopiedAddress ? "checkmark" : "doc.on.doc"
+                            )
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(RecourseColor.ledger)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
             }
 
             Divider()
@@ -173,6 +189,19 @@ struct OnboardingWalletSetupView: View {
     private func shortAddress(_ address: EthereumAddress) -> String {
         let value = address.value
         return "\(value.prefix(8))...\(value.suffix(6))"
+    }
+
+    private func copyWalletAddress() {
+        guard let walletAddress else { return }
+        UIPasteboard.general.string = walletAddress.value
+        withAnimation(.snappy(duration: 0.2)) {
+            hasCopiedAddress = true
+        }
+        Task {
+            try? await Task.sleep(for: .seconds(1.5))
+            guard !Task.isCancelled else { return }
+            hasCopiedAddress = false
+        }
     }
 }
 

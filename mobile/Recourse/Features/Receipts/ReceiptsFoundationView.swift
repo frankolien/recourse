@@ -23,7 +23,7 @@ struct ReceiptsFoundationView: View {
     }
 
     private var filteredPayments: [DemoPayment] {
-        (environment.paymentStore.payments + DemoCatalog.payments).filter { payment in
+        environment.paymentStore.payments.filter { payment in
             let queryMatch = query.isEmpty
                 || payment.merchant.localizedCaseInsensitiveContains(query)
                 || payment.item.localizedCaseInsensitiveContains(query)
@@ -56,6 +56,12 @@ struct ReceiptsFoundationView: View {
         .coordinateSpace(name: "recourse-receipts-scroll")
         .onPreferenceChange(RecourseScrollOffsetPreferenceKey.self) { newOffset in
             reportScrollDirection(newOffset)
+        }
+        .refreshable {
+            await environment.paymentStore.refreshBuyer()
+        }
+        .task {
+            await environment.paymentStore.refreshBuyer()
         }
         .background(Color.white)
     }
@@ -103,19 +109,21 @@ struct ReceiptsFoundationView: View {
                 .font(.system(size: 18, weight: .bold))
                 .foregroundStyle(RecourseColor.ink)
             HStack(alignment: .top, spacing: 0) {
-                overviewMetric("$464.00", "Currently protected", "shield.fill")
+                overviewMetric(currency(currentlyProtected), "Currently protected", "shield.fill")
                 Divider().frame(height: 62).padding(.horizontal, 14)
-                overviewMetric("$84.50", "Returned to you", "arrow.uturn.backward")
+                overviewMetric(currency(returnedToBuyer), "Returned to you", "arrow.uturn.backward")
             }
             .padding(.vertical, 6)
             Button {
-                environment.router.push(.verdict(268))
+                if let paymentID = environment.paymentStore.payments.first?.id {
+                    environment.router.push(.verdict(paymentID))
+                }
             } label: {
                 HStack(spacing: 9) {
                     Image(systemName: "checkmark.seal.fill")
                         .foregroundStyle(RecourseColor.ledger)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("6 independently reproducible receipts")
+                        Text("\(environment.paymentStore.payments.count) independently reproducible receipts")
                             .font(.system(size: 12, weight: .bold))
                             .foregroundStyle(RecourseColor.ink)
                         Text("Verified directly from Arc")
@@ -147,6 +155,29 @@ struct ReceiptsFoundationView: View {
                 .foregroundStyle(RecourseColor.muted)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var currentlyProtected: USDCAmount {
+        total(for: [.protected, .actionNeeded, .underReview])
+    }
+
+    private var returnedToBuyer: USDCAmount {
+        total(for: [.refunded])
+    }
+
+    private func total(for states: Set<DemoPaymentState>) -> USDCAmount {
+        USDCAmount(
+            baseUnits: environment.paymentStore.payments
+                .filter { states.contains($0.state) }
+                .reduce(0) { $0 + $1.amount.baseUnits }
+        )
+    }
+
+    private func currency(_ amount: USDCAmount) -> String {
+        String(
+            format: "$%.2f",
+            Double(amount.baseUnits) / Double(USDCAmount.base)
+        )
     }
 
     private var filterBar: some View {

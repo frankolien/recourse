@@ -1,4 +1,6 @@
 import SwiftUI
+import PhotosUI
+import Vision
 import VisionKit
 
 struct ScannerFoundationView: View {
@@ -10,6 +12,8 @@ struct ScannerFoundationView: View {
     @State private var scanLineOffset: CGFloat = -110
     @State private var manualCode = ""
     @State private var scanError: String?
+    @State private var selectedQRCodePhoto: PhotosPickerItem?
+    @State private var isReadingPhoto = false
 
     var body: some View {
         ZStack {
@@ -35,6 +39,10 @@ struct ScannerFoundationView: View {
             withAnimation(.linear(duration: 2).repeatForever(autoreverses: true)) {
                 scanLineOffset = 110
             }
+        }
+        .onChange(of: selectedQRCodePhoto) { _, item in
+            guard let item else { return }
+            readQRCode(from: item)
         }
     }
 
@@ -121,12 +129,21 @@ struct ScannerFoundationView: View {
 
     private var bottomPanel: some View {
         VStack(spacing: 14) {
-            Button {
-                openRequest(DemoCatalog.checkoutRequest(configuration: configuration))
-            } label: {
-                Label("Try demo checkout", systemImage: "qrcode")
+            PhotosPicker(selection: $selectedQRCodePhoto, matching: .images) {
+                HStack {
+                    Image(systemName: "photo.on.rectangle")
+                    Text(isReadingPhoto ? "Reading screenshot…" : "Choose QR from Photos")
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .bold))
+                }
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(RecourseColor.ink)
+                .padding(.horizontal, 16)
+                .frame(height: 52)
+                .background(Color.white, in: RoundedRectangle(cornerRadius: 17))
             }
-            .buttonStyle(RecoursePrimaryButtonStyle())
+            .disabled(isReadingPhoto)
 
             HStack(spacing: 12) {
                 Image(systemName: "number")
@@ -175,6 +192,40 @@ struct ScannerFoundationView: View {
         decodeAndOpen(manualCode)
     }
 
+    private func readQRCode(from item: PhotosPickerItem) {
+        isReadingPhoto = true
+        scanError = nil
+
+        Task {
+            defer {
+                isReadingPhoto = false
+                selectedQRCodePhoto = nil
+            }
+            do {
+                guard let data = try await item.loadTransferable(type: Data.self),
+                      let image = UIImage(data: data),
+                      let cgImage = image.cgImage else {
+                    throw ValidationError.invalidPaymentRequest
+                }
+                let request = VNDetectBarcodesRequest()
+                request.symbologies = [.qr]
+                let handler = VNImageRequestHandler(
+                    cgImage: cgImage,
+                    orientation: image.cgImageOrientation
+                )
+                try handler.perform([request])
+                guard let payload = request.results?
+                    .compactMap(\.payloadStringValue)
+                    .first else {
+                    throw ValidationError.invalidPaymentRequest
+                }
+                decodeAndOpen(payload)
+            } catch {
+                scanError = "No valid Recourse QR was found in that image."
+            }
+        }
+    }
+
     private func decodeAndOpen(_ value: String) {
         do {
             let payload = try paymentPayload(from: value)
@@ -210,6 +261,22 @@ struct ScannerFoundationView: View {
             }
         }
         return trimmed
+    }
+}
+
+private extension UIImage {
+    var cgImageOrientation: CGImagePropertyOrientation {
+        switch imageOrientation {
+        case .up: .up
+        case .upMirrored: .upMirrored
+        case .down: .down
+        case .downMirrored: .downMirrored
+        case .left: .left
+        case .leftMirrored: .leftMirrored
+        case .right: .right
+        case .rightMirrored: .rightMirrored
+        @unknown default: .up
+        }
     }
 }
 

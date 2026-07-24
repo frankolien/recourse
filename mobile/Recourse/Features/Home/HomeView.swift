@@ -6,8 +6,6 @@ struct HomeView: View {
     let onScanRequested: () -> Void
     @State private var previousScrollOffset: CGFloat = 0
     @State private var hidesAttention = false
-    @AppStorage("recourse.profile.givenName") private var storedGivenName = ""
-    @AppStorage("recourse.profile.familyName") private var storedFamilyName = ""
 
     init(
         environment: AppEnvironment,
@@ -19,17 +17,12 @@ struct HomeView: View {
         self.onScanRequested = onScanRequested
     }
 
+    // Profile names live on the account session (persisted via the backend profile
+    // endpoint), so the greeting updates the moment an edit saves, on every device.
     private var displayName: String {
-        let storedName = [storedGivenName, storedFamilyName]
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-            .joined(separator: " ")
-        if !storedName.isEmpty {
-            return storedName
-        }
-        return environment.accountSession.account?.displayName
+        environment.accountSession.account?.displayName
             ?? environment.accountSession.account?.email?.split(separator: "@").first.map(String.init)
-            ?? "Frank"
+            ?? "there"
     }
 
     private var activePayments: [DemoPayment] {
@@ -41,7 +34,19 @@ struct HomeView: View {
     }
 
     private var allPayments: [DemoPayment] {
-        environment.paymentStore.payments + DemoCatalog.payments
+        environment.paymentStore.payments
+    }
+
+    private var attentionPayment: DemoPayment? {
+        allPayments.first { $0.state == .actionNeeded }
+    }
+
+    private var protectedTotal: USDCAmount {
+        USDCAmount(
+            baseUnits: activePayments.reduce(into: 0) { total, payment in
+                total = total.addingReportingOverflow(payment.amount.baseUnits).partialValue
+            }
+        )
     }
 
     var body: some View {
@@ -63,6 +68,9 @@ struct HomeView: View {
                 .padding(.bottom, 164)
             }
             .scrollIndicators(.hidden)
+            .refreshable {
+                await environment.paymentStore.refreshBuyer()
+            }
         }
         .safeAreaInset(edge: .top, spacing: 0) {
             identityHeader
@@ -73,6 +81,12 @@ struct HomeView: View {
         .coordinateSpace(name: "recourse-home-scroll")
         .onPreferenceChange(RecourseScrollOffsetPreferenceKey.self) { newOffset in
             reportScrollDirection(newOffset)
+        }
+        .task {
+            while !Task.isCancelled {
+                await environment.paymentStore.refreshBuyer()
+                try? await Task.sleep(for: .seconds(10))
+            }
         }
     }
 
@@ -126,7 +140,9 @@ struct HomeView: View {
             Spacer()
 
             Button {
-                environment.router.push(.verdict(268))
+                if let paymentID = settledPayments.first?.id ?? allPayments.first?.id {
+                    environment.router.push(.verdict(paymentID))
+                }
             } label: {
                 headerAction(title: "Verify", systemImage: "checkmark.seal.fill")
             }
@@ -169,14 +185,14 @@ struct HomeView: View {
                     .font(.system(size: 19, weight: .bold))
                     .foregroundStyle(RecourseColor.ink)
                 Spacer()
-                if !hidesAttention {
+                if !hidesAttention, attentionPayment != nil {
                     Text("1 action")
                         .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(RecourseColor.ledger)
                 }
             }
 
-            if hidesAttention {
+            if hidesAttention || attentionPayment == nil {
                 protectedStatusCard
             } else {
                 attentionCard
@@ -186,21 +202,27 @@ struct HomeView: View {
     }
 
     private var attentionCard: some View {
-            HStack(spacing: 12) {
-            MerchantArtwork(
-                payment: DemoCatalog.payment(id: 284),
-                size: 58,
-                cornerRadius: 15
-            )
+        HStack(spacing: 12) {
+            if let payment = attentionPayment {
+                MerchantArtwork(
+                    payment: payment,
+                    size: 58,
+                    cornerRadius: 15
+                )
+            }
 
             Button {
-                environment.router.push(.dispute(284))
+                if let payment = attentionPayment {
+                    environment.router.push(.dispute(payment.id))
+                }
             } label: {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Evidence requested")
                         .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(RecourseColor.ink)
-                    Text("MegaStore · due today at 5:00 PM")
+                    Text(attentionPayment.map {
+                        "\($0.merchant) · \($0.orderReference)"
+                    } ?? "A protected payment needs you")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(RecourseColor.muted)
                         .lineLimit(2)
@@ -255,14 +277,14 @@ struct HomeView: View {
                 .tracking(1.4)
                 .foregroundStyle(RecourseColor.ledger)
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text("$464.00")
+                Text(currency(protectedTotal))
                     .font(.system(size: 42, weight: .medium, design: .rounded))
                     .foregroundStyle(RecourseColor.ledger)
                 Text("protected")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(RecourseColor.muted)
             }
-            Text("Across 3 payments · all policies active")
+            Text("Across \(activePayments.count) payments · indexed live from Arc")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(RecourseColor.muted)
         }
@@ -272,7 +294,7 @@ struct HomeView: View {
     private var primaryActions: some View {
         HStack(spacing: 12) {
             Button {
-                environment.router.push(.checkout(DemoCatalog.checkoutRequest(configuration: environment.configuration)))
+                onScanRequested()
             } label: {
                 Label("Pay with protection", systemImage: "arrow.up.right")
                     .font(.system(size: 15, weight: .semibold))
@@ -323,7 +345,7 @@ struct HomeView: View {
             Circle()
                 .fill(RecourseColor.ledger)
                 .frame(width: 7, height: 7)
-            Text("2,480.50 USDC available to pay")
+            Text(availableBalanceText)
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(RecourseColor.muted)
             Spacer()
@@ -348,6 +370,12 @@ struct HomeView: View {
                             .modifier(HomeFloatingSurface(cornerRadius: 19))
                     }
                     .buttonStyle(.plain)
+                }
+                if activePayments.isEmpty {
+                    liveEmptyState(
+                        title: "No active protections",
+                        detail: "Scan a merchant checkout to create your first live protected payment."
+                    )
                 }
             }
         }
@@ -392,6 +420,12 @@ struct HomeView: View {
                     if index < settledPayments.count - 1 {
                         Divider().padding(.leading, 52)
                     }
+                }
+                if settledPayments.isEmpty {
+                    liveEmptyState(
+                        title: "No settled receipts yet",
+                        detail: "Verified outcomes will appear here after settlement."
+                    )
                 }
             }
         }
@@ -438,6 +472,32 @@ struct HomeView: View {
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(RecourseColor.muted)
         }
+    }
+
+    private var availableBalanceText: String {
+        guard let balance = environment.paymentStore.balance else {
+            return "Checking live USDC balance…"
+        }
+        return "\(balance.formatted) available to pay"
+    }
+
+    private func currency(_ amount: USDCAmount) -> String {
+        let value = Double(amount.baseUnits) / Double(USDCAmount.base)
+        return String(format: "$%.2f", value)
+    }
+
+    private func liveEmptyState(title: String, detail: String) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(title)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(RecourseColor.ink)
+            Text(detail)
+                .font(.system(size: 11))
+                .foregroundStyle(RecourseColor.muted)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .modifier(HomeFloatingSurface(cornerRadius: 19))
     }
 }
 

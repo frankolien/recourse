@@ -20,7 +20,10 @@ final class AppEnvironment {
         self.configuration = configuration
         self.router = router
         self.buyerSigner = buyerSigner ?? TestnetLocalSigner()
-        self.paymentStore = paymentStore ?? BuyerPaymentStore()
+        self.paymentStore = paymentStore ?? BuyerPaymentStore(
+            configuration: configuration,
+            signer: self.buyerSigner
+        )
         self.accountSession = accountSession ?? AccountSession(
             api: AccountAPIClient(baseURL: configuration.apiURL)
         )
@@ -41,6 +44,10 @@ final class AppEnvironment {
         )
     }
 
+    func makeOrderAPIClient() -> OrderAPIClient {
+        OrderAPIClient(baseURL: configuration.apiURL)
+    }
+
     static func live() -> AppEnvironment {
         AppEnvironment(configuration: .live)
     }
@@ -49,100 +56,322 @@ final class AppEnvironment {
 @MainActor
 @Observable
 final class BuyerPaymentStore {
-    private struct StoredPayment: Codable {
-        let id: UInt64
-        let merchantAddress: String
-        let policyID: UInt64
-        let amountBaseUnits: UInt64
-        let paidAt: UInt64
-        let orderReference: String
-        var state: String?
+    private struct IndexedPayment: Decodable, Sendable {
+        let paymentId: Int64
+        let buyer: String
+        let merchant: String
+        let policyId: Int64
+        let amount: String
+        let paidAt: Int64
+        let filedAt: Int64
+        let evidenceMask: Int32
+        let status: Int32
+        let refundBps: Int32?
     }
 
-    private let defaults: UserDefaults
-    private let storageKey = "recourse.buyer.payments"
-    private(set) var payments: [DemoPayment] = []
+    private struct IndexedPolicy: Decodable, Sendable {
+        let policyId: Int64
+        let merchant: String
+        let disputeWindow: Int64
+        let policyHash: String
+    }
 
-    init(defaults: UserDefaults = .standard) {
-        self.defaults = defaults
-        restore()
+    private enum Scope: String, Sendable {
+        case buyer
+        case merchant
+    }
+
+    private let configuration: AppConfiguration
+    private let signer: any BuyerSigner
+    private let session: URLSession
+    private(set) var payments: [DemoPayment] = []
+    private(set) var merchantPayments: [DemoPayment] = []
+    private(set) var policies: [PolicyRecord] = []
+    private(set) var balance: USDCAmount?
+    private(set) var walletAddress: EthereumAddress?
+    private(set) var isLoading = false
+    private(set) var errorMessage: String?
+    private(set) var lastUpdated: Date?
+
+    init(
+        configuration: AppConfiguration = .live,
+        signer: any BuyerSigner = TestnetLocalSigner(),
+        session: URLSession = .shared
+    ) {
+        self.configuration = configuration
+        self.signer = signer
+        self.session = session
     }
 
     func record(payment: PaymentRecord, request: PaymentRequest) {
-        var stored = storedPayments
-        let entry = StoredPayment(
+        let policy = policies.first { $0.id == payment.policyID }
+        let display = displayPayment(
             id: payment.id,
             merchantAddress: payment.merchant.value,
             policyID: payment.policyID,
-            amountBaseUnits: payment.amount.baseUnits,
+            amount: payment.amount,
             paidAt: payment.paidAt,
-            orderReference: request.orderReference.value,
-            state: DemoPaymentState.protected.rawValue
+            filedAt: payment.filedAt,
+            evidenceMask: Int32(payment.evidenceMask),
+            status: Int32(payment.status.rawValue),
+            refundBPS: nil,
+            disputeWindow: policy?.disputeWindow ?? 0
         )
-        stored.removeAll { $0.id == payment.id }
-        stored.insert(entry, at: 0)
-        save(stored)
+        payments.removeAll { $0.id == payment.id }
+        payments.insert(display, at: 0)
+
+        Task {
+            try? await Task.sleep(for: .seconds(2))
+            await refreshBuyer()
+        }
     }
 
     func payment(id: UInt64) -> DemoPayment? {
         payments.first { $0.id == id }
+            ?? merchantPayments.first { $0.id == id }
     }
 
     func markDisputed(paymentID: UInt64) {
-        var stored = storedPayments
-        guard let index = stored.firstIndex(where: { $0.id == paymentID }) else { return }
-        stored[index].state = DemoPaymentState.underReview.rawValue
-        save(stored)
-    }
-
-    private var storedPayments: [StoredPayment] {
-        guard let data = defaults.data(forKey: storageKey) else { return [] }
-        return (try? JSONDecoder().decode([StoredPayment].self, from: data)) ?? []
-    }
-
-    private func restore() {
-        payments = storedPayments.map(displayPayment)
-    }
-
-    private func save(_ stored: [StoredPayment]) {
-        if let data = try? JSONEncoder().encode(stored) {
-            defaults.set(data, forKey: storageKey)
+        updateState(paymentID: paymentID, state: .underReview)
+        Task {
+            try? await Task.sleep(for: .seconds(2))
+            await refreshBuyer()
         }
-        payments = stored.map(displayPayment)
     }
 
-    private func displayPayment(_ stored: StoredPayment) -> DemoPayment {
-        let cloudCompute = DemoCatalog.payment(id: 281)
-        let paidAt = Date(timeIntervalSince1970: TimeInterval(stored.paidAt))
-        return DemoPayment(
-            id: stored.id,
-            merchant: cloudCompute.merchant,
-            item: cloudCompute.item,
-            merchantSymbol: cloudCompute.merchantSymbol,
-            merchantImageURL: cloudCompute.merchantImageURL,
-            amount: USDCAmount(baseUnits: stored.amountBaseUnits),
-            date: paidAt,
-            state: DemoPaymentState(rawValue: stored.state ?? "") ?? .protected,
-            policyName: "Policy #\(stored.policyID)",
-            protectionEnds: paidAt.addingTimeInterval(14 * 24 * 60 * 60),
-            progress: 0,
-            orderReference: shortReference(stored.orderReference)
+    func refreshBuyer() async {
+        await refresh(scope: .buyer)
+    }
+
+    func refreshMerchant() async {
+        await refresh(scope: .merchant)
+    }
+
+    private func refresh(scope: Scope) async {
+        guard !isLoading else { return }
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            let address = try await signer.address()
+            walletAddress = address
+            async let indexedPayments = fetchPayments(scope: scope, address: address)
+            async let indexedPolicies = fetchPolicies()
+
+            let (paymentRows, policyRows) = try await (
+                indexedPayments,
+                indexedPolicies
+            )
+            let policyRecords = policyRows.compactMap(policyRecord)
+            policies = policyRecords
+            let windows = Dictionary(
+                uniqueKeysWithValues: policyRecords.map { ($0.id, $0.disputeWindow) }
+            )
+            let displayPayments = paymentRows.compactMap {
+                displayPayment($0, disputeWindow: windows[UInt64($0.policyId)] ?? 0)
+            }
+
+            switch scope {
+            case .buyer:
+                payments = displayPayments
+                balance = try? await fetchBalance(address: address)
+            case .merchant:
+                merchantPayments = displayPayments
+                balance = try? await fetchBalance(address: address)
+            }
+            errorMessage = nil
+            lastUpdated = Date()
+        } catch {
+            errorMessage = "Live Arc data is unavailable. Pull to retry."
+        }
+    }
+
+    private func fetchPayments(scope: Scope, address: EthereumAddress) async throws -> [IndexedPayment] {
+        var components = URLComponents(
+            url: configuration.apiURL.appending(path: "api/payments"),
+            resolvingAgainstBaseURL: false
+        )
+        components?.queryItems = [
+            URLQueryItem(name: scope.rawValue, value: address.value),
+            URLQueryItem(name: "limit", value: "100")
+        ]
+        guard let url = components?.url else { throw URLError(.badURL) }
+        return try await decode([IndexedPayment].self, from: url)
+    }
+
+    private func fetchPolicies() async throws -> [IndexedPolicy] {
+        try await decode(
+            [IndexedPolicy].self,
+            from: configuration.apiURL.appending(path: "api/policies")
         )
     }
 
-    private func shortReference(_ value: String) -> String {
+    private func fetchBalance(address: EthereumAddress) async throws -> USDCAmount {
+        let gateway = try ArcContractGateway.live(
+            configuration: configuration,
+            signer: signer
+        )
+        return try await gateway.usdcBalance(of: address)
+    }
+
+    private func decode<Value: Decodable>(_ type: Value.Type, from url: URL) async throws -> Value {
+        let (data, response) = try await session.data(from: url)
+        guard let httpResponse = response as? HTTPURLResponse,
+              200..<300 ~= httpResponse.statusCode else {
+            throw URLError(.badServerResponse)
+        }
+        return try JSONDecoder().decode(type, from: data)
+    }
+
+    private func policyRecord(_ policy: IndexedPolicy) -> PolicyRecord? {
+        guard policy.policyId >= 0,
+              policy.disputeWindow >= 0,
+              let merchant = try? EthereumAddress(policy.merchant),
+              let policyHash = try? ChainHash(policy.policyHash) else {
+            return nil
+        }
+        return PolicyRecord(
+            id: UInt64(policy.policyId),
+            merchant: merchant,
+            disputeWindow: UInt64(policy.disputeWindow),
+            policyHash: policyHash
+        )
+    }
+
+    private func displayPayment(
+        _ payment: IndexedPayment,
+        disputeWindow: UInt64
+    ) -> DemoPayment? {
+        guard payment.paymentId >= 0,
+              payment.policyId >= 0,
+              payment.paidAt >= 0,
+              let amountBaseUnits = UInt64(payment.amount) else {
+            return nil
+        }
+        return displayPayment(
+            id: UInt64(payment.paymentId),
+            merchantAddress: payment.merchant,
+            policyID: UInt64(payment.policyId),
+            amount: USDCAmount(baseUnits: amountBaseUnits),
+            paidAt: UInt64(payment.paidAt),
+            filedAt: UInt64(max(0, payment.filedAt)),
+            evidenceMask: payment.evidenceMask,
+            status: payment.status,
+            refundBPS: payment.refundBps,
+            disputeWindow: disputeWindow
+        )
+    }
+
+    private func displayPayment(
+        id: UInt64,
+        merchantAddress: String,
+        policyID: UInt64,
+        amount: USDCAmount,
+        paidAt: UInt64,
+        filedAt: UInt64,
+        evidenceMask: Int32,
+        status: Int32,
+        refundBPS: Int32?,
+        disputeWindow: UInt64
+    ) -> DemoPayment {
+        let paidDate = Date(timeIntervalSince1970: TimeInterval(paidAt))
+        let protectionEnds = paidDate.addingTimeInterval(TimeInterval(disputeWindow))
+        let elapsed = Date().timeIntervalSince(paidDate)
+        let progress = disputeWindow == 0
+            ? 1
+            : min(max(elapsed / TimeInterval(disputeWindow), 0), 1)
+        let shortMerchant = shortAddress(merchantAddress)
+        return DemoPayment(
+            id: id,
+            merchant: "Merchant \(shortMerchant)",
+            item: "Policy #\(policyID)",
+            merchantSymbol: "storefront.fill",
+            merchantImageURL: nil,
+            amount: amount,
+            date: paidDate,
+            state: displayState(
+                status: status,
+                filedAt: filedAt,
+                evidenceMask: evidenceMask,
+                refundBPS: refundBPS
+            ),
+            policyName: "Policy #\(policyID)",
+            protectionEnds: protectionEnds,
+            progress: progress,
+            orderReference: "Payment #\(id)"
+        )
+    }
+
+    private func displayState(
+        status: Int32,
+        filedAt: UInt64,
+        evidenceMask: Int32,
+        refundBPS: Int32?
+    ) -> DemoPaymentState {
+        switch status {
+        case Int32(PaymentStatus.paid.rawValue):
+            return .protected
+        case Int32(PaymentStatus.disputed.rawValue):
+            return filedAt > 0 && evidenceMask == 0 ? .actionNeeded : .underReview
+        case Int32(PaymentStatus.settled.rawValue):
+            return (refundBPS ?? 0) > 0 ? .refunded : .released
+        default:
+            return .released
+        }
+    }
+
+    private func updateState(paymentID: UInt64, state: DemoPaymentState) {
+        if let index = payments.firstIndex(where: { $0.id == paymentID }) {
+            payments[index] = replacingState(of: payments[index], with: state)
+        }
+        if let index = merchantPayments.firstIndex(where: { $0.id == paymentID }) {
+            merchantPayments[index] = replacingState(of: merchantPayments[index], with: state)
+        }
+    }
+
+    private func replacingState(
+        of payment: DemoPayment,
+        with state: DemoPaymentState
+    ) -> DemoPayment {
+        DemoPayment(
+            id: payment.id,
+            merchant: payment.merchant,
+            item: payment.item,
+            merchantSymbol: payment.merchantSymbol,
+            merchantImageURL: payment.merchantImageURL,
+            amount: payment.amount,
+            date: payment.date,
+            state: state,
+            policyName: payment.policyName,
+            protectionEnds: payment.protectionEnds,
+            progress: payment.progress,
+            orderReference: payment.orderReference
+        )
+    }
+
+    private func shortAddress(_ value: String) -> String {
         guard value.count > 12 else { return value }
-        return "\(value.prefix(8))…\(value.suffix(4))"
+        return "\(value.prefix(6))…\(value.suffix(4))"
     }
 }
 
 #if DEBUG
 extension AppEnvironment {
     static func preview() -> AppEnvironment {
-        AppEnvironment(
+        let environment = AppEnvironment(
             configuration: .live,
             accountSession: .preview()
         )
+        environment.paymentStore.installPreviewData()
+        return environment
+    }
+}
+
+private extension BuyerPaymentStore {
+    func installPreviewData() {
+        payments = DemoCatalog.payments
+        merchantPayments = DemoCatalog.payments
+        balance = DemoCatalog.balance
     }
 }
 #endif

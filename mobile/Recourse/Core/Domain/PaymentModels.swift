@@ -122,7 +122,7 @@ struct DemoPayment: Identifiable, Hashable, Sendable {
     let merchant: String
     let item: String
     let merchantSymbol: String
-    let merchantImageURL: URL
+    let merchantImageURL: URL?
     let amount: USDCAmount
     let date: Date
     let state: DemoPaymentState
