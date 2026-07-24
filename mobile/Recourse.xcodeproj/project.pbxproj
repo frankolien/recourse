@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 46;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -115,7 +115,7 @@
 		3C4FEF1822BE6878F3C884982486DBE0 /* AppEnvironment.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
 		461E2A2E3C422B764B056DAFBD485F46 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		490C9C563D9A235D611AF494FF865F78 /* ArcRPCTransport.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ArcRPCTransport.swift; sourceTree = "<group>"; };
-		4BE9A3D6442872B78BA2082F2E444D50 /* PolicyRegistry.abi.json */ = {isa = PBXFileReference; includeInIndex = 1; path = PolicyRegistry.abi.json; sourceTree = "<group>"; };
+		4BE9A3D6442872B78BA2082F2E444D50 /* PolicyRegistry.abi.json */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.json; path = PolicyRegistry.abi.json; sourceTree = "<group>"; };
 		4C607EEB88CCEA3E69F9AA60D12E2510 /* RootView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		4E01A98736132EC6725915AF067EF7EE /* EthereumAddress.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EthereumAddress.swift; sourceTree = "<group>"; };
 		512D0D61A8514121C1D850B68F340FE0 /* DisputeWorkflow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DisputeWorkflow.swift; sourceTree = "<group>"; };
@@ -140,14 +140,14 @@
 		A6DDAEA7E2D7AE46EB07A0513B186562 /* EvidenceAPIClientTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EvidenceAPIClientTests.swift; sourceTree = "<group>"; };
 		AC0C842B6D6F4BB7117ABE3F55D3CD48 /* OnboardingSignInView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OnboardingSignInView.swift; sourceTree = "<group>"; };
 		AEF52F72C14055776FF2B26FAB95572E /* OrderAPIClient.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OrderAPIClient.swift; sourceTree = "<group>"; };
-		B81282F726BC5AC1DD5DF341237A54A0 /* RecourseEscrow.abi.json */ = {isa = PBXFileReference; includeInIndex = 1; path = RecourseEscrow.abi.json; sourceTree = "<group>"; };
+		B81282F726BC5AC1DD5DF341237A54A0 /* RecourseEscrow.abi.json */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.json; path = RecourseEscrow.abi.json; sourceTree = "<group>"; };
 		B8CEB9D76AE7E61F6A53E6CDCA44C9BD /* AppShellView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppShellView.swift; sourceTree = "<group>"; };
 		B901D51C353DC6E262F4A3221A019DAA /* TestnetLocalSignerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TestnetLocalSignerTests.swift; sourceTree = "<group>"; };
 		B93928C064697EF1D94A853ADCA2B5D8 /* VerdictWorkflowTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VerdictWorkflowTests.swift; sourceTree = "<group>"; };
 		B9F9159EAF3F6D01A825F3634AB49EDA /* RecourseColor.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecourseColor.swift; sourceTree = "<group>"; };
 		BB1736AFB5EFA950E4DA29AB849E71C5 /* ContractABITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContractABITests.swift; sourceTree = "<group>"; };
 		C348D5139449A89292A004D22ED421D6 /* RecourseGlass.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecourseGlass.swift; sourceTree = "<group>"; };
-		C40AC5771C4BD63A18A4864CB6FA21B3 /* IERC20.abi.json */ = {isa = PBXFileReference; includeInIndex = 1; path = IERC20.abi.json; sourceTree = "<group>"; };
+		C40AC5771C4BD63A18A4864CB6FA21B3 /* IERC20.abi.json */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.json; path = IERC20.abi.json; sourceTree = "<group>"; };
 		C808AF1DA87D50C5278571DDD378281C /* USDCAmount.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = USDCAmount.swift; sourceTree = "<group>"; };
 		CB82532B7E943208F1722DA7272BEB1A /* BuyerWorkflowError.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BuyerWorkflowError.swift; sourceTree = "<group>"; };
 		CE82E33D1A0B24D1A4A793A238E00645 /* PlaceholderDetailView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PlaceholderDetailView.swift; sourceTree = "<group>"; };
@@ -193,7 +193,6 @@
 			children = (
 				26D0DFC23DAE5A0D0946DD73E089801E /* HomeView.swift */,
 			);
-			name = Home;
 			path = Home;
 			sourceTree = "<group>";
 		};
@@ -206,7 +205,6 @@
 				A055533D85EA0CC6975E39CEEAC712A8 /* PaymentModels.swift */,
 				C808AF1DA87D50C5278571DDD378281C /* USDCAmount.swift */,
 			);
-			name = Domain;
 			path = Domain;
 			sourceTree = "<group>";
 		};
@@ -215,7 +213,6 @@
 			children = (
 				28297FD306BD4642DCFBD7EA7D72F3DE /* Domain */,
 			);
-			name = Disputes;
 			path = Disputes;
 			sourceTree = "<group>";
 		};
@@ -224,7 +221,6 @@
 			children = (
 				512D0D61A8514121C1D850B68F340FE0 /* DisputeWorkflow.swift */,
 			);
-			name = Domain;
 			path = Domain;
 			sourceTree = "<group>";
 		};
@@ -233,7 +229,6 @@
 			children = (
 				31348208E2B953A0B51CA70D1C6E7AF6 /* Domain */,
 			);
-			name = Checkout;
 			path = Checkout;
 			sourceTree = "<group>";
 		};
@@ -242,7 +237,6 @@
 			children = (
 				29AE8918D55CF5FF801D8C53FFF1F1D4 /* CheckoutWorkflow.swift */,
 			);
-			name = Domain;
 			path = Domain;
 			sourceTree = "<group>";
 		};
@@ -257,7 +251,6 @@
 				FF69EB2E3A5DB7E9D82446E001164FC1 /* ContractGateway.swift */,
 				9BAA5B58E8F10EF76A6DBFFC43D540F2 /* UnsignedTransaction.swift */,
 			);
-			name = Chain;
 			path = Chain;
 			sourceTree = "<group>";
 		};
@@ -280,7 +273,6 @@
 				229041DFBC3256A7B373F3DE65A6D0C1 /* RecourseApp.swift */,
 				4C607EEB88CCEA3E69F9AA60D12E2510 /* RootView.swift */,
 			);
-			name = App;
 			path = App;
 			sourceTree = "<group>";
 		};
@@ -292,7 +284,6 @@
 				C348D5139449A89292A004D22ED421D6 /* RecourseGlass.swift */,
 				830F8D910E5328443A59C3674152EE5F /* RecourseTypography.swift */,
 			);
-			name = DesignSystem;
 			path = DesignSystem;
 			sourceTree = "<group>";
 		};
@@ -305,7 +296,6 @@
 				AC0C842B6D6F4BB7117ABE3F55D3CD48 /* OnboardingSignInView.swift */,
 				39AF0359CE83EABC209A1E90CC9BAAFC /* OnboardingWelcomeView.swift */,
 			);
-			name = Onboarding;
 			path = Onboarding;
 			sourceTree = "<group>";
 		};
@@ -329,7 +319,6 @@
 				F3E64DFA3B2948439F2ADA57594FC355 /* TestnetLocalSigner.swift */,
 				981974AC664EA0165BA4AE13575155E2 /* TransactionAuthorizer.swift */,
 			);
-			name = Auth;
 			path = Auth;
 			sourceTree = "<group>";
 		};
@@ -338,7 +327,6 @@
 			children = (
 				798640F5E30ED37176C6E469686D7D0B /* OrderManifest.swift */,
 			);
-			name = Orders;
 			path = Orders;
 			sourceTree = "<group>";
 		};
@@ -347,7 +335,6 @@
 			children = (
 				E10A12F75788AD461C814633A3D9DD2F /* ReceiptsFoundationView.swift */,
 			);
-			name = Receipts;
 			path = Receipts;
 			sourceTree = "<group>";
 		};
@@ -356,7 +343,6 @@
 			children = (
 				E4126C227F532B96445638EA7D887985 /* Domain */,
 			);
-			name = Verdict;
 			path = Verdict;
 			sourceTree = "<group>";
 		};
@@ -366,7 +352,6 @@
 				D0AA9B184ACE8AA9D5BD7E99DD70186E /* ABI */,
 				2B0ABE75042D9B380B371486E7A2172A /* Images.xcassets */,
 			);
-			name = Resources;
 			path = Resources;
 			sourceTree = "<group>";
 		};
@@ -375,7 +360,6 @@
 			children = (
 				D11E4DCF734A2A3194BBB4DFBF1A2A55 /* ScannerFoundationView.swift */,
 			);
-			name = Scan;
 			path = Scan;
 			sourceTree = "<group>";
 		};
@@ -384,7 +368,6 @@
 			children = (
 				28AA43860C99BD3DD19FE1D5139736CE /* AppConfiguration.swift */,
 			);
-			name = Config;
 			path = Config;
 			sourceTree = "<group>";
 		};
@@ -393,7 +376,6 @@
 			children = (
 				55FBE57FF22A74748B66762D3FD837C4 /* AccountFoundationView.swift */,
 			);
-			name = Profile;
 			path = Profile;
 			sourceTree = "<group>";
 		};
@@ -407,7 +389,6 @@
 				FEB66652BF75C6E078E42A55AA595F80 /* Recourse.entitlements */,
 				8A136E29A9660E4A576D3685701ED706 /* Resources */,
 			);
-			name = Recourse;
 			path = Recourse;
 			sourceTree = "<group>";
 		};
@@ -416,7 +397,6 @@
 			children = (
 				238161064B2D015305E5585A8B718057 /* Deployment.swift */,
 			);
-			name = Generated;
 			path = Generated;
 			sourceTree = "<group>";
 		};
@@ -432,7 +412,6 @@
 				7D6708936C05B97903181D02FC8172EF /* Orders */,
 				D1CA5359DF76D6CA3C8DE56282DA2FCE /* QR */,
 			);
-			name = Core;
 			path = Core;
 			sourceTree = "<group>";
 		};
@@ -443,7 +422,6 @@
 				4BE9A3D6442872B78BA2082F2E444D50 /* PolicyRegistry.abi.json */,
 				B81282F726BC5AC1DD5DF341237A54A0 /* RecourseEscrow.abi.json */,
 			);
-			name = ABI;
 			path = ABI;
 			sourceTree = "<group>";
 		};
@@ -453,7 +431,6 @@
 				25B658EFC56A5A2286D491E6F7F7B7AD /* PaymentRequest.swift */,
 				11024A6906A50092E86F1973B8253F09 /* PaymentRequestDecoder.swift */,
 			);
-			name = QR;
 			path = QR;
 			sourceTree = "<group>";
 		};
@@ -476,7 +453,6 @@
 				DED81FACDC9057BEFACA9900A9B8BDD4 /* USDCAmountTests.swift */,
 				B93928C064697EF1D94A853ADCA2B5D8 /* VerdictWorkflowTests.swift */,
 			);
-			name = RecourseTests;
 			path = RecourseTests;
 			sourceTree = "<group>";
 		};
@@ -489,7 +465,6 @@
 				19F12B79202313FC58F1249B541FDDDA /* EvidenceAuthorization.swift */,
 				AEF52F72C14055776FF2B26FAB95572E /* OrderAPIClient.swift */,
 			);
-			name = API;
 			path = API;
 			sourceTree = "<group>";
 		};
@@ -506,7 +481,6 @@
 			children = (
 				FE24F35E8454E7A547271E5E271F0423 /* VerdictWorkflow.swift */,
 			);
-			name = Domain;
 			path = Domain;
 			sourceTree = "<group>";
 		};
@@ -522,7 +496,6 @@
 				8B241B24289CBB747C4F9CAAF5AEAE98 /* Scan */,
 				83B10BBBC75585E648ADCF5AC015F848 /* Verdict */,
 			);
-			name = Features;
 			path = Features;
 			sourceTree = "<group>";
 		};
@@ -603,11 +576,9 @@
 				Base,
 			);
 			mainGroup = 6514E611647AD3E408E0744E92FB43C0;
-			minimizedProjectReferenceProxies = 0;
 			packageReferences = (
 				BEB3EE3CD1036115E9314880686870ED /* XCRemoteSwiftPackageReference "web3swift" */,
 			);
-			preferredProjectObjectVersion = 77;
 			productRefGroup = 3EB0C91C9C945A84B97EC7ABC86EDD06 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -861,7 +832,7 @@
 				CODE_SIGN_ENTITLEMENTS = Recourse/Recourse.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = YCKKUWB4WD;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Recourse;
@@ -873,7 +844,10 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.recourse.buyer;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -952,7 +926,7 @@
 				CODE_SIGN_ENTITLEMENTS = Recourse/Recourse.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = YCKKUWB4WD;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Recourse;
@@ -964,7 +938,10 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.recourse.buyer;
 				PRODUCT_NAME = "$(TARGET_NAME)";
