@@ -22,6 +22,7 @@ protocol ContractReading: Sendable {
 
 protocol ContractWriting: Sendable {
     func approveUSDC(amount: USDCAmount) async throws -> ChainHash
+    func registerStarterPolicy() async throws -> ChainHash
     func pay(_ request: PaymentRequest) async throws -> ChainHash
     func fileDispute(
         paymentID: UInt64,

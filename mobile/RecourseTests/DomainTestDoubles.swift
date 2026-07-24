@@ -70,6 +70,7 @@ enum DomainFixture {
 actor FakeContractGateway: ContractGateway {
     enum Call: Equatable {
         case approve(USDCAmount)
+        case registerStarterPolicy
         case pay
         case fileDispute(ClaimType, [UploadedEvidence])
         case resolve
@@ -115,6 +116,11 @@ actor FakeContractGateway: ContractGateway {
     func approveUSDC(amount: USDCAmount) async throws -> ChainHash {
         calls.append(.approve(amount))
         currentAllowance = amount
+        return DomainFixture.approvalHash
+    }
+
+    func registerStarterPolicy() async throws -> ChainHash {
+        calls.append(.registerStarterPolicy)
         return DomainFixture.approvalHash
     }
 

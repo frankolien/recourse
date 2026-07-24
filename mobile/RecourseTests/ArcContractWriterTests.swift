@@ -17,6 +17,7 @@ final class ArcContractWriterTests: XCTestCase {
         )
 
         _ = try await writer.approveUSDC(amount: USDCAmount(baseUnits: 1_000_000))
+        _ = try await writer.registerStarterPolicy()
         _ = try await writer.pay(DomainFixture.request)
         _ = try await writer.fileDispute(paymentID: 5, claimType: .notDelivered, evidence: [evidence])
         _ = try await writer.resolve(paymentID: 5)
@@ -25,15 +26,17 @@ final class ArcContractWriterTests: XCTestCase {
         let sentTransactions = await transport.sentTransactions()
         XCTAssertEqual(calls.map(\.to), [
             EthereumAddress(trusted: Deployment.usdc),
+            EthereumAddress(trusted: Deployment.policyRegistry),
             EthereumAddress(trusted: Deployment.escrow),
             EthereumAddress(trusted: Deployment.escrow),
             EthereumAddress(trusted: Deployment.escrow)
         ])
         XCTAssertEqual(calls[0].data, Data(hex: "095ea7b300000000000000000000000061fd99789b28582882a3369e2024aeae5b5d2dc000000000000000000000000000000000000000000000000000000000000f4240"))
-        XCTAssertEqual(calls[1].data, Data(hex: "c89a7cdf000000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000000000000000000000000000000017d7840abababababababababababababababababababababababababababababababab"))
-        XCTAssertEqual(calls[2].data, Data(hex: "3f98cd5400000000000000000000000000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"))
-        XCTAssertEqual(calls[3].data, Data(hex: "4f896d4f0000000000000000000000000000000000000000000000000000000000000005"))
-        XCTAssertEqual(sentTransactions, Array(repeating: Data([0xaa, 0xbb]), count: 4))
+        XCTAssertFalse(calls[1].data.isEmpty)
+        XCTAssertEqual(calls[2].data, Data(hex: "c89a7cdf000000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000000000000000000000000000000017d7840abababababababababababababababababababababababababababababababab"))
+        XCTAssertEqual(calls[3].data, Data(hex: "3f98cd5400000000000000000000000000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"))
+        XCTAssertEqual(calls[4].data, Data(hex: "4f896d4f0000000000000000000000000000000000000000000000000000000000000005"))
+        XCTAssertEqual(sentTransactions, Array(repeating: Data([0xaa, 0xbb]), count: 5))
     }
 
     func testReceiptReturnsPaymentIDFromPaidEvent() async throws {

@@ -21,6 +21,7 @@ actor ArcContractWriter: ContractWriting {
     private let pollClock: any TransactionPollClock
     private let maximumReceiptPolls: Int
     private let erc20: EthereumContract
+    private let registry: EthereumContract
     private let escrow: EthereumContract
 
     init(
@@ -41,6 +42,11 @@ actor ArcContractWriter: ContractWriting {
             address: configuration.usdcAddress,
             name: ContractABI.erc20.rawValue
         )
+        registry = try Self.makeContract(
+            abi: ContractABI.policyRegistry.load(from: bundle),
+            address: configuration.policyRegistryAddress,
+            name: ContractABI.policyRegistry.rawValue
+        )
         escrow = try Self.makeContract(
             abi: ContractABI.recourseEscrow.load(from: bundle),
             address: configuration.escrowAddress,
@@ -55,6 +61,41 @@ actor ArcContractWriter: ContractWriting {
             parameters: [try web3Address(configuration.escrowAddress), BigUInt(amount.baseUnits)]
         )
         return try await submit(to: configuration.usdcAddress, data: data)
+    }
+
+    func registerStarterPolicy() async throws -> ChainHash {
+        let day = 24 * 60 * 60
+        let rules: [[Any]] = [
+            [
+                BigUInt(0),
+                BigUInt(0),
+                BigUInt(1),
+                BigUInt(2),
+                BigUInt(14 * day),
+                BigUInt(10_000),
+                false
+            ],
+            [
+                BigUInt(1),
+                BigUInt(1),
+                BigUInt(0),
+                BigUInt(0),
+                BigUInt(3 * day),
+                BigUInt(10_000),
+                true
+            ]
+        ]
+        let data = try encode(
+            contract: registry,
+            method: "registerPolicy",
+            parameters: [
+                BigUInt(14 * day),
+                BigUInt(0),
+                rules,
+                "ipfs://recourse-mobile-starter-policy"
+            ]
+        )
+        return try await submit(to: configuration.policyRegistryAddress, data: data)
     }
 
     func pay(_ request: PaymentRequest) async throws -> ChainHash {

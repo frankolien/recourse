@@ -52,6 +52,10 @@ struct ArcContractGateway: ContractGateway {
         try await writer.approveUSDC(amount: amount)
     }
 
+    func registerStarterPolicy() async throws -> ChainHash {
+        try await writer.registerStarterPolicy()
+    }
+
     func pay(_ request: PaymentRequest) async throws -> ChainHash {
         try await writer.pay(request)
     }
