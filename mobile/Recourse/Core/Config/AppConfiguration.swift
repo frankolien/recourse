@@ -45,13 +45,17 @@ struct AppConfiguration: Sendable {
         merchantWebURL: defaultMerchantWebURL
     )
 
+    // Default to the live backend, not localhost: scheme env vars only inject when Xcode
+    // launches the app, so a device install / TestFlight / Release build would otherwise
+    // fall back to 127.0.0.1 (the phone itself) and every API call fails. RECOURSE_API_URL
+    // still overrides for local development.
     private static let defaultAPIURL = URL(
         string: ProcessInfo.processInfo.environment["RECOURSE_API_URL"]
-            ?? "http://127.0.0.1:8080"
+            ?? "https://api.frankolien.com"
     )!
 
     private static let defaultMerchantWebURL = URL(
         string: ProcessInfo.processInfo.environment["RECOURSE_MERCHANT_URL"]
-            ?? "http://127.0.0.1:3002/dashboard"
+            ?? "https://recourse.frankolien.com/dashboard"
     )!
 }

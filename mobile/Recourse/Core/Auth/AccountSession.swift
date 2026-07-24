@@ -94,7 +94,7 @@ final class AccountSession {
     init(
         store: AccountSessionStore = AccountSessionStore(),
         credentialChecker: any AppleCredentialStateChecking = AppleCredentialStateChecker(),
-        api: any AccountAPI = AccountAPIClient(baseURL: URL(string: "http://127.0.0.1:8080")!)
+        api: any AccountAPI = AccountAPIClient(baseURL: URL(string: "https://api.frankolien.com")!)
     ) {
         self.store = store
         self.credentialChecker = credentialChecker
@@ -145,8 +145,15 @@ final class AccountSession {
 
         do {
             pendingChallenge = try await api.appleChallenge()
+        } catch let error as AccountAPIError {
+            switch error {
+            case .rejected(_, let message):
+                errorMessage = message
+            case .invalidResponse:
+                errorMessage = "Recourse received an invalid response while preparing Apple sign-in."
+            }
         } catch {
-            errorMessage = "Recourse could not prepare Apple sign-in. Check that the backend is running."
+            errorMessage = "Recourse could not reach the authentication service. Please try again."
         }
     }
 
@@ -184,6 +191,14 @@ final class AccountSession {
                         familyName: familyName
                     )
                     try await accept(sessionGrant)
+                } catch let error as AccountAPIError {
+                    switch error {
+                    case .rejected(_, let message):
+                        errorMessage = message
+                    case .invalidResponse:
+                        errorMessage = "Recourse received an invalid Apple sign-in response."
+                    }
+                    await prepareAppleSignIn()
                 } catch {
                     errorMessage = "Apple sign-in could not be verified by Recourse. Please try again."
                     await prepareAppleSignIn()
