@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct RecourseScrollOffsetPreferenceKey: PreferenceKey {
     static let defaultValue: CGFloat = 0
@@ -50,6 +51,30 @@ extension View {
     func recourseGlassBar() -> some View {
         modifier(RecourseGlassBar())
     }
+
+    func recourseKeyboardDismissal() -> some View {
+        modifier(RecourseKeyboardDismissal())
+    }
+}
+
+private struct RecourseKeyboardDismissal: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(
+                            #selector(UIResponder.resignFirstResponder),
+                            to: nil,
+                            from: nil,
+                            for: nil
+                        )
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+    }
 }
 
 private struct RecourseGlassBar: ViewModifier {
@@ -86,11 +111,11 @@ private struct RecourseGlassCapsule: ViewModifier {
 struct RecoursePrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 17, weight: .semibold))
+            .font(.system(size: 15, weight: .semibold))
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
-            .frame(height: 58)
-            .background(RecourseColor.ledgerDeep, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .frame(height: 50)
+            .background(RecourseColor.ledger, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
             .animation(.easeOut(duration: 0.16), value: configuration.isPressed)
     }
@@ -99,13 +124,13 @@ struct RecoursePrimaryButtonStyle: ButtonStyle {
 struct RecourseSecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 17, weight: .semibold))
+            .font(.system(size: 15, weight: .semibold))
             .foregroundStyle(RecourseColor.ink)
             .frame(maxWidth: .infinity)
-            .frame(height: 58)
-            .background(RecourseColor.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .frame(height: 50)
+            .background(RecourseColor.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .stroke(RecourseColor.line, lineWidth: 1)
             }
             .opacity(configuration.isPressed ? 0.72 : 1)

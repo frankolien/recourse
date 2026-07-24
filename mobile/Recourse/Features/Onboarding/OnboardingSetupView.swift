@@ -34,19 +34,6 @@ struct OnboardingWalletSetupView: View {
             let compact = proxy.size.height < 760
 
             VStack(alignment: .leading, spacing: compact ? 18 : 24) {
-                HStack {
-                    RecourseGlassIconButton(
-                        systemName: "chevron.left",
-                        accessibilityLabel: "Back",
-                        action: onBack
-                    )
-                    Spacer()
-                    Label("SECURE SETUP", systemImage: "lock.fill")
-                        .font(.system(size: 11, weight: .bold))
-                        .tracking(0.8)
-                        .foregroundStyle(RecourseColor.ledger)
-                }
-
                 VStack(alignment: .leading, spacing: 8) {
                     Text("BUYER WALLET")
                         .recourseEyebrow()
@@ -65,7 +52,7 @@ struct OnboardingWalletSetupView: View {
                     HStack(spacing: 12) {
                         Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
                             .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(.red)
+                            .foregroundStyle(RecourseColor.ledger)
                         Spacer()
                         Button("Try again") {
                             Task { await prepareWallet() }
@@ -94,11 +81,14 @@ struct OnboardingWalletSetupView: View {
                 .opacity(walletAddress == nil ? 0.55 : 1)
             }
             .padding(.horizontal, 22)
-            .padding(.top, max(proxy.safeAreaInsets.top, 18))
+            .padding(.top, compact ? 18 : 24)
             .padding(.bottom, max(proxy.safeAreaInsets.bottom, 18))
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
             .offset(y: hasAppeared ? 0 : 22)
             .opacity(hasAppeared ? 1 : 0)
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            walletSetupAppBar
         }
         .background(RecourseColor.canvas.ignoresSafeArea())
         .onAppear {
@@ -111,11 +101,29 @@ struct OnboardingWalletSetupView: View {
         }
     }
 
+    private var walletSetupAppBar: some View {
+        HStack {
+            RecourseGlassIconButton(
+                systemName: "chevron.left",
+                accessibilityLabel: "Back",
+                action: onBack
+            )
+            Spacer()
+            Label("SECURE SETUP", systemImage: "lock.fill")
+                .font(.system(size: 11, weight: .bold))
+                .tracking(0.8)
+                .foregroundStyle(RecourseColor.ledger)
+        }
+        .padding(.horizontal, 20)
+        .frame(height: 56)
+        .background(RecourseColor.canvas)
+    }
+
     private var walletCard: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 15) {
             HStack {
                 Image(systemName: "iphone.gen3.radiowaves.left.and.right")
-                    .font(.system(size: 24, weight: .semibold))
+                    .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(RecourseColor.ledger)
                 Spacer()
                 Text("ARC TESTNET")
@@ -126,10 +134,10 @@ struct OnboardingWalletSetupView: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(walletAddress == nil ? "Preparing secure wallet" : "Wallet ready")
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(RecourseColor.ink)
                 Text(walletAddress.map(shortAddress) ?? "Generating your encrypted device key...")
-                    .font(.system(size: 14, weight: .medium, design: .monospaced))
+                    .font(.system(size: 12, weight: .medium, design: .monospaced))
                     .foregroundStyle(RecourseColor.muted)
                     .contentTransition(.numericText())
             }
@@ -140,10 +148,10 @@ struct OnboardingWalletSetupView: View {
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(RecourseColor.ledger)
         }
-        .padding(22)
-        .background(RecourseColor.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .padding(18)
+        .background(RecourseColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .stroke(RecourseColor.line, lineWidth: 1)
         }
     }
@@ -264,11 +272,11 @@ struct OnboardingSetupView: View {
                 selectedRole = role
             }
         } label: {
-            HStack(spacing: 14) {
+            HStack(spacing: 12) {
                 Image(systemName: role.icon)
-                    .font(.system(size: 19, weight: .semibold))
+                    .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(selectedRole == role ? .white : RecourseColor.ledger)
-                    .frame(width: 44, height: 44)
+                    .frame(width: 38, height: 38)
                     .background(
                         selectedRole == role ? RecourseColor.ledger : RecourseColor.mint,
                         in: RoundedRectangle(cornerRadius: 13, style: .continuous)
@@ -276,7 +284,7 @@ struct OnboardingSetupView: View {
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(role.rawValue)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 14, weight: .semibold))
                     Text(role.detail)
                         .font(.system(size: 11))
                         .foregroundStyle(RecourseColor.muted)
@@ -286,14 +294,14 @@ struct OnboardingSetupView: View {
                 Spacer()
 
                 Image(systemName: selectedRole == role ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 20))
+                    .font(.system(size: 18))
                     .foregroundStyle(selectedRole == role ? RecourseColor.ledger : RecourseColor.line)
             }
             .foregroundStyle(RecourseColor.ink)
-            .padding(14)
-            .background(RecourseColor.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .padding(12)
+            .background(RecourseColor.surface, in: RoundedRectangle(cornerRadius: 17, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: 17, style: .continuous)
                     .stroke(selectedRole == role ? RecourseColor.ledger : RecourseColor.line, lineWidth: 1)
             }
         }

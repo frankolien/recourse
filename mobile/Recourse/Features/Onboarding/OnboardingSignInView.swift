@@ -108,23 +108,23 @@ struct OnboardingSignupStoryView: View {
                     HStack(spacing: 13) {
                         if isActive {
                             Image(systemName: item.icon)
-                                .font(.system(size: compact ? 21 : 25, weight: .semibold))
+                                .font(.system(size: compact ? 18 : 21, weight: .semibold))
                                 .foregroundStyle(.white)
                                 .frame(width: 30)
                                 .transition(.move(edge: .leading).combined(with: .opacity).combined(with: .scale))
                         }
 
                         Text(item.title)
-                            .font(.system(size: isActive ? (compact ? 34 : 40) : (compact ? 23 : 27), weight: .semibold))
+                            .font(.system(size: isActive ? (compact ? 29 : 34) : (compact ? 20 : 23), weight: .semibold))
                             .foregroundStyle(isActive ? .white : .white.opacity(0.17))
                     }
-                    .frame(height: compact ? 43 : 50, alignment: .leading)
+                    .frame(height: compact ? 38 : 44, alignment: .leading)
                     .animation(.smooth(duration: 0.55), value: activeIndex)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-            .padding(.horizontal, 48)
-            .padding(.top, 48)
+            .padding(.horizontal, 40)
+            .padding(.top, 40)
         }
         .offset(y: hasAppeared ? 0 : 20)
         .opacity(hasAppeared ? 1 : 0)
@@ -145,12 +145,12 @@ struct OnboardingSignupStoryView: View {
                 .tracking(0.8)
 
             Text("Your payments,\nupgraded with proof.")
-                .font(RecourseTypography.display(size: 31))
+                .font(RecourseTypography.display(size: 28))
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
 
             Text("Clear terms before payment. Verifiable outcomes\nafter it.")
-                .font(.system(size: 14))
+                .font(.system(size: 13))
                 .foregroundStyle(.white.opacity(0.78))
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
@@ -159,10 +159,10 @@ struct OnboardingSignupStoryView: View {
 
             Button(action: onCreateAccount) {
                 Text("Create Recourse account")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(RecourseColor.ink)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 56)
+                    .frame(height: 50)
                     .background(RecourseColor.surface, in: Capsule())
             }
             .buttonStyle(.plain)
@@ -172,7 +172,7 @@ struct OnboardingSignupStoryView: View {
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
-                .frame(height: 48)
+                .frame(height: 44)
                 .overlay {
                     Capsule().stroke(.white, lineWidth: 1)
                 }
@@ -189,30 +189,8 @@ struct OnboardingSignupStoryView: View {
 }
 
 private struct RecourseAnimatedStoryBackground: View {
-    @State private var animate = false
-
     var body: some View {
-        ZStack {
-            Color.black
-
-            Circle()
-                .fill(Color(red: 0.38, green: 0.68, blue: 0.31))
-                .frame(width: 620, height: 620)
-                .blur(radius: 105)
-                .offset(x: animate ? -90 : 90, y: animate ? -330 : -220)
-
-            Circle()
-                .fill(RecourseColor.ledger)
-                .frame(width: 430, height: 430)
-                .blur(radius: 120)
-                .offset(x: animate ? 130 : -100, y: animate ? -60 : -150)
-        }
-        .drawingGroup()
-        .onAppear {
-            withAnimation(.easeInOut(duration: 6.5).repeatForever(autoreverses: true)) {
-                animate = true
-            }
-        }
+        RecourseColor.ledger
     }
 }
 
@@ -304,7 +282,9 @@ struct OnboardingSignInView: View {
                 onCompletion: accountSession.handleAppleAuthorization
             )
             .signInWithAppleButtonStyle(.black)
+            .frame(maxWidth: 375)
             .frame(height: 56)
+            .frame(maxWidth: .infinity)
             .clipShape(Capsule())
             .allowsHitTesting(accountSession.isAppleSignInReady)
             .opacity(accountSession.isAppleSignInReady ? 1 : 0.55)
@@ -335,7 +315,7 @@ struct OnboardingSignInView: View {
             if let errorMessage = accountSession.errorMessage {
                 Text(errorMessage)
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.red)
+                    .foregroundStyle(RecourseColor.ledger)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 

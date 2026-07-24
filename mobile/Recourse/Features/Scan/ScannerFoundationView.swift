@@ -29,6 +29,7 @@ struct ScannerFoundationView: View {
                 bottomPanel
             }
         }
+        .recourseKeyboardDismissal()
         .preferredColorScheme(.dark)
         .onAppear {
             withAnimation(.linear(duration: 2).repeatForever(autoreverses: true)) {
@@ -93,7 +94,7 @@ struct ScannerFoundationView: View {
                     .font(.system(size: 22, weight: .bold))
                 Text(scannerMessage)
                     .font(.system(size: 14))
-                    .foregroundStyle(scanError == nil ? .white.opacity(0.68) : Color.orange)
+                    .foregroundStyle(.white.opacity(scanError == nil ? 0.68 : 1))
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 310)
             }

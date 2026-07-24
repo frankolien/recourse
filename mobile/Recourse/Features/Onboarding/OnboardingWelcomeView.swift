@@ -51,17 +51,17 @@ struct OnboardingWelcomeView: View {
 
             HStack {
                 Label("Recourse", systemImage: "shield.checkered")
-                    .font(.system(size: 19, weight: .bold))
+                    .font(.system(size: 17, weight: .bold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 16)
-                    .frame(height: 35)
+                    .frame(height: 32)
                     .recourseGlassCapsule()
 
                 Spacer()
 
                 HStack(spacing: 8) {
                     Circle()
-                        .fill(Color.green)
+                        .fill(RecourseColor.ledger)
                         .frame(width: 8, height: 6)
                         .scaleEffect(pulse ? 1.25 : 0.85)
                     Text("ARC TESTNET")
@@ -70,7 +70,7 @@ struct OnboardingWelcomeView: View {
                 }
                 .foregroundStyle(.white)
                 .padding(.horizontal, 14)
-                .frame(height: 35)
+                .frame(height: 32)
                 .recourseGlassCapsule()
             }
             .padding(.horizontal, 20)
@@ -97,13 +97,13 @@ struct OnboardingWelcomeView: View {
         VStack(alignment: .leading, spacing: compact ? 12 : 16) {
             VStack(alignment: .leading, spacing: compact ? 6 : 8) {
                 Text("Payments should come\nwith protection.")
-                    .font(RecourseTypography.display(size: compact ? 31 : 36))
+                    .font(RecourseTypography.display(size: compact ? 28 : 32))
                     .foregroundStyle(RecourseColor.ink)
                     .lineSpacing(-1)
                     .fixedSize(horizontal: false, vertical: true)
 
                 Text("Clear refund terms, verifiable outcomes, and no wallet complexity up front.")
-                    .font(.system(size: compact ? 14 : 15))
+                    .font(.system(size: compact ? 13 : 14))
                     .foregroundStyle(RecourseColor.muted)
                     .lineSpacing(2)
                     .lineLimit(3)
@@ -129,7 +129,7 @@ struct OnboardingWelcomeView: View {
     }
 
     private func actions(bottomInset: CGFloat) -> some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 9) {
             Button("Get protected", action: onGetStarted)
                 .buttonStyle(RecoursePrimaryButtonStyle())
 

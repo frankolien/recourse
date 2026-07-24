@@ -40,7 +40,7 @@ struct ReceiptsFoundationView: View {
 
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 24) {
+            LazyVStack(alignment: .leading, spacing: 19) {
                 scrollPositionReader
                 pageHeader
                 proofOverview
@@ -52,6 +52,7 @@ struct ReceiptsFoundationView: View {
             .padding(.bottom, 220)
         }
         .scrollIndicators(.hidden)
+        .scrollDismissesKeyboard(.interactively)
         .coordinateSpace(name: "recourse-receipts-scroll")
         .onPreferenceChange(RecourseScrollOffsetPreferenceKey.self) { newOffset in
             reportScrollDirection(newOffset)
@@ -77,7 +78,7 @@ struct ReceiptsFoundationView: View {
     }
 
     private var pageHeader: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(RecourseColor.muted)
@@ -91,19 +92,19 @@ struct ReceiptsFoundationView: View {
                 }
             }
             .padding(.horizontal, 16)
-            .frame(height: 50)
+            .frame(height: 44)
             .background(Color(red: 0.96, green: 0.96, blue: 0.95), in: Capsule())
         }
     }
 
     private var proofOverview: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 14) {
             Text("Protection overview")
-                .font(.system(size: 20, weight: .bold))
+                .font(.system(size: 18, weight: .bold))
                 .foregroundStyle(RecourseColor.ink)
             HStack(alignment: .top, spacing: 0) {
                 overviewMetric("$464.00", "Currently protected", "shield.fill")
-                Divider().frame(height: 72).padding(.horizontal, 18)
+                Divider().frame(height: 62).padding(.horizontal, 14)
                 overviewMetric("$84.50", "Returned to you", "arrow.uturn.backward")
             }
             .padding(.vertical, 6)
@@ -126,8 +127,8 @@ struct ReceiptsFoundationView: View {
                         .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(RecourseColor.ledger)
                 }
-                .padding(14)
-                .background(RecourseColor.softGreen, in: RoundedRectangle(cornerRadius: 17, style: .continuous))
+                .padding(12)
+                .background(RecourseColor.softGreen, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
             }
             .buttonStyle(.plain)
         }
@@ -139,7 +140,7 @@ struct ReceiptsFoundationView: View {
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(RecourseColor.ledger)
             Text(value)
-                .font(.system(size: 27, weight: .bold, design: .rounded))
+                .font(.system(size: 23, weight: .bold, design: .rounded))
                 .foregroundStyle(RecourseColor.ink)
             Text(caption)
                 .font(.system(size: 11))
@@ -159,8 +160,8 @@ struct ReceiptsFoundationView: View {
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(filter == item ? .white : RecourseColor.ink)
                             .padding(.horizontal, 15)
-                            .frame(height: 36)
-                            .background(filter == item ? RecourseColor.ink : Color(red: 0.96, green: 0.96, blue: 0.95), in: Capsule())
+                            .frame(height: 32)
+                            .background(filter == item ? RecourseColor.ledger : Color(red: 0.96, green: 0.96, blue: 0.95), in: Capsule())
                     }
                     .buttonStyle(.plain)
                 }
@@ -173,13 +174,13 @@ struct ReceiptsFoundationView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("Latest")
-                    .font(.system(size: 22, weight: .bold))
+                    .font(.system(size: 19, weight: .bold))
                     .foregroundStyle(RecourseColor.ink)
                 Spacer()
                 Button {} label: {
                     Image(systemName: "line.3.horizontal.decrease")
                         .foregroundStyle(RecourseColor.ink)
-                        .frame(width: 36, height: 36)
+                        .frame(width: 32, height: 32)
                         .background(Color(red: 0.96, green: 0.96, blue: 0.95), in: Circle())
                 }
                 .buttonStyle(.plain)
@@ -216,14 +217,14 @@ private struct WalletReceiptRow: View {
     let payment: DemoPayment
 
     var body: some View {
-        HStack(spacing: 14) {
-            MerchantArtwork(payment: payment, size: 44, cornerRadius: 13)
+        HStack(spacing: 12) {
+            MerchantArtwork(payment: payment, size: 39, cornerRadius: 11)
             VStack(alignment: .leading, spacing: 4) {
                 Text(payment.merchant)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(RecourseColor.ink)
                 Text(payment.item)
-                    .font(.system(size: 12))
+                    .font(.system(size: 11))
                     .foregroundStyle(RecourseColor.muted)
                     .lineLimit(1)
                 Text(payment.state.rawValue)
@@ -233,7 +234,7 @@ private struct WalletReceiptRow: View {
             Spacer()
             VStack(alignment: .trailing, spacing: 5) {
                 Text(currencyAmount)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(RecourseColor.ink)
                 Text(payment.date.formatted(date: .abbreviated, time: .omitted))
                     .font(.system(size: 10))
@@ -243,12 +244,12 @@ private struct WalletReceiptRow: View {
                 .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(RecourseColor.muted)
         }
-        .padding(.vertical, 14)
+        .padding(.vertical, 11)
         .contentShape(Rectangle())
     }
 
     private var statusColor: Color {
-        payment.state == .actionNeeded ? .orange : payment.state == .underReview ? .blue : RecourseColor.ledger
+        RecourseColor.ledger
     }
 
     private var currencyAmount: String {

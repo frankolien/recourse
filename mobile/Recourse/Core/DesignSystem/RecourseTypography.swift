@@ -8,8 +8,8 @@ enum RecourseTypography {
 
 extension View {
     func recourseEyebrow() -> some View {
-        font(.system(size: 12, weight: .semibold))
-            .tracking(1.5)
+        font(.system(size: 10, weight: .semibold))
+            .tracking(1.25)
             .foregroundStyle(RecourseColor.ledger)
     }
 }

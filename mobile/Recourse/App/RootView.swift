@@ -52,6 +52,7 @@ struct RootView: View {
                 .transition(.opacity)
             }
         }
+        .recourseKeyboardDismissal()
         .background(RecourseColor.canvas)
         .task {
             await environment.accountSession.restore()

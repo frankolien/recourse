@@ -19,6 +19,11 @@ struct OnboardingReadyView: View {
             }
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
             .ignoresSafeArea(edges: .top)
+            .overlay(alignment: .top) {
+                readyAppBar
+                    .padding(.horizontal, 20)
+                    .padding(.top, proxy.safeAreaInsets.top + 8)
+            }
         }
         .background(RecourseColor.canvas)
         .onAppear {
@@ -38,30 +43,30 @@ struct OnboardingReadyView: View {
                 .clipped()
                 .scaleEffect(hasAppeared ? 1 : 1.05)
 
-            HStack {
-                Label("Recourse", systemImage: "shield.checkered")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 15)
-                    .frame(height: 46)
-                    .recourseGlassCapsule()
-                Spacer()
-                Text("READY")
-                    .font(.system(size: 11, weight: .bold))
-                    .tracking(1)
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 15)
-                    .frame(height: 46)
-                    .recourseGlassCapsule()
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 58)
-
             receipt
                 .padding(.horizontal, 28)
                 .frame(width: width, height: height, alignment: .bottom)
                 .offset(y: hasAppeared ? 28 : 70)
                 .scaleEffect(hasAppeared ? 1 : 0.9)
+        }
+    }
+
+    private var readyAppBar: some View {
+        HStack {
+            Label("Recourse", systemImage: "shield.checkered")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 15)
+                .frame(height: 40)
+                .recourseGlassCapsule()
+            Spacer()
+            Text("READY")
+                .font(.system(size: 11, weight: .bold))
+                .tracking(1)
+                .foregroundStyle(.white)
+                .padding(.horizontal, 15)
+                .frame(height: 40)
+                .recourseGlassCapsule()
         }
     }
 
@@ -80,14 +85,14 @@ struct OnboardingReadyView: View {
 
             HStack(alignment: .lastTextBaseline) {
                 Text("$24.00")
-                    .font(.system(size: 31, weight: .semibold))
+                    .font(.system(size: 27, weight: .semibold))
                     .foregroundStyle(RecourseColor.ink)
                 Text("USDC")
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(RecourseColor.muted)
                 Spacer()
                 Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 27))
+                    .font(.system(size: 23))
                     .foregroundStyle(RecourseColor.ledger)
                     .symbolEffect(.bounce, value: symbolBounce)
             }
@@ -100,8 +105,8 @@ struct OnboardingReadyView: View {
             }
             .font(.system(size: 11, weight: .semibold))
         }
-        .padding(17)
-        .background(RecourseColor.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .padding(15)
+        .background(RecourseColor.surface, in: RoundedRectangle(cornerRadius: 19, style: .continuous))
     }
 
     private func readySheet(compact: Bool) -> some View {
@@ -110,11 +115,11 @@ struct OnboardingReadyView: View {
 
             VStack(spacing: 8) {
                 Text(readyTitle)
-                    .font(RecourseTypography.display(size: compact ? 31 : 36))
+                    .font(RecourseTypography.display(size: compact ? 28 : 32))
                     .foregroundStyle(RecourseColor.ink)
                     .multilineTextAlignment(.center)
                 Text(readyMessage)
-                    .font(.system(size: 14))
+                    .font(.system(size: 13))
                     .foregroundStyle(RecourseColor.muted)
                     .multilineTextAlignment(.center)
                     .lineSpacing(2)

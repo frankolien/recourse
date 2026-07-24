@@ -19,13 +19,14 @@ struct CheckoutReviewView: View {
                 if let errorMessage {
                     Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(Color.red)
+                        .foregroundStyle(RecourseColor.ledger)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
             .padding(20)
             .padding(.bottom, 120)
         }
+        .scrollDismissesKeyboard(.interactively)
         .background(Color.white)
         .navigationTitle("Confirm payment")
         .navigationBarTitleDisplayMode(.inline)
@@ -509,7 +510,7 @@ struct PaymentDetailView: View {
     private func timelineRow(_ title: String, _ subtitle: String, _ complete: Bool) -> some View {
         HStack(alignment: .top, spacing: 13) {
             Image(systemName: complete ? "checkmark.circle.fill" : "circle")
-                .foregroundStyle(complete ? RecourseColor.ledger : Color.orange)
+                .foregroundStyle(RecourseColor.ledger)
             VStack(alignment: .leading, spacing: 3) {
                 Text(title).font(.system(size: 14, weight: .semibold)).foregroundStyle(RecourseColor.ink)
                 Text(subtitle).font(.system(size: 12)).foregroundStyle(RecourseColor.muted)
@@ -571,8 +572,8 @@ struct PaymentDetailView: View {
 
     private var statusColor: Color {
         switch payment.state {
-        case .actionNeeded: .orange
-        case .underReview: .blue
+        case .actionNeeded: RecourseColor.ledger
+        case .underReview: RecourseColor.ledger
         default: RecourseColor.ledger
         }
     }
@@ -605,12 +606,13 @@ struct DisputeFilingView: View {
                 if let errorMessage {
                     Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(Color.red)
+                        .foregroundStyle(RecourseColor.ledger)
                 }
             }
             .padding(20)
             .padding(.bottom, 120)
         }
+        .scrollDismissesKeyboard(.interactively)
         .background(Color.white)
         .navigationTitle("Add evidence")
         .navigationBarTitleDisplayMode(.inline)
@@ -635,7 +637,7 @@ struct DisputeFilingView: View {
             Spacer()
             Image(systemName: "exclamationmark.shield.fill")
                 .font(.system(size: 20))
-                .foregroundStyle(Color.orange)
+                .foregroundStyle(RecourseColor.ledger)
         }
         .padding(16)
         .background(Color(red: 0.98, green: 0.97, blue: 0.95), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
