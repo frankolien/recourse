@@ -89,6 +89,9 @@ struct OnboardingSignupStoryView: View {
                         .foregroundStyle(RecourseColor.ink)
                         .frame(width: 44, height: 44)
                         .background(RecourseColor.surface, in: Circle())
+                        .overlay {
+                            Circle().stroke(RecourseColor.line, lineWidth: 1)
+                        }
                 }
                 .buttonStyle(.plain)
 
@@ -109,14 +112,14 @@ struct OnboardingSignupStoryView: View {
                         if isActive {
                             Image(systemName: item.icon)
                                 .font(.system(size: compact ? 18 : 21, weight: .semibold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(RecourseColor.ledger)
                                 .frame(width: 30)
                                 .transition(.move(edge: .leading).combined(with: .opacity).combined(with: .scale))
                         }
 
                         Text(item.title)
                             .font(.system(size: isActive ? (compact ? 29 : 34) : (compact ? 20 : 23), weight: .semibold))
-                            .foregroundStyle(isActive ? .white : .white.opacity(0.17))
+                            .foregroundStyle(isActive ? RecourseColor.ink : RecourseColor.ink.opacity(0.14))
                     }
                     .frame(height: compact ? 38 : 44, alignment: .leading)
                     .animation(.smooth(duration: 0.55), value: activeIndex)
@@ -143,15 +146,17 @@ struct OnboardingSignupStoryView: View {
             Label("BUYER PROTECTION FOR USDC", systemImage: "checkmark.seal.fill")
                 .font(.system(size: 10, weight: .bold))
                 .tracking(0.8)
+                .foregroundStyle(RecourseColor.ledger)
 
             Text("Your payments,\nupgraded with proof.")
                 .font(RecourseTypography.display(size: 28))
+                .foregroundStyle(RecourseColor.ink)
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
 
             Text("Clear terms before payment. Verifiable outcomes\nafter it.")
                 .font(.system(size: 13))
-                .foregroundStyle(.white.opacity(0.78))
+                .foregroundStyle(RecourseColor.muted)
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -160,37 +165,105 @@ struct OnboardingSignupStoryView: View {
             Button(action: onCreateAccount) {
                 Text("Create Recourse account")
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(RecourseColor.ink)
+                    .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
-                    .background(RecourseColor.surface, in: Capsule())
+                    .background(RecourseColor.ledger, in: Capsule())
+                    .shadow(color: RecourseColor.ledger.opacity(0.35), radius: 16, y: 8)
             }
             .buttonStyle(.plain)
-            
-            
+
             Button("I already have an account", action: onSignIn)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(RecourseColor.ink)
                 .frame(maxWidth: .infinity)
                 .frame(height: 44)
+                .background(.white.opacity(0.72), in: Capsule())
                 .overlay {
-                    Capsule().stroke(.white, lineWidth: 1)
+                    Capsule().stroke(RecourseColor.ledger.opacity(0.28), lineWidth: 1)
                 }
                 .buttonStyle(.plain)
 
             Spacer(minLength: 4)
         }
-        .foregroundStyle(.white)
         .padding(.horizontal, 24)
         .padding(.top, 12)
         .padding(.bottom, 24)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .offset(y: hasAppeared ? 0 : 18)
+        .opacity(hasAppeared ? 1 : 0)
+        .animation(.easeOut(duration: 0.7).delay(0.15), value: hasAppeared)
     }
 }
 
+// White page with a live green aurora in the bottom-left corner. A continuous clock
+// (TimelineView) drives each blob along its own slow orbit — the frequencies don't
+// divide evenly, so the composition never visibly repeats, like a live wallpaper —
+// while the main bloom breathes in scale and opacity. Freezes under Reduce Motion.
 private struct RecourseAnimatedStoryBackground: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
-        RecourseColor.ledger
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: reduceMotion)) { timeline in
+            let t = reduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate
+
+            ZStack {
+                Color.white
+
+                RadialGradient(
+                    colors: [RecourseColor.ledger.opacity(0.15 + 0.04 * sin(t * 0.21)), .clear],
+                    center: .bottomLeading,
+                    startRadius: 0,
+                    endRadius: 430
+                )
+
+                // Main bloom: hugs the corner, orbiting on a slow ellipse and breathing.
+                glow(RecourseColor.ledger, size: 620, core: 0.28)
+                    .opacity(0.55 + 0.07 * sin(t * 0.17))
+                    .scaleEffect(1 + 0.05 * sin(t * 0.13))
+                    .offset(
+                        x: -140 + 44 * sin(t * 0.27),
+                        y: 415 + 30 * cos(t * 0.19)
+                    )
+
+                // Companion: brighter leaf green, swimming along the bottom edge.
+                glow(Color(red: 0.38, green: 0.68, blue: 0.31), size: 410, core: 0.22)
+                    .opacity(0.42 + 0.06 * cos(t * 0.23))
+                    .offset(
+                        x: -5 + 58 * sin(t * 0.16 + 2.1),
+                        y: 450 + 24 * sin(t * 0.29 + 0.8)
+                    )
+
+                // Accent: a small bright wisp drifting wider, adds a third layer of depth.
+                glow(Color(red: 0.55, green: 0.78, blue: 0.45), size: 260, core: 0.18)
+                    .opacity(0.32 + 0.07 * sin(t * 0.31 + 1.2))
+                    .offset(
+                        x: -60 + 90 * sin(t * 0.11 + 4.0),
+                        y: 480 + 18 * cos(t * 0.24 + 2.6)
+                    )
+            }
+        }
+    }
+
+    // Soft bloom drawn as a radial falloff rather than Circle().blur(): a gradient
+    // renders in-place, while blur + drawingGroup needs an offscreen Metal pass every
+    // frame — the pass that dies on the Simulator with "invalid reuse after
+    // initialization failure". Same glow, no offscreen rendering, cheaper everywhere.
+    private func glow(_ color: Color, size: CGFloat, core: CGFloat) -> some View {
+        Circle()
+            .fill(
+                RadialGradient(
+                    stops: [
+                        .init(color: color, location: 0),
+                        .init(color: color, location: core),
+                        .init(color: color.opacity(0), location: 1)
+                    ],
+                    center: .center,
+                    startRadius: 0,
+                    endRadius: size / 2
+                )
+            )
+            .frame(width: size, height: size)
     }
 }
 
