@@ -681,6 +681,41 @@ pub async fn account_for_access_token(
     })
 }
 
+/// Overwrite the account's display names. Unlike the sign-in upsert (which keeps existing
+/// names when a provider omits them), an explicit null here clears the stored value: the
+/// caller is editing the profile, so what they send is the whole truth.
+pub async fn update_profile(
+    pool: &PgPool,
+    account_id: i64,
+    given_name: Option<String>,
+    family_name: Option<String>,
+) -> Result<AccountProfile, AccountAuthError> {
+    let given_name = normalize_profile_name(given_name)?;
+    let family_name = normalize_profile_name(family_name)?;
+    let row = sqlx::query_as::<
+        _,
+        (
+            i64,
+            String,
+            String,
+            Option<String>,
+            Option<String>,
+            Option<String>,
+        ),
+    >(
+        "UPDATE accounts SET given_name = $1, family_name = $2, updated_at = now() \
+         WHERE account_id = $3 \
+         RETURNING account_id, provider, provider_subject, email, given_name, family_name",
+    )
+    .bind(&given_name)
+    .bind(&family_name)
+    .bind(account_id)
+    .fetch_one(pool)
+    .await
+    .map_err(|error| AccountAuthError::Internal(format!("updating profile: {error}")))?;
+    Ok(profile_from_row(row))
+}
+
 pub async fn revoke_access_token(
     pool: &PgPool,
     access_token: &str,
@@ -814,6 +849,25 @@ fn clean_optional(value: Option<String>) -> Option<String> {
         .filter(|value| !value.is_empty())
 }
 
+// Display names are plain stored data (R4), so validation is only hygiene: trim, treat an
+// empty submission as clearing the name, and cap the length so one field cannot become a
+// dumping ground. Counted in characters, not bytes, so accented names get the full budget.
+const PROFILE_NAME_MAX_CHARS: usize = 80;
+
+pub(crate) fn normalize_profile_name(
+    value: Option<String>,
+) -> Result<Option<String>, AccountAuthError> {
+    let Some(value) = clean_optional(value) else {
+        return Ok(None);
+    };
+    if value.chars().count() > PROFILE_NAME_MAX_CHARS {
+        return Err(AccountAuthError::BadRequest(format!(
+            "names are limited to {PROFILE_NAME_MAX_CHARS} characters"
+        )));
+    }
+    Ok(Some(value))
+}
+
 pub(crate) fn normalize_email(email: &str) -> Result<String, AccountAuthError> {
     let email = email.trim().to_lowercase();
     // Minimal structural check only; deliverability is out of scope (no verification email
@@ -905,6 +959,28 @@ mod tests {
         assert!(!hash.contains("correct horse"));
         assert!(verify_password("correct horse battery staple", &hash));
         assert!(!verify_password("wrong password", &hash));
+    }
+
+    #[test]
+    fn profile_name_normalization() {
+        assert_eq!(normalize_profile_name(None).unwrap(), None);
+        // Whitespace-only means the user cleared the field, not a one-space name.
+        assert_eq!(normalize_profile_name(Some("   ".into())).unwrap(), None);
+        assert_eq!(
+            normalize_profile_name(Some("  Ada  ".into())).unwrap(),
+            Some("Ada".into())
+        );
+        let at_cap = "e\u{301}".repeat(40);
+        assert_eq!(
+            normalize_profile_name(Some(at_cap.clone())).unwrap(),
+            Some(at_cap)
+        );
+        assert!(normalize_profile_name(Some("x".repeat(81))).is_err());
+        // Surrounding whitespace does not count against the cap; trimming happens first.
+        assert_eq!(
+            normalize_profile_name(Some(format!("  {}  ", "x".repeat(80)))).unwrap(),
+            Some("x".repeat(80))
+        );
     }
 
     #[test]

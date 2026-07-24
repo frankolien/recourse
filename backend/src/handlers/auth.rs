@@ -42,6 +42,15 @@ pub struct GoogleExchangeRequest {
     id_token: String,
 }
 
+// deny_unknown_fields keeps profile editing to exactly these two columns; anything else in
+// the body is a client bug we surface as 400 rather than silently drop.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ProfileUpdateRequest {
+    given_name: Option<String>,
+    family_name: Option<String>,
+}
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EmailRegisterRequest {
@@ -497,6 +506,41 @@ pub async fn me(pool: web::Data<PgPool>, req: HttpRequest) -> HttpResponse {
     match account_sessions::account_for_access_token(pool.get_ref(), token).await {
         Ok(account) => HttpResponse::Ok().json(account),
         Err(error) => account_error_response("reading account session", error),
+    }
+}
+
+/// PUT /api/me/profile - overwrite the caller's display names and return the account in
+/// the same shape as GET /api/me, so the client can refresh its state from the response.
+pub async fn update_profile(
+    pool: web::Data<PgPool>,
+    req: HttpRequest,
+    body: web::Bytes,
+) -> HttpResponse {
+    let token = match bearer_token(&req) {
+        Ok(token) => token,
+        Err((status, message)) => return error_response(status, &message),
+    };
+    // Same session resolution as GET /api/me, and via raw bytes instead of web::Json so it
+    // runs before body parsing: without a valid token the caller always sees 401, never a
+    // body error.
+    let account = match account_sessions::account_for_access_token(pool.get_ref(), token).await {
+        Ok(account) => account,
+        Err(error) => return account_error_response("reading account session", error),
+    };
+    let body: ProfileUpdateRequest = match serde_json::from_slice(&body) {
+        Ok(body) => body,
+        Err(error) => return error_response(400, &format!("invalid profile body: {error}")),
+    };
+    match account_sessions::update_profile(
+        pool.get_ref(),
+        account.account_id,
+        body.given_name,
+        body.family_name,
+    )
+    .await
+    {
+        Ok(account) => HttpResponse::Ok().json(account),
+        Err(error) => account_error_response("updating account profile", error),
     }
 }
 
