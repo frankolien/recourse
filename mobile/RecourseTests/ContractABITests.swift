@@ -7,9 +7,11 @@ final class ContractABITests: XCTestCase {
             try functionNames(in: .erc20),
             ["allowance", "approve", "balanceOf"]
         )
+        // registerPolicy is the one reviewed write here: the merchant workspace
+        // publishes its starter protection policy on-chain through it.
         XCTAssertEqual(
             try functionNames(in: .policyRegistry),
-            ["getPolicy", "policyHash"]
+            ["getPolicy", "policyHash", "registerPolicy"]
         )
         XCTAssertEqual(
             try functionNames(in: .recourseEscrow),
