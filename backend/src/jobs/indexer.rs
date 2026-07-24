@@ -124,6 +124,66 @@ async fn index_once(chain: &ChainClient, pool: &PgPool) -> anyhow::Result<()> {
     }
 
     info!("indexed {indexed} payments, {policy_count} policies");
+
+    if let Err(e) = sync_order_refs(chain, pool).await {
+        warn!("orderRef sweep failed: {e:#}");
+    }
+    Ok(())
+}
+
+// One getLogs sweep is bounded by chain and provider limits, so scan in chunks.
+const LOG_CHUNK_BLOCKS: u64 = 10_000;
+// Bound one cycle's sweep so a huge backlog cannot pin the indexer; the next cycles
+// continue from wherever the missing set has shrunk to.
+const LOG_MAX_CHUNKS_PER_CYCLE: u64 = 400;
+
+// Backfill payments.order_ref from Paid event logs. The escrow's readable state never
+// includes orderRef, so the projection learns it from events: find the earliest missing
+// payment's paidAt, binary-search the block height near it, then chunk-scan forward.
+// Self-quieting: once every payment has an order_ref this does zero RPC work.
+async fn sync_order_refs(chain: &ChainClient, pool: &PgPool) -> anyhow::Result<()> {
+    let missing: Vec<(i64, i64)> = sqlx::query_as(
+        "SELECT payment_id, paid_at FROM payments WHERE order_ref IS NULL ORDER BY paid_at",
+    )
+    .fetch_all(pool)
+    .await?;
+    let Some((_, earliest_paid_at)) = missing.first() else {
+        return Ok(());
+    };
+    let mut wanted: std::collections::HashSet<i64> = missing.iter().map(|(id, _)| *id).collect();
+
+    // Start two minutes before the earliest missing payment so clock skew between the
+    // block timestamp and paidAt cannot skip the event.
+    let target_ts = (*earliest_paid_at as u64).saturating_sub(120);
+    let start = rpc_retry!("block_at_or_before", chain.block_at_or_before(target_ts))?;
+    let latest = rpc_retry!("block_number", chain.block_number())?;
+
+    let mut from = start;
+    let mut chunks = 0u64;
+    while from <= latest && !wanted.is_empty() && chunks < LOG_MAX_CHUNKS_PER_CYCLE {
+        let to = (from + LOG_CHUNK_BLOCKS - 1).min(latest);
+        let events = rpc_retry!("paid_events", chain.paid_events(from, to))?;
+        for (payment_id, order_ref) in events {
+            let id = payment_id as i64;
+            if wanted.remove(&id) {
+                sqlx::query("UPDATE payments SET order_ref = $1 WHERE payment_id = $2")
+                    .bind(&order_ref)
+                    .bind(id)
+                    .execute(pool)
+                    .await?;
+            }
+        }
+        from = to + 1;
+        chunks += 1;
+        sleep(RPC_SPACING).await;
+    }
+    let resolved = missing.len() - wanted.len();
+    if resolved > 0 {
+        info!(
+            "orderRef sweep resolved {resolved} payments ({} still missing)",
+            wanted.len()
+        );
+    }
     Ok(())
 }
 

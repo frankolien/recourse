@@ -1,7 +1,8 @@
 use alloy::primitives::{Address, U256};
 use alloy::providers::{DynProvider, Provider, ProviderBuilder};
+use alloy::rpc::types::Filter;
 use alloy::sol;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
 // Onchain interfaces we read. Selectors depend only on inputs, so modelling the
 // enum-typed status as uint8 decodes correctly. The verdict comes from the
@@ -130,6 +131,62 @@ impl ChainClient {
     pub async fn resolve_delay(&self) -> Result<u64> {
         let escrow = IEscrow::new(self.escrow, &self.provider);
         Ok(escrow.resolveDelay().call().await?)
+    }
+
+    pub async fn block_number(&self) -> Result<u64> {
+        Ok(self.provider.get_block_number().await?)
+    }
+
+    pub async fn block_timestamp(&self, number: u64) -> Result<u64> {
+        let block = self
+            .provider
+            .get_block_by_number(number.into())
+            .await?
+            .ok_or_else(|| anyhow!("block {number} not found"))?;
+        Ok(block.header.timestamp)
+    }
+
+    // Last block whose timestamp is at or before target_ts, by binary search over
+    // headers. Lets the orderRef log sweep start near a payment's paidAt instead of
+    // scanning the chain from genesis.
+    pub async fn block_at_or_before(&self, target_ts: u64) -> Result<u64> {
+        let mut low = 0u64;
+        let mut high = self.block_number().await?;
+        while low < high {
+            let mid = low + (high - low).div_ceil(2);
+            if self.block_timestamp(mid).await? <= target_ts {
+                low = mid;
+            } else {
+                high = mid - 1;
+            }
+        }
+        Ok(low)
+    }
+
+    // Paid events in a block range as (paymentId, orderRef). The escrow's state never
+    // stores orderRef (it is the manifest hash the buyer verified), so the event log is
+    // the only onchain source for linking a payment back to its order.
+    pub async fn paid_events(&self, from_block: u64, to_block: u64) -> Result<Vec<(u64, String)>> {
+        let filter = Filter::new()
+            .address(self.escrow)
+            .event("Paid(uint256,address,address,uint256,uint128,bytes32,bytes32)")
+            .from_block(from_block)
+            .to_block(to_block);
+        let logs = self.provider.get_logs(&filter).await?;
+        let mut events = Vec::with_capacity(logs.len());
+        for log in logs {
+            let raw = &log.inner.data;
+            let topics = raw.topics();
+            // topic0 = signature, topic1 = indexed paymentId. Non-indexed data words:
+            // policyId, amount, orderRef, policyHash.
+            if topics.len() < 2 || raw.data.len() < 96 {
+                continue;
+            }
+            let payment_id = U256::from_be_slice(topics[1].as_slice()).to::<u64>();
+            let order_ref = format!("0x{}", alloy::hex::encode(&raw.data[64..96]));
+            events.push((payment_id, order_ref));
+        }
+        Ok(events)
     }
 
     pub async fn get_payment(&self, id: u64) -> Result<PaymentState> {

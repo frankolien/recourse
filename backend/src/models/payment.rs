@@ -23,6 +23,9 @@ pub struct PaymentRow {
     pub evidence_root: String,
     pub verdict_bps: i32,
     pub status: i32,
+    // From the Paid event (state never stores it); links the payment to its off-chain
+    // order manifest, whose keccak256 this value is. NULL until the log sweep runs.
+    pub order_ref: Option<String>,
     pub refund_bps: Option<i32>,
     pub requires_return: Option<bool>,
     pub rule_index: Option<i32>,
