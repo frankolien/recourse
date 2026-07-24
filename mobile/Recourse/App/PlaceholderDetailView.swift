@@ -452,51 +452,65 @@ struct CheckoutReviewView: View {
     }
 }
 
+// A choreographed confirmation, not a static screen: haptic + shield spring with a
+// one-shot pulse ring, the amount counting up, detail rows cascading in, and the brand
+// aurora breathing along the bottom. Reduce Motion collapses the sequence to a still.
 private struct PaymentSuccessView: View {
     let amount: USDCAmount
     let paidToLabel: String
     let onDone: () -> Void
-    @State private var revealsReceipt = false
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var showsShield = false
+    @State private var pulses = false
+    @State private var shownCents: UInt64 = 0
+    @State private var showsCaption = false
+    @State private var visibleRows = 0
+    @State private var showsFooter = false
+
+    // Display cents (2 decimals) derived from 6-decimal base units; the count-up
+    // animates over these so every intermediate frame is a real currency value.
+    private var totalCents: UInt64 {
+        amount.baseUnits / 10_000
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             Spacer()
 
             VStack(spacing: 22) {
-                ZStack {
-                    Circle()
-                        .stroke(RecourseColor.line, lineWidth: 1)
-                        .frame(width: 104, height: 104)
-                    Image(systemName: "checkmark.shield.fill")
-                        .font(.system(size: 48, weight: .semibold))
-                        .foregroundStyle(RecourseColor.ledger)
-                        .scaleEffect(revealsReceipt ? 1 : 0.72)
-                }
+                shieldHero
 
                 VStack(spacing: 8) {
                     Text("Payment protected")
                         .font(.system(size: 30, weight: .bold))
                         .foregroundStyle(RecourseColor.ink)
-                    Text(currencyAmount)
-                        .font(.system(size: 44, weight: .medium, design: .rounded))
+                        .opacity(showsShield ? 1 : 0)
+                    Text(countedAmount)
+                        .font(.system(size: 54, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
                         .foregroundStyle(RecourseColor.ink)
+                        .opacity(showsShield ? 1 : 0)
                     Text("Paid for \(paidToLabel) on Arc Testnet")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(RecourseColor.muted)
                         .lineLimit(1)
+                        .opacity(showsCaption ? 1 : 0)
+                        .offset(y: showsCaption ? 0 : 6)
                 }
 
                 VStack(spacing: 0) {
-                    successRow("Payment", "Confirmed", "checkmark.circle.fill")
+                    successRow("Payment", "Confirmed", "checkmark.circle.fill", index: 1)
                     Divider().padding(.leading, 42)
-                    successRow("Protection", "14 days active", "shield.checkered")
+                    successRow("Protection", "14 days active", "shield.checkered", index: 2)
                     Divider().padding(.leading, 42)
-                    successRow("Receipt", "Reproducible on Arc", "checkmark.seal")
+                    successRow("Receipt", "Reproducible on Arc", "checkmark.seal", index: 3)
                 }
                 .padding(.horizontal, 16)
-                .background(Color(red: 0.97, green: 0.97, blue: 0.96), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-                .offset(y: revealsReceipt ? 0 : 18)
-                .opacity(revealsReceipt ? 1 : 0)
+                .background(
+                    Color(red: 0.97, green: 0.97, blue: 0.96),
+                    in: RoundedRectangle(cornerRadius: 22, style: .continuous)
+                )
             }
 
             Spacer()
@@ -506,19 +520,90 @@ private struct PaymentSuccessView: View {
                     .buttonStyle(RecoursePrimaryButtonStyle())
                 Text("Your receipt and policy are saved together.")
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(RecourseColor.ink)
+                    .foregroundStyle(RecourseColor.muted)
             }
+            .opacity(showsFooter ? 1 : 0)
+            .offset(y: showsFooter ? 0 : 10)
         }
         .padding(24)
-        .background(Color.white.ignoresSafeArea())
+        .background {
+            successAurora
+                .ignoresSafeArea()
+        }
         .task {
-            withAnimation(.spring(response: 0.55, dampingFraction: 0.78)) {
-                revealsReceipt = true
+            await runChoreography()
+        }
+    }
+
+    private var shieldHero: some View {
+        ZStack {
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [RecourseColor.ledger.opacity(0.16), .clear],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: 110
+                    )
+                )
+                .frame(width: 220, height: 220)
+                .opacity(showsShield ? 1 : 0)
+
+            // One-shot ripple: expands and fades exactly once at the reveal.
+            Circle()
+                .stroke(RecourseColor.ledger.opacity(pulses ? 0 : 0.35), lineWidth: 1.5)
+                .frame(width: 120, height: 120)
+                .scaleEffect(pulses ? 2.05 : 0.8)
+
+            Image(systemName: "checkmark.shield.fill")
+                .font(.system(size: 54, weight: .semibold))
+                .foregroundStyle(RecourseColor.ledger)
+                .scaleEffect(showsShield ? 1 : 0.35)
+                .opacity(showsShield ? 1 : 0)
+        }
+        .frame(height: 180)
+    }
+
+    // The brand aurora, dialed down: two soft green blooms breathing along the bottom
+    // edge on unsynchronized clocks, behind the footer.
+    private var successAurora: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: reduceMotion)) { timeline in
+            let t = reduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate
+            ZStack {
+                Color.white
+                bloom(RecourseColor.ledger, size: 460)
+                    .opacity(0.22 + 0.05 * sin(t * 0.19))
+                    .offset(x: -130 + 30 * sin(t * 0.23), y: 430 + 18 * cos(t * 0.17))
+                bloom(Color(red: 0.38, green: 0.68, blue: 0.31), size: 280)
+                    .opacity(0.16 + 0.04 * cos(t * 0.27))
+                    .offset(x: 70 + 40 * sin(t * 0.13 + 2.2), y: 470 + 14 * sin(t * 0.21 + 0.9))
             }
         }
     }
 
-    private func successRow(_ label: String, _ value: String, _ icon: String) -> some View {
+    private func bloom(_ color: Color, size: CGFloat) -> some View {
+        Circle()
+            .fill(
+                RadialGradient(
+                    stops: [
+                        .init(color: color, location: 0),
+                        .init(color: color, location: 0.22),
+                        .init(color: color.opacity(0), location: 1)
+                    ],
+                    center: .center,
+                    startRadius: 0,
+                    endRadius: size / 2
+                )
+            )
+            .frame(width: size, height: size)
+    }
+
+    private func successRow(
+        _ label: String,
+        _ value: String,
+        _ icon: String,
+        index: Int
+    ) -> some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 15, weight: .semibold))
@@ -533,11 +618,62 @@ private struct PaymentSuccessView: View {
                 .foregroundStyle(RecourseColor.ink)
         }
         .frame(height: 52)
+        .opacity(visibleRows >= index ? 1 : 0)
+        .offset(y: visibleRows >= index ? 0 : 14)
     }
 
-    private var currencyAmount: String {
-        let value = Double(amount.baseUnits) / Double(USDCAmount.base)
-        return String(format: "$%.2f", value)
+    private var countedAmount: String {
+        String(format: "$%llu.%02llu", shownCents / 100, shownCents % 100)
+    }
+
+    @MainActor
+    private func runChoreography() async {
+        guard !reduceMotion else {
+            showsShield = true
+            pulses = true
+            shownCents = totalCents
+            showsCaption = true
+            visibleRows = 3
+            showsFooter = true
+            return
+        }
+
+        try? await Task.sleep(for: .milliseconds(150))
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.62)) {
+            showsShield = true
+        }
+        withAnimation(.easeOut(duration: 1.0)) {
+            pulses = true
+        }
+
+        try? await Task.sleep(for: .milliseconds(320))
+        // Eased count-up: fast start, soft landing, every frame a real value.
+        let steps = 26
+        for step in 1 ... steps {
+            let progress = Double(step) / Double(steps)
+            let eased = 1 - pow(1 - progress, 3)
+            shownCents = UInt64((Double(totalCents) * eased).rounded())
+            if step < steps {
+                try? await Task.sleep(for: .milliseconds(34))
+            }
+        }
+        shownCents = totalCents
+
+        withAnimation(.easeOut(duration: 0.3)) {
+            showsCaption = true
+        }
+        try? await Task.sleep(for: .milliseconds(140))
+        for row in 1 ... 3 {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                visibleRows = row
+            }
+            try? await Task.sleep(for: .milliseconds(110))
+        }
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        withAnimation(.easeOut(duration: 0.4)) {
+            showsFooter = true
+        }
     }
 }
 
