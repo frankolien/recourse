@@ -24,8 +24,22 @@ means re-running codegen and re-committing arc-testnet.json.
 
 ## Blockers
 
-1. CRITICAL (owner action, Railway dashboard): the recourse service has NO volume. /data/evidence-store (and /data/order-store once the order code deploys) is wiped on every redeploy. Attach one volume mounted at /data before the next deploy. Found by the Session 36 production audit; nothing else is wrong with prod config (GOOGLE_CLIENT_ID was a truncated masked paste and has been re-set with the full id, skip-deploys).
-2. GOOGLE_IOS_CLIENT_ID is unset on Railway, so the iOS Google button cannot verify against the backend. Owner creates an iOS OAuth client (bundle com.recourse.buyer) in Google Cloud Console and provides the id.
+0. CRITICAL (owner action, Railway dashboard): DISABLE AUTO-DEPLOY on the recourse
+   service (Settings, Source, toggle Auto Deploy off or disconnect the repo). Every
+   GitHub push triggers a Railway deploy that fails its healthcheck despite identical
+   code and config (CLI deploys of the same tree pass; deployment metadata compared
+   field by field, only the trigger differs, suspicion is the volume handoff in
+   repo-triggered swaps), and because the volume forces the old container down, every
+   failed push-deploy is a production outage. Until the toggle is off: after any push,
+   check /health; if down, `railway up --detach` from the repo root restores it.
+   CLI deploys are 4 for 4; GitHub deploys are 0 for 3.
+
+1. RESOLVED 2026-07-24: the recourse service now has a volume (recourse-volume, 5 GB)
+   mounted at /data, so evidence and order stores survive redeploys. Previously: no volume. /data/evidence-store (and /data/order-store once the order code deploys) is wiped on every redeploy. Attach one volume mounted at /data before the next deploy. Found by the Session 36 production audit; nothing else is wrong with prod config (GOOGLE_CLIENT_ID was a truncated masked paste and has been re-set with the full id, skip-deploys).
+2. RESOLVED 2026-07-24: GOOGLE_IOS_CLIENT_ID is set on Railway (owner created the iOS
+   OAuth client, id 181083896548-8f52...enqm) and the truncated GOOGLE_CLIENT_ID was
+   re-set with the full 72-char value. Native iOS Google sign-in shipped (PKCE via
+   ASWebAuthenticationSession, no SDK).
 3. USYC testnet access not yet requested. Apply via the Circle faucet/portal. Until approved, MockUSYCAdapter is the wired adapter; the swap to a USYCTellerAdapter (Teller at 0x9fdF14c5B14173D74C08Af27AebFf39240dC105A) is a redeploy. Not blocking anything else.
 4. The demo attestor currently equals the deployer key. When the Rust attestor bot lands, either give it this key or rotate via escrow.setAttestor to the bot's address.
 
