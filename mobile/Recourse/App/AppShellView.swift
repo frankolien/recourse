@@ -1,6 +1,6 @@
 import SwiftUI
 import CoreImage.CIFilterBuiltins
-import CryptoKit
+import PhotosUI
 import UIKit
 
 private enum AppTab: Hashable, CaseIterable {
@@ -106,8 +106,13 @@ struct MerchantWorkspaceView: View {
     @State private var selectedPolicyID: UInt64?
     @State private var amount = ""
     @State private var orderReference = ""
-    @State private var checkoutRequest: PaymentRequest?
-    @State private var showsCheckoutQR = false
+    @State private var itemName = ""
+    @State private var itemDescription = ""
+    @State private var selectedProductPhoto: PhotosPickerItem?
+    @State private var productImageData: Data?
+    @State private var isCreatingCheckout = false
+    @State private var checkoutStatusMessage: String?
+    @State private var checkoutPresentation: CheckoutPresentation?
     @State private var checkoutErrorMessage: String?
     @State private var hasCopiedWalletAddress = false
     @State private var isPublishingPolicy = false
@@ -117,6 +122,14 @@ struct MerchantWorkspaceView: View {
     private let merchantCanvas = Color(red: 247 / 255, green: 248 / 255, blue: 246 / 255)
     private let merchantCard = Color(red: 252 / 255, green: 253 / 255, blue: 252 / 255)
     private let merchantDark = Color(red: 10 / 255, green: 35 / 255, blue: 35 / 255)
+
+    private struct CheckoutPresentation: Identifiable {
+        let id = UUID()
+        let request: PaymentRequest
+        let manifest: OrderManifest
+        let encodedRequest: String
+        let image: UIImage
+    }
 
     private enum MerchantPage: String, CaseIterable {
         case overview = "Home"
@@ -209,8 +222,8 @@ struct MerchantWorkspaceView: View {
                 selectedPolicyID = policies.first?.id
             }
         }
-        .sheet(isPresented: $showsCheckoutQR) {
-            checkoutQRSheet
+        .sheet(item: $checkoutPresentation) { presentation in
+            checkoutQRSheet(presentation)
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
@@ -462,6 +475,19 @@ struct MerchantWorkspaceView: View {
                 Text("Checkout details")
                     .font(.system(size: 16, weight: .bold))
 
+                TextField("Item or service name", text: $itemName)
+                    .padding(.horizontal, 15)
+                    .frame(height: 52)
+                    .background(RecourseColor.surface, in: RoundedRectangle(cornerRadius: 16))
+
+                TextField("What does the buyer receive?", text: $itemDescription, axis: .vertical)
+                    .lineLimit(2 ... 4)
+                    .padding(.horizontal, 15)
+                    .padding(.vertical, 15)
+                    .background(RecourseColor.surface, in: RoundedRectangle(cornerRadius: 16))
+
+                productImagePicker
+
                 TextField("Order reference", text: $orderReference)
                     .textInputAutocapitalization(.characters)
                     .padding(.horizontal, 15)
@@ -536,19 +562,31 @@ struct MerchantWorkspaceView: View {
                     }
                 }
 
-                Button(action: generateCheckout) {
-                    Label("Create payment QR", systemImage: "qrcode")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(
-                            merchantAccent,
-                            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        )
+                Button {
+                    Task { await generateCheckout() }
+                } label: {
+                    HStack(spacing: 9) {
+                        if isCreatingCheckout {
+                            ProgressView()
+                                .tint(.white)
+                        } else {
+                            Image(systemName: "qrcode")
+                        }
+                        Text(isCreatingCheckout
+                            ? (checkoutStatusMessage ?? "Creating order…")
+                            : "Create payment QR")
+                    }
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background(
+                        merchantAccent,
+                        in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    )
                 }
                 .buttonStyle(.plain)
-                .disabled(merchantPolicies.isEmpty || isPublishingPolicy)
+                .disabled(merchantPolicies.isEmpty || isPublishingPolicy || isCreatingCheckout)
                 .opacity(merchantPolicies.isEmpty ? 0.45 : 1)
 
                 if let checkoutErrorMessage {
@@ -612,48 +650,53 @@ struct MerchantWorkspaceView: View {
         .shadow(color: merchantDark.opacity(0.06), radius: 14, y: 7)
     }
 
-    @ViewBuilder
-    private var checkoutQRSheet: some View {
-        if let checkoutRequest,
-           let encodedRequest = encoded(checkoutRequest),
-           let image = qrCode(encodedRequest) {
-            VStack(spacing: 22) {
-                VStack(spacing: 6) {
-                    Text("Show this to the buyer")
-                        .font(.system(size: 24, weight: .bold))
-                    Text("They can scan it live or import a screenshot.")
-                        .font(.system(size: 13))
-                        .foregroundStyle(RecourseColor.muted)
-                }
-                Spacer()
-                Image(uiImage: image)
-                    .interpolation(.none)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 270, height: 270)
-                    .padding(18)
-                    .background(.white, in: RoundedRectangle(cornerRadius: 28))
-                    .shadow(color: .black.opacity(0.08), radius: 24, y: 12)
-                VStack(spacing: 6) {
-                    Text(checkoutRequest.amount.formatted)
-                        .font(.system(size: 30, weight: .bold, design: .rounded))
-                    Text("Policy #\(checkoutRequest.policyID)")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(RecourseColor.muted)
-                }
-                Spacer()
-                ShareLink(item: encodedRequest) {
-                    Label("Share checkout", systemImage: "square.and.arrow.up")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(RecoursePrimaryButtonStyle())
+    private func checkoutQRSheet(_ presentation: CheckoutPresentation) -> some View {
+        VStack(spacing: 22) {
+            VStack(spacing: 6) {
+                Text("Show this to the buyer")
+                    .font(.system(size: 24, weight: .bold))
+                Text("They can scan it live or import a screenshot.")
+                    .font(.system(size: 13))
+                    .foregroundStyle(RecourseColor.muted)
             }
-            .padding(24)
-            .background(RecourseColor.surface)
+            Spacer()
+            Image(uiImage: presentation.image)
+                .interpolation(.none)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 270, height: 270)
+                .padding(18)
+                .background(.white, in: RoundedRectangle(cornerRadius: 28))
+                .shadow(color: .black.opacity(0.08), radius: 24, y: 12)
+            VStack(spacing: 6) {
+                Text(presentation.request.amount.formatted)
+                    .font(.system(size: 30, weight: .bold, design: .rounded))
+                Text(presentation.manifest.itemName)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(RecourseColor.ink)
+                    .lineLimit(1)
+                Text("Policy #\(presentation.request.policyID) · \(presentation.manifest.orderReference)")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(RecourseColor.muted)
+                    .lineLimit(1)
+            }
+            Spacer()
+            ShareLink(item: presentation.encodedRequest) {
+                Label("Share checkout", systemImage: "square.and.arrow.up")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(RecoursePrimaryButtonStyle())
         }
+        .padding(24)
+        .background(RecourseColor.surface)
     }
 
-    private func generateCheckout() {
+    // Publishes a protected order: optional image upload, then the manifest whose
+    // keccak256 becomes the on-chain orderRef, then the v2 QR carrying that hash. The
+    // buyer re-fetches the manifest by hash and verifies it before paying.
+    @MainActor
+    private func generateCheckout() async {
+        guard !isCreatingCheckout else { return }
         checkoutErrorMessage = nil
 
         guard let merchantAddress else {
@@ -672,27 +715,174 @@ struct MerchantWorkspaceView: View {
             checkoutErrorMessage = "Publish a protection policy for this merchant wallet first."
             return
         }
+        let name = itemName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else {
+            checkoutErrorMessage = "Name the item or service the buyer is paying for."
+            return
+        }
+        let details = itemDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !details.isEmpty else {
+            checkoutErrorMessage = "Describe what the buyer receives."
+            return
+        }
 
         let trimmedReference = orderReference.trimmingCharacters(in: .whitespacesAndNewlines)
         let resolvedReference = trimmedReference.isEmpty
             ? "ORDER-\(Int(Date().timeIntervalSince1970))"
             : trimmedReference
-
-        guard let orderHash = makeOrderHash(resolvedReference) else {
-            checkoutErrorMessage = "Recourse could not create the order reference."
-            return
-        }
         orderReference = resolvedReference
-        checkoutRequest = PaymentRequest(
-            version: 1,
-            chainID: environment.configuration.chainID,
-            escrow: environment.configuration.escrowAddress,
-            policyID: selectedPolicyID,
-            merchant: merchantAddress,
-            amount: amount,
-            orderReference: orderHash
-        )
-        showsCheckoutQR = true
+
+        isCreatingCheckout = true
+        defer {
+            isCreatingCheckout = false
+            checkoutStatusMessage = nil
+        }
+
+        do {
+            let api = environment.makeOrderAPIClient()
+
+            var imageHash: String?
+            var imageContentType: String?
+            if let productImageData {
+                checkoutStatusMessage = "Uploading product image…"
+                guard let compressed = compressedProductImage(productImageData) else {
+                    checkoutErrorMessage = "The selected photo could not be read. Choose another image."
+                    return
+                }
+                let stored = try await api.uploadImage(compressed, contentType: "image/jpeg")
+                imageHash = stored.hash
+                imageContentType = stored.contentType
+            }
+
+            checkoutStatusMessage = "Publishing order…"
+            let manifest = OrderManifest(
+                version: 1,
+                chainID: environment.configuration.chainID,
+                escrow: environment.configuration.escrowAddress.value,
+                merchant: merchantAddress.value,
+                policyID: selectedPolicyID,
+                amount: String(amount.baseUnits),
+                orderReference: resolvedReference,
+                itemName: name,
+                description: details,
+                imageHash: imageHash,
+                imageContentType: imageContentType,
+                createdAt: Int64(Date().timeIntervalSince1970)
+            )
+            let (manifestBytes, orderReferenceHash) = try manifest.encodedForPublishing()
+            _ = try await api.publishManifest(manifestBytes)
+
+            let request = PaymentRequest(
+                version: 2,
+                chainID: environment.configuration.chainID,
+                escrow: environment.configuration.escrowAddress,
+                policyID: selectedPolicyID,
+                merchant: merchantAddress,
+                amount: amount,
+                orderReference: orderReferenceHash
+            )
+            guard let encodedRequest = encoded(request),
+                  let image = qrCode(encodedRequest) else {
+                checkoutErrorMessage = "Recourse could not render this checkout QR. Try again."
+                return
+            }
+            checkoutPresentation = CheckoutPresentation(
+                request: request,
+                manifest: manifest,
+                encodedRequest: encodedRequest,
+                image: image
+            )
+        } catch let error as OrderAPIError {
+            switch error {
+            case .rejected(let status, let message):
+                checkoutErrorMessage = "The order service rejected this checkout (\(status)): \(message)"
+            case .invalidResponse:
+                checkoutErrorMessage = "The order service returned an unexpected response. Try again."
+            }
+        } catch {
+            checkoutErrorMessage = "The order could not be published. Check the backend connection and try again."
+        }
+    }
+
+    private var productImagePicker: some View {
+        HStack(spacing: 12) {
+            if let attachedImageData = productImageData,
+               let preview = UIImage(data: attachedImageData) {
+                Image(uiImage: preview)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 44, height: 44)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Product photo attached")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(RecourseColor.ink)
+                    Text("Buyers see it before paying")
+                        .font(.system(size: 11))
+                        .foregroundStyle(RecourseColor.muted)
+                }
+                Spacer()
+                Button {
+                    selectedProductPhoto = nil
+                    productImageData = nil
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(RecourseColor.muted)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Remove product photo")
+            } else {
+                PhotosPicker(selection: $selectedProductPhoto, matching: .images) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "photo.badge.plus")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(merchantAccent)
+                        Text("Add a product photo (optional)")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(RecourseColor.ink)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(RecourseColor.muted)
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 15)
+        .frame(height: 60)
+        .background(RecourseColor.surface, in: RoundedRectangle(cornerRadius: 16))
+        .onChange(of: selectedProductPhoto) { _, item in
+            guard let item else { return }
+            Task {
+                let data = try? await item.loadTransferable(type: Data.self)
+                await MainActor.run {
+                    if let data {
+                        productImageData = data
+                    } else {
+                        checkoutErrorMessage = "The selected photo could not be loaded. Choose another image."
+                        selectedProductPhoto = nil
+                    }
+                }
+            }
+        }
+    }
+
+    // Downscale and re-encode before upload: checkout photos do not need camera-native
+    // resolution, and the backend caps image bodies at 5 MB.
+    private func compressedProductImage(_ data: Data) -> Data? {
+        guard let image = UIImage(data: data) else { return nil }
+        let maxDimension: CGFloat = 1200
+        let largestSide = max(image.size.width, image.size.height)
+        let scale = min(1, maxDimension / max(largestSide, 1))
+        let target = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let resized = UIGraphicsImageRenderer(size: target, format: format).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: target))
+        }
+        return resized.jpegData(compressionQuality: 0.8)
     }
 
     @MainActor
@@ -729,11 +919,6 @@ struct MerchantWorkspaceView: View {
             policyStatusMessage = nil
             checkoutErrorMessage = "Could not publish the policy. Make sure this wallet has Arc gas and try again."
         }
-    }
-
-    private func makeOrderHash(_ reference: String) -> ChainHash? {
-        let digest = SHA256.hash(data: Data(reference.utf8))
-        return try? ChainHash("0x" + digest.map { String(format: "%02x", $0) }.joined())
     }
 
     private func encoded(_ request: PaymentRequest) -> String? {

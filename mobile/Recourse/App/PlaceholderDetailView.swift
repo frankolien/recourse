@@ -8,11 +8,26 @@ struct CheckoutReviewView: View {
     @State private var paid = false
     @State private var progress: CheckoutProgress?
     @State private var errorMessage: String?
+    @State private var orderReview: OrderReview = .verifying
+
+    // The buyer's view of the scanned order. A v2 QR carries the manifest hash, so the
+    // app fetches the document, rehashes it, and cross-checks every economic field;
+    // payment stays blocked unless that verification succeeds. v1 QRs predate manifests
+    // and continue as a plain protected checkout.
+    private enum OrderReview {
+        case verifying
+        case legacy
+        case verified(OrderManifest, UIImage?)
+        case blocked(String)
+    }
 
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
                 checkoutHero
+                if case .blocked(let reason) = orderReview {
+                    blockedOrderCard(reason)
+                }
                 policyCard
                 paymentBreakdown
                 safetyNote
@@ -34,10 +49,101 @@ struct CheckoutReviewView: View {
             checkoutActionBar
         }
         .fullScreenCover(isPresented: $paid) {
-            PaymentSuccessView(amount: request.amount) {
+            PaymentSuccessView(amount: request.amount, paidToLabel: successLabel) {
                 paid = false
                 environment.router.reset()
             }
+        }
+        .task {
+            await loadOrder()
+        }
+    }
+
+    private var successLabel: String {
+        if case .verified(let manifest, _) = orderReview {
+            return manifest.itemName
+        }
+        return request.merchant.shortened
+    }
+
+    private var canPay: Bool {
+        switch orderReview {
+        case .legacy, .verified: true
+        case .verifying, .blocked: false
+        }
+    }
+
+    private func loadOrder() async {
+        guard request.carriesOrderManifest else {
+            orderReview = .legacy
+            return
+        }
+        orderReview = .verifying
+        do {
+            let api = environment.makeOrderAPIClient()
+            let bytes = try await api.fetchManifestBytes(orderReference: request.orderReference)
+            let manifest = try OrderManifest.decode(
+                verifying: bytes,
+                orderReference: request.orderReference
+            )
+            try manifest.crossCheck(against: request)
+
+            var image: UIImage?
+            if let hash = manifest.imageHash {
+                do {
+                    image = UIImage(data: try await api.fetchImage(hash: hash))
+                } catch OrderManifestError.imageHashMismatch {
+                    // A wrong image is tampering, not an outage: block like any mismatch.
+                    throw OrderManifestError.imageHashMismatch
+                } catch {
+                    // Missing image is a degraded view; the economic terms verified above.
+                    image = nil
+                }
+            }
+            orderReview = .verified(manifest, image)
+        } catch let error as OrderManifestError {
+            orderReview = .blocked(blockedReason(error))
+        } catch {
+            orderReview = .blocked(
+                "The order details could not be loaded. Recourse will not pay until the order is verified."
+            )
+        }
+    }
+
+    private func blockedReason(_ error: OrderManifestError) -> String {
+        switch error {
+        case .hashMismatch:
+            "The order details do not match the scanned code. Do not pay: ask the merchant for a fresh checkout."
+        case .fieldMismatch(let field):
+            "The order's \(field) does not match the scanned code. Do not pay: ask the merchant for a fresh checkout."
+        case .invalidManifest:
+            "The order details are incomplete or malformed. Ask the merchant for a fresh checkout."
+        case .imageHashMismatch:
+            "The product photo does not match this order. Do not pay: ask the merchant for a fresh checkout."
+        }
+    }
+
+    private func blockedOrderCard(_ reason: String) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Payment blocked", systemImage: "hand.raised.fill")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(RecourseColor.ink)
+            Text(reason)
+                .font(.system(size: 12))
+                .foregroundStyle(RecourseColor.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Try again") {
+                Task { await loadOrder() }
+            }
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(RecourseColor.ledger)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(RecourseColor.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(RecourseColor.line, lineWidth: 1)
         }
     }
 
@@ -63,7 +169,9 @@ struct CheckoutReviewView: View {
     }
 
     private func submitPayment() {
-        guard !isPaying else { return }
+        // Same rule as the disabled button: no payment without a verified (or legacy v1)
+        // order, even if another code path calls this directly.
+        guard !isPaying, canPay else { return }
         isPaying = true
         errorMessage = nil
         progress = .validating
@@ -110,26 +218,31 @@ struct CheckoutReviewView: View {
     private var checkoutHero: some View {
         VStack(alignment: .leading, spacing: 20) {
             HStack(spacing: 14) {
-                MerchantArtwork(
-                    payment: DemoCatalog.payment(id: 281),
-                    size: 58,
-                    cornerRadius: 17
-                )
+                orderArtwork
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Paying")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(RecourseColor.muted)
-                    Text("CloudCompute")
+                    Text(orderTitle)
                         .font(.system(size: 18, weight: .bold))
                         .foregroundStyle(RecourseColor.ink)
-                    Text("API Credits Pack")
-                        .font(.system(size: 12))
+                        .lineLimit(2)
+                    Text(request.merchant.shortened)
+                        .font(.system(size: 12, weight: .medium, design: .monospaced))
                         .foregroundStyle(RecourseColor.muted)
                 }
                 Spacer()
-                Image(systemName: "checkmark.seal.fill")
-                    .font(.system(size: 19))
-                    .foregroundStyle(RecourseColor.ledger)
+                orderStatusBadge
+            }
+
+            if case .verified(let manifest, _) = orderReview {
+                Text(manifest.description)
+                    .font(.system(size: 13))
+                    .foregroundStyle(RecourseColor.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(manifest.orderReference)
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .foregroundStyle(RecourseColor.muted)
             }
 
             Divider()
@@ -168,6 +281,60 @@ struct CheckoutReviewView: View {
         }
     }
 
+    // The verified order's image or a neutral placeholder; never stock artwork.
+    @ViewBuilder
+    private var orderArtwork: some View {
+        if case .verified(_, let image) = orderReview, let image {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 58, height: 58)
+                .clipShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
+        } else {
+            Image(systemName: "shippingbox.fill")
+                .font(.system(size: 21, weight: .semibold))
+                .foregroundStyle(RecourseColor.ledger)
+                .frame(width: 58, height: 58)
+                .background(RecourseColor.softGreen, in: RoundedRectangle(cornerRadius: 17, style: .continuous))
+        }
+    }
+
+    private var orderTitle: String {
+        switch orderReview {
+        case .verified(let manifest, _):
+            manifest.itemName
+        case .verifying:
+            "Verifying order…"
+        case .legacy:
+            "Protected checkout"
+        case .blocked:
+            "Order not verified"
+        }
+    }
+
+    @ViewBuilder
+    private var orderStatusBadge: some View {
+        switch orderReview {
+        case .verifying:
+            ProgressView()
+                .tint(RecourseColor.ledger)
+        case .verified:
+            Image(systemName: "checkmark.seal.fill")
+                .font(.system(size: 19))
+                .foregroundStyle(RecourseColor.ledger)
+                .accessibilityLabel("Order verified")
+        case .legacy:
+            Image(systemName: "checkmark.seal.fill")
+                .font(.system(size: 19))
+                .foregroundStyle(RecourseColor.ledger)
+        case .blocked:
+            Image(systemName: "hand.raised.fill")
+                .font(.system(size: 19))
+                .foregroundStyle(RecourseColor.ink)
+                .accessibilityLabel("Payment blocked")
+        }
+    }
+
     private var checkoutActionBar: some View {
         VStack(spacing: 9) {
             Button {
@@ -175,8 +342,8 @@ struct CheckoutReviewView: View {
             } label: {
                 HStack(spacing: 10) {
                     if isPaying { ProgressView().tint(.white) }
-                    Text(isPaying ? progressLabel : "Pay \(currencyAmount)")
-                    if !isPaying {
+                    Text(payButtonTitle)
+                    if !isPaying, canPay {
                         Image(systemName: "faceid")
                     }
                 }
@@ -187,7 +354,8 @@ struct CheckoutReviewView: View {
                 .background(RecourseColor.ledgerDeep, in: Capsule())
             }
             .buttonStyle(.plain)
-            .disabled(isPaying)
+            .disabled(isPaying || !canPay)
+            .opacity(canPay || isPaying ? 1 : 0.5)
 
             Text("Face ID confirms this protected Arc payment")
                 .font(.system(size: 10, weight: .medium))
@@ -197,6 +365,15 @@ struct CheckoutReviewView: View {
         .padding(.top, 12)
         .padding(.bottom, 8)
         .background(.ultraThinMaterial)
+    }
+
+    private var payButtonTitle: String {
+        if isPaying { return progressLabel }
+        switch orderReview {
+        case .verifying: return "Verifying order…"
+        case .blocked: return "Payment blocked"
+        case .legacy, .verified: return "Pay \(currencyAmount)"
+        }
     }
 
     private var currencyAmount: String {
@@ -270,6 +447,7 @@ struct CheckoutReviewView: View {
 
 private struct PaymentSuccessView: View {
     let amount: USDCAmount
+    let paidToLabel: String
     let onDone: () -> Void
     @State private var revealsReceipt = false
 
@@ -295,9 +473,10 @@ private struct PaymentSuccessView: View {
                     Text(currencyAmount)
                         .font(.system(size: 44, weight: .medium, design: .rounded))
                         .foregroundStyle(RecourseColor.ink)
-                    Text("Paid to CloudCompute on Arc Testnet")
+                    Text("Paid for \(paidToLabel) on Arc Testnet")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(RecourseColor.muted)
+                        .lineLimit(1)
                 }
 
                 VStack(spacing: 0) {
