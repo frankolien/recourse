@@ -24,8 +24,18 @@ means re-running codegen and re-committing arc-testnet.json.
 
 ## Blockers
 
-1. USYC testnet access not yet requested. Apply via the Circle faucet/portal. Until approved, MockUSYCAdapter is the wired adapter; the swap to a USYCTellerAdapter (Teller at 0x9fdF14c5B14173D74C08Af27AebFf39240dC105A) is a redeploy. Not blocking anything else.
-2. The demo attestor currently equals the deployer key. When the Rust attestor bot lands, either give it this key or rotate via escrow.setAttestor to the bot's address.
+1. CRITICAL (owner action, Railway dashboard): the recourse service has NO volume. /data/evidence-store (and /data/order-store once the order code deploys) is wiped on every redeploy. Attach one volume mounted at /data before the next deploy. Found by the Session 36 production audit; nothing else is wrong with prod config (GOOGLE_CLIENT_ID was a truncated masked paste and has been re-set with the full id, skip-deploys).
+2. GOOGLE_IOS_CLIENT_ID is unset on Railway, so the iOS Google button cannot verify against the backend. Owner creates an iOS OAuth client (bundle com.recourse.buyer) in Google Cloud Console and provides the id.
+3. USYC testnet access not yet requested. Apply via the Circle faucet/portal. Until approved, MockUSYCAdapter is the wired adapter; the swap to a USYCTellerAdapter (Teller at 0x9fdF14c5B14173D74C08Af27AebFf39240dC105A) is a redeploy. Not blocking anything else.
+4. The demo attestor currently equals the deployer key. When the Rust attestor bot lands, either give it this key or rotate via escrow.setAttestor to the bot's address.
+
+## ORDER MANIFEST CONTRACT (Session 36, live in backend + iOS, uncommitted work in the tree)
+
+The merchant checkout now publishes a per-order manifest and the buyer verifies it before paying. Binding rule: the manifest is an exact JSON document and orderRef = keccak256(manifest bytes), the same bytes32 the escrow receives in pay(). Bytes are stored verbatim and content-addressed; any client verifies by rehashing what it fetches, so the backend is trusted for transport only. Golden fixture + orderRef (0xa4e9..b7cd) is asserted in backend/src/services/orders.rs, mobile/RecourseTests/OrderManifestTests.swift, and engine/test/order-manifest.test.ts; change all three in one commit or none.
+
+Manifest JSON (camelCase): {version:1, chainId, escrow, merchant, policyId, amount (base-unit decimal string), orderReference (human string), itemName, description, imageHash?, imageContentType?, createdAt (unix secs)}. Backend routes: POST /api/orders/image (raw bytes, content-type image/jpeg|png|heic|webp, 5 MB cap) -> {hash,size,contentType}; POST /api/orders (raw manifest bytes, 32 KB cap; 422 unless chainId+escrow match the deployment, structure is valid, and any imageHash was uploaded first) -> {orderRef,size}; GET /api/orders/{orderRef} and GET /api/orders/image/{hash} serve exact bytes. QR v2 = the v1 envelope with v:2, orderRef = manifest hash; v1 QRs stay decodable and payable (legacy path). iOS: OrderManifest.decode(verifying:orderReference:) + crossCheck(against:) gate the pay button; a mismatch (hash, chain, escrow, merchant, policy, amount, tampered image) blocks payment with a reason. Known follow-up: merchant wallet-signature authorization on manifest publication (content addressing already makes stored manifests tamper-evident); ORDERS_DIR shares the /data volume story with evidence (blocker 1).
+
+Also new (Session 36): PUT /api/me/profile (bearer access token, same auth as GET /api/me; body {givenName,familyName}, null/empty clears, 80-char cap, returns the /api/me account shape). iOS AccountSession.updateProfile drives it; the AppStorage profile keys are gone, so Home/Settings read the session account.
 
 ## Deploy + seed runbook
 
