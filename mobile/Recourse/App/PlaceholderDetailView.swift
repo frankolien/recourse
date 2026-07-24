@@ -188,9 +188,14 @@ struct CheckoutReviewView: View {
                         progress = update
                     }
                 }
+                var manifest: OrderManifest?
+                if case .verified(let verifiedManifest, _) = orderReview {
+                    manifest = verifiedManifest
+                }
                 environment.paymentStore.record(
                     payment: result.payment,
-                    request: request
+                    request: request,
+                    manifest: manifest
                 )
                 paid = true
             } catch {
@@ -210,6 +215,8 @@ struct CheckoutReviewView: View {
             "Payment confirmation was cancelled."
         case TransactionAuthorizationError.unavailable:
             "Set a device passcode or Face ID before paying."
+        case ContractReadError.rpc(let code, let message):
+            "Arc RPC error \(code): \(message)"
         default:
             "The protected payment could not be completed. Please try again."
         }

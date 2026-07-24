@@ -103,7 +103,40 @@ final class BuyerPaymentStore {
         self.session = session
     }
 
-    func record(payment: PaymentRecord, request: PaymentRequest) {
+    // What the buyer actually bought, remembered per payment at pay time. The indexer
+    // only knows chain data (addresses, amounts); the item name and product image come
+    // from the order manifest this device verified before paying, so rows can show the
+    // real purchase instead of a bare merchant address. Persisted across launches.
+    private struct OrderContext: Codable {
+        let itemName: String
+        let imageHash: String?
+    }
+
+    private var orderContexts: [UInt64: OrderContext] {
+        get {
+            guard let data = UserDefaults.standard.data(forKey: "recourse.buyer.orderContext"),
+                  let decoded = try? JSONDecoder().decode([UInt64: OrderContext].self, from: data)
+            else {
+                return [:]
+            }
+            return decoded
+        }
+        set {
+            if let data = try? JSONEncoder().encode(newValue) {
+                UserDefaults.standard.set(data, forKey: "recourse.buyer.orderContext")
+            }
+        }
+    }
+
+    func record(payment: PaymentRecord, request: PaymentRequest, manifest: OrderManifest?) {
+        if let manifest {
+            var contexts = orderContexts
+            contexts[payment.id] = OrderContext(
+                itemName: manifest.itemName,
+                imageHash: manifest.imageHash
+            )
+            orderContexts = contexts
+        }
         let policy = policies.first { $0.id == payment.policyID }
         let display = displayPayment(
             id: payment.id,
@@ -281,12 +314,16 @@ final class BuyerPaymentStore {
             ? 1
             : min(max(elapsed / TimeInterval(disputeWindow), 0), 1)
         let shortMerchant = shortAddress(merchantAddress)
+        let context = orderContexts[id]
+        let imageURL = context?.imageHash.map {
+            configuration.apiURL.appending(path: "api/orders/image/\($0)")
+        }
         return DemoPayment(
             id: id,
-            merchant: "Merchant \(shortMerchant)",
-            item: "Policy #\(policyID)",
-            merchantSymbol: "storefront.fill",
-            merchantImageURL: nil,
+            merchant: context?.itemName ?? "Merchant \(shortMerchant)",
+            item: context == nil ? "Policy #\(policyID)" : "Merchant \(shortMerchant)",
+            merchantSymbol: "shippingbox.fill",
+            merchantImageURL: imageURL,
             amount: amount,
             date: paidDate,
             state: displayState(

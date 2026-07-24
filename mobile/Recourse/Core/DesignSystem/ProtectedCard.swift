@@ -26,22 +26,30 @@ struct MerchantArtwork: View {
     var cornerRadius: CGFloat = 13
 
     var body: some View {
-        AsyncImage(url: payment.merchantImageURL) { phase in
-            switch phase {
-            case .success(let image):
-                image
-                    .resizable()
-                    .scaledToFill()
-            case .empty:
-                ZStack {
-                    Color(red: 0.94, green: 0.94, blue: 0.92)
-                    ProgressView()
-                        .controlSize(.small)
-                        .tint(RecourseColor.ledger)
+        Group {
+            // AsyncImage with a nil URL stays in .empty forever; only spin when a real
+            // load is in flight.
+            if let url = payment.merchantImageURL {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    case .empty:
+                        ZStack {
+                            Color(red: 0.94, green: 0.94, blue: 0.92)
+                            ProgressView()
+                                .controlSize(.small)
+                                .tint(RecourseColor.ledger)
+                        }
+                    case .failure:
+                        fallback
+                    @unknown default:
+                        fallback
+                    }
                 }
-            case .failure:
-                fallback
-            @unknown default:
+            } else {
                 fallback
             }
         }
