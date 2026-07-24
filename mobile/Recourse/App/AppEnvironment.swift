@@ -67,6 +67,7 @@ final class BuyerPaymentStore {
         let evidenceMask: Int32
         let status: Int32
         let refundBps: Int32?
+        let orderRef: String?
     }
 
     private struct IndexedPolicy: Decodable, Sendable {
@@ -111,6 +112,10 @@ final class BuyerPaymentStore {
         let itemName: String
         let imageHash: String?
     }
+
+    // orderRefs that resolved to no manifest (seeded payments, foreign clients); skip
+    // them for the rest of the session instead of refetching every refresh.
+    private var unresolvableOrderRefs: Set<String> = []
 
     private var orderContexts: [UInt64: OrderContext] {
         get {
@@ -200,6 +205,10 @@ final class BuyerPaymentStore {
             let windows = Dictionary(
                 uniqueKeysWithValues: policyRecords.map { ($0.id, $0.disputeWindow) }
             )
+            // Payments this device did not pay for (or paid before contexts existed)
+            // resolve their order details through the indexer's orderRef, verified by
+            // rehashing the fetched manifest, before rows are built.
+            await resolveOrderContexts(for: paymentRows)
             let displayPayments = paymentRows.compactMap {
                 displayPayment($0, disputeWindow: windows[UInt64($0.policyId)] ?? 0)
             }
@@ -216,6 +225,34 @@ final class BuyerPaymentStore {
             lastUpdated = Date()
         } catch {
             errorMessage = "Live Arc data is unavailable. Pull to retry."
+        }
+    }
+
+    private func resolveOrderContexts(for rows: [IndexedPayment]) async {
+        var contexts = orderContexts
+        var changed = false
+        let api = OrderAPIClient(baseURL: configuration.apiURL)
+        for row in rows {
+            guard row.paymentId >= 0 else { continue }
+            let id = UInt64(row.paymentId)
+            guard contexts[id] == nil,
+                  let ref = row.orderRef,
+                  !unresolvableOrderRefs.contains(ref),
+                  let refHash = try? ChainHash(ref) else { continue }
+            do {
+                let bytes = try await api.fetchManifestBytes(orderReference: refHash)
+                let manifest = try OrderManifest.decode(verifying: bytes, orderReference: refHash)
+                contexts[id] = OrderContext(
+                    itemName: manifest.itemName,
+                    imageHash: manifest.imageHash
+                )
+                changed = true
+            } catch {
+                unresolvableOrderRefs.insert(ref)
+            }
+        }
+        if changed {
+            orderContexts = contexts
         }
     }
 
