@@ -1,6 +1,7 @@
 use crate::services::chain::{ChainClient, PaymentState, PolicyState, VerdictState};
 use sqlx::postgres::PgPool;
 use std::time::Duration;
+use tokio::time::sleep;
 use tracing::{error, info, warn};
 
 // The projection mirrors exactly one deployment. If the configured escrow or chain
@@ -49,22 +50,56 @@ pub async fn run(chain: ChainClient, pool: PgPool, interval_secs: u64) {
     }
 }
 
-async fn index_once(chain: &ChainClient, pool: &PgPool) -> anyhow::Result<()> {
-    let policy_count = chain.policy_count().await?;
-    for id in 1..=policy_count {
-        match chain.get_policy(id).await {
-            Ok(policy) => upsert_policy(pool, &policy).await?,
-            Err(e) => warn!("policy {id} read failed: {e:#}"),
+// Spacing between RPC reads plus bounded retries keep the indexer under public-RPC rate
+// limits (HTTP 429 "request limit reached"): a burst of reads every tick trips the limit, so
+// space calls out and back off on failure to let the window recover rather than dropping a
+// payment for the whole cycle.
+const RPC_SPACING: Duration = Duration::from_millis(120);
+const RPC_MAX_RETRIES: u32 = 4;
+
+// Retry an idempotent RPC read with exponential backoff. Re-evaluates the call each attempt
+// (a future cannot be awaited twice), yielding the first success or the last error. A macro,
+// not a fn, so the retried expression can borrow `chain` without async-closure lifetime pain.
+macro_rules! rpc_retry {
+    ($label:expr, $call:expr) => {{
+        let mut attempt = 0u32;
+        loop {
+            match $call.await {
+                Ok(value) => break Ok(value),
+                Err(e) => {
+                    attempt += 1;
+                    if attempt > RPC_MAX_RETRIES {
+                        break Err(e);
+                    }
+                    let backoff = Duration::from_millis(250u64 * 2u64.pow(attempt - 1));
+                    warn!(
+                        "{} rpc read failed (attempt {}): {}; retry in {:?}",
+                        $label, attempt, e, backoff
+                    );
+                    sleep(backoff).await;
+                }
+            }
         }
+    }};
+}
+
+async fn index_once(chain: &ChainClient, pool: &PgPool) -> anyhow::Result<()> {
+    let policy_count = rpc_retry!("policy_count", chain.policy_count())?;
+    for id in 1..=policy_count {
+        match rpc_retry!("get_policy", chain.get_policy(id)) {
+            Ok(policy) => upsert_policy(pool, &policy).await?,
+            Err(e) => warn!("policy {id} read failed after retries: {e:#}"),
+        }
+        sleep(RPC_SPACING).await;
     }
 
-    let payment_count = chain.payment_count().await?;
+    let payment_count = rpc_retry!("payment_count", chain.payment_count())?;
     let mut indexed = 0u64;
     for id in 1..=payment_count {
-        let payment = match chain.get_payment(id).await {
+        let payment = match rpc_retry!("get_payment", chain.get_payment(id)) {
             Ok(payment) => payment,
             Err(e) => {
-                warn!("payment {id} read failed: {e:#}");
+                warn!("payment {id} read failed after retries: {e:#}");
                 continue;
             }
         };
@@ -73,10 +108,10 @@ async fn index_once(chain: &ChainClient, pool: &PgPool) -> anyhow::Result<()> {
         // None, and the upsert keeps the last-good verdict (COALESCE) rather than
         // erasing it, so a disputed payment never flickers to no-verdict.
         let verdict = if payment.filed_at != 0 {
-            match chain.preview_verdict(id).await {
+            match rpc_retry!("preview_verdict", chain.preview_verdict(id)) {
                 Ok(v) => Some(v),
                 Err(e) => {
-                    warn!("verdict preview for payment {id} failed: {e:#}");
+                    warn!("verdict preview for payment {id} failed after retries: {e:#}");
                     None
                 }
             }
@@ -85,6 +120,7 @@ async fn index_once(chain: &ChainClient, pool: &PgPool) -> anyhow::Result<()> {
         };
         upsert_payment(pool, &payment, verdict.as_ref()).await?;
         indexed += 1;
+        sleep(RPC_SPACING).await;
     }
 
     info!("indexed {indexed} payments, {policy_count} policies");

@@ -1,0 +1,12 @@
+# `railway up` builds only the backend via the repo-root Dockerfile (which copies backend/
+# and deployments/). Exclude everything else so the upload stays small.
+web
+mobile
+contracts
+docs
+engine
+ops
+**/node_modules
+**/target
+**/.next
+.vercel
