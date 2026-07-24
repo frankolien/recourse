@@ -16,6 +16,30 @@ final class PaymentRequestTests: XCTestCase {
         XCTAssertEqual(request.orderReference.value, orderReference)
     }
 
+    func testDecodesVersionTwoManifestRequest() throws {
+        let payload = try encodedPayload(
+            version: 2,
+            chainID: Deployment.chainID,
+            escrow: Deployment.escrow
+        )
+        let request = try PaymentRequestDecoder(configuration: .live).decode(base64URL: payload)
+
+        XCTAssertEqual(request.version, 2)
+        XCTAssertTrue(request.carriesOrderManifest)
+    }
+
+    func testRejectsUnknownVersion() throws {
+        let payload = try encodedPayload(
+            version: 3,
+            chainID: Deployment.chainID,
+            escrow: Deployment.escrow
+        )
+
+        XCTAssertThrowsError(try PaymentRequestDecoder(configuration: .live).decode(base64URL: payload)) {
+            XCTAssertEqual($0 as? ValidationError, .unsupportedRequestVersion)
+        }
+    }
+
     func testRejectsWrongChain() throws {
         let payload = try encodedPayload(chainID: 1, escrow: Deployment.escrow)
 
@@ -35,9 +59,13 @@ final class PaymentRequestTests: XCTestCase {
         }
     }
 
-    private func encodedPayload(chainID: UInt64, escrow: String) throws -> String {
+    private func encodedPayload(
+        version: UInt8 = 1,
+        chainID: UInt64,
+        escrow: String
+    ) throws -> String {
         let json: [String: Any] = [
-            "v": 1,
+            "v": version,
             "chainId": chainID,
             "escrow": escrow,
             "policyId": 3,

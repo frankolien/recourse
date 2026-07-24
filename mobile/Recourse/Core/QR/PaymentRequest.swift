@@ -38,11 +38,18 @@ struct PaymentRequest: Codable, Hashable, Sendable {
     }
 
     func validate(against configuration: AppConfiguration) throws {
-        guard version == 1 else { throw ValidationError.unsupportedRequestVersion }
+        // v1: orderRef is an opaque reference hash. v2: orderRef is the keccak256 of an
+        // order manifest the buyer fetches and verifies before paying.
+        guard version == 1 || version == 2 else { throw ValidationError.unsupportedRequestVersion }
         guard chainID == configuration.chainID else { throw ValidationError.wrongChain }
         guard escrow.value.lowercased() == configuration.escrowAddress.value.lowercased() else {
             throw ValidationError.wrongEscrow
         }
+    }
+
+    // A v2 request's orderRef resolves to a verifiable order manifest.
+    var carriesOrderManifest: Bool {
+        version >= 2
     }
 }
 

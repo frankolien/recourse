@@ -14,7 +14,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "8844AD5CDEFC51CB53026F0ED0D9451E"
+               BlueprintIdentifier = "95E62D320E4B368042BB32D69F64C539"
                BuildableName = "Recourse.app"
                BlueprintName = "Recourse"
                ReferencedContainer = "container:Recourse.xcodeproj">
@@ -30,7 +30,7 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "8844AD5CDEFC51CB53026F0ED0D9451E"
+            BlueprintIdentifier = "95E62D320E4B368042BB32D69F64C539"
             BuildableName = "Recourse.app"
             BlueprintName = "Recourse"
             ReferencedContainer = "container:Recourse.xcodeproj">
@@ -41,7 +41,7 @@
             skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "2D894710BCD0E87D1FBB8D4CF740F2D0"
+               BlueprintIdentifier = "64421DDAD77500C309425787F2D0D558"
                BuildableName = "RecourseTests.xctest"
                BlueprintName = "RecourseTests"
                ReferencedContainer = "container:Recourse.xcodeproj">
@@ -59,18 +59,11 @@
       debugDocumentVersioning = "YES"
       debugServiceExtension = "internal"
       allowLocationSimulation = "YES">
-      <EnvironmentVariables>
-         <EnvironmentVariable
-            key = "RECOURSE_API_URL"
-            value = "http://192.168.8.200:8081"
-            isEnabled = "YES">
-         </EnvironmentVariable>
-      </EnvironmentVariables>
       <BuildableProductRunnable
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "8844AD5CDEFC51CB53026F0ED0D9451E"
+            BlueprintIdentifier = "95E62D320E4B368042BB32D69F64C539"
             BuildableName = "Recourse.app"
             BlueprintName = "Recourse"
             ReferencedContainer = "container:Recourse.xcodeproj">
@@ -87,7 +80,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "8844AD5CDEFC51CB53026F0ED0D9451E"
+            BlueprintIdentifier = "95E62D320E4B368042BB32D69F64C539"
             BuildableName = "Recourse.app"
             BlueprintName = "Recourse"
             ReferencedContainer = "container:Recourse.xcodeproj">
