@@ -95,7 +95,10 @@ async fn main() -> Result<()> {
         config.port,
         config.chain_id
     );
-    let bind = ("0.0.0.0", config.port);
+    // Bind IPv6 dual-stack (::), not just IPv4 (0.0.0.0): Railway's internal healthcheck
+    // reaches the container over IPv6, so an IPv4-only bind fails the healthcheck. On Linux
+    // dual-stack, :: also accepts IPv4, so public routing is unaffected.
+    let bind = ("::", config.port);
     HttpServer::new(move || {
         app::build_app(
             pool.clone(),
