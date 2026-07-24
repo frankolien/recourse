@@ -211,6 +211,44 @@ final class AccountSession {
         }
     }
 
+    // Persists the profile on the backend and refreshes the local account from the
+    // response. Returns a user-facing error message, or nil on success. Retries once
+    // through the refresh token so an expired access token does not surface as a failure.
+    func updateProfile(givenName: String?, familyName: String?) async -> String? {
+        guard let grant else {
+            return "Sign in again to edit your profile."
+        }
+        do {
+            let account = try await api.updateProfile(
+                accessToken: grant.accessToken,
+                givenName: givenName,
+                familyName: familyName
+            )
+            try await accept(grant.replacingAccount(account))
+            return nil
+        } catch let error as AccountAPIError where error.isUnauthorized {
+            do {
+                let refreshed = try await api.refresh(refreshToken: grant.refreshToken)
+                let account = try await api.updateProfile(
+                    accessToken: refreshed.accessToken,
+                    givenName: givenName,
+                    familyName: familyName
+                )
+                try await accept(refreshed.replacingAccount(account))
+                return nil
+            } catch {
+                return "Your session expired. Sign in again to edit your profile."
+            }
+        } catch let error as AccountAPIError {
+            if case .rejected(_, let message) = error {
+                return message
+            }
+            return "Recourse received an invalid response while saving your profile."
+        } catch {
+            return "Your profile could not be saved. Check your connection and try again."
+        }
+    }
+
     func signOut() async {
         if let accessToken = grant?.accessToken {
             try? await api.logout(accessToken: accessToken)

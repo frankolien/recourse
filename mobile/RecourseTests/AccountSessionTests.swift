@@ -224,6 +224,21 @@ private actor AccountAPIMock: AccountAPI {
         return profile
     }
 
+    func updateProfile(
+        accessToken: String,
+        givenName: String?,
+        familyName: String?
+    ) async throws -> AuthenticatedAccount {
+        guard let profile else { throw AccountAPIError.invalidResponse }
+        return AuthenticatedAccount(
+            accountID: profile.accountID,
+            providerUserID: profile.providerUserID,
+            email: profile.email,
+            givenName: givenName,
+            familyName: familyName
+        )
+    }
+
     func logout(accessToken: String) async throws {}
 }
 

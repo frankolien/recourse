@@ -6,41 +6,19 @@ struct AccountFoundationView: View {
 
     @AppStorage("recourse.hasCompletedOnboarding") private var hasCompletedOnboarding = true
     @AppStorage("recourse.workspaceRole") private var storedWorkspaceRole = OnboardingRole.buyer.rawValue
-    @AppStorage("recourse.profile.givenName") private var storedGivenName = ""
-    @AppStorage("recourse.profile.familyName") private var storedFamilyName = ""
     @State private var showsNameEditor = false
 
-    private var accountEmail: String {
-        accountSession.account?.email ?? "frank@recourse.app"
+    // The account session is the single source of profile truth: names persist through
+    // PUT /api/me/profile and come back on GET /api/me, so nothing profile-shaped lives
+    // in local storage anymore.
+    private var accountEmail: String? {
+        accountSession.account?.email
     }
 
     private var accountName: String {
-        let storedName = [storedGivenName, storedFamilyName]
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-            .joined(separator: " ")
-        return nonEmpty(storedName)
-            ?? accountSession.account?.displayName
-            ?? accountEmail.split(separator: "@").first.map(String.init)
-            ?? "Frank"
-    }
-
-    private var initialGivenName: String {
-        nonEmpty(storedGivenName)
-            ?? accountSession.account?.givenName
-            ?? accountName.split(separator: " ").first.map(String.init)
-            ?? ""
-    }
-
-    private var initialFamilyName: String {
-        nonEmpty(storedFamilyName)
-            ?? accountSession.account?.familyName
-            ?? accountName.split(separator: " ").dropFirst().joined(separator: " ")
-    }
-
-    private func nonEmpty(_ value: String) -> String? {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
+        accountSession.account?.displayName
+            ?? accountEmail?.split(separator: "@").first.map(String.init)
+            ?? "Recourse account"
     }
 
     var body: some View {
@@ -59,12 +37,10 @@ struct AccountFoundationView: View {
         .navigationBarTitleDisplayMode(.large)
         .sheet(isPresented: $showsNameEditor) {
             EditProfileNameView(
-                givenName: initialGivenName,
-                familyName: initialFamilyName
-            ) { givenName, familyName in
-                storedGivenName = givenName
-                storedFamilyName = familyName
-            }
+                givenName: accountSession.account?.givenName ?? "",
+                familyName: accountSession.account?.familyName ?? "",
+                accountSession: accountSession
+            )
         }
     }
 
@@ -83,10 +59,12 @@ struct AccountFoundationView: View {
                             .font(.system(size: 16, weight: .bold))
                             .foregroundStyle(RecourseColor.ink)
                             .lineLimit(1)
-                        Text(accountEmail)
-                            .font(.system(size: 13))
-                            .foregroundStyle(RecourseColor.muted)
-                            .lineLimit(1)
+                        if let accountEmail {
+                            Text(accountEmail)
+                                .font(.system(size: 13))
+                                .foregroundStyle(RecourseColor.muted)
+                                .lineLimit(1)
+                        }
                         Label("Protected on \(configuration.chainName)", systemImage: "circle.fill")
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(RecourseColor.ledger)
@@ -193,16 +171,18 @@ private struct EditProfileNameView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var givenName: String
     @State private var familyName: String
-    let onSave: (String, String) -> Void
+    @State private var isSaving = false
+    @State private var errorMessage: String?
+    let accountSession: AccountSession
 
     init(
         givenName: String,
         familyName: String,
-        onSave: @escaping (String, String) -> Void
+        accountSession: AccountSession
     ) {
         _givenName = State(initialValue: givenName)
         _familyName = State(initialValue: familyName)
-        self.onSave = onSave
+        self.accountSession = accountSession
     }
 
     var body: some View {
@@ -216,31 +196,63 @@ private struct EditProfileNameView: View {
                 } header: {
                     Text("Your name")
                 } footer: {
-                    Text("This is how your name appears in Recourse. Your Apple account email stays unchanged.")
+                    Text("Your name is saved to your Recourse account and appears on every device you sign in on.")
+                }
+
+                if let errorMessage {
+                    Section {
+                        Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(RecourseColor.ledger)
+                    }
                 }
             }
             .scrollDismissesKeyboard(.interactively)
             .navigationTitle("Personal details")
             .navigationBarTitleDisplayMode(.inline)
+            .interactiveDismissDisabled(isSaving)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
                         dismiss()
                     }
+                    .disabled(isSaving)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        onSave(
-                            givenName.trimmingCharacters(in: .whitespacesAndNewlines),
-                            familyName.trimmingCharacters(in: .whitespacesAndNewlines)
-                        )
-                        dismiss()
+                    if isSaving {
+                        ProgressView()
+                            .tint(RecourseColor.ledger)
+                    } else {
+                        Button("Save") {
+                            Task { await save() }
+                        }
+                        .disabled(trimmed(givenName) == nil)
                     }
-                    .disabled(givenName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
         }
         .presentationDetents([.medium])
+    }
+
+    private func trimmed(_ value: String) -> String? {
+        let cleaned = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return cleaned.isEmpty ? nil : cleaned
+    }
+
+    @MainActor
+    private func save() async {
+        isSaving = true
+        errorMessage = nil
+        let failure = await accountSession.updateProfile(
+            givenName: trimmed(givenName),
+            familyName: trimmed(familyName)
+        )
+        isSaving = false
+        if let failure {
+            errorMessage = failure
+        } else {
+            dismiss()
+        }
     }
 }
 

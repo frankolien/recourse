@@ -36,6 +36,11 @@ protocol AccountAPI: Sendable {
     ) async throws -> AccountSessionGrant
     func refresh(refreshToken: String) async throws -> AccountSessionGrant
     func me(accessToken: String) async throws -> AuthenticatedAccount
+    func updateProfile(
+        accessToken: String,
+        givenName: String?,
+        familyName: String?
+    ) async throws -> AuthenticatedAccount
     func logout(accessToken: String) async throws
 }
 
@@ -79,6 +84,20 @@ actor AccountAPIClient: AccountAPI {
 
     func me(accessToken: String) async throws -> AuthenticatedAccount {
         try await send(path: "api/me", method: "GET", bearerToken: accessToken)
+    }
+
+    // PUT is full replacement on the backend: a nil field clears the stored name.
+    func updateProfile(
+        accessToken: String,
+        givenName: String?,
+        familyName: String?
+    ) async throws -> AuthenticatedAccount {
+        try await send(
+            path: "api/me/profile",
+            method: "PUT",
+            body: ProfileUpdateBody(givenName: givenName, familyName: familyName),
+            bearerToken: accessToken
+        )
     }
 
     func logout(accessToken: String) async throws {
@@ -170,6 +189,11 @@ private struct RefreshBody: Encodable {
     let refreshToken: String
 }
 
+private struct ProfileUpdateBody: Encodable {
+    let givenName: String?
+    let familyName: String?
+}
+
 private struct APIErrorBody: Decodable {
     let error: String
 }
@@ -211,6 +235,20 @@ actor PreviewAccountAPI: AccountAPI {
 
     func me(accessToken: String) async throws -> AuthenticatedAccount {
         account
+    }
+
+    func updateProfile(
+        accessToken: String,
+        givenName: String?,
+        familyName: String?
+    ) async throws -> AuthenticatedAccount {
+        AuthenticatedAccount(
+            accountID: account.accountID,
+            providerUserID: account.providerUserID,
+            email: account.email,
+            givenName: givenName,
+            familyName: familyName
+        )
     }
 
     func logout(accessToken: String) async throws {}
