@@ -30,6 +30,7 @@ COPY --from=builder /app/backend/target/release/recourse-backend /usr/local/bin/
 COPY deployments ./deployments
 ENV DEPLOYMENTS_PATH=/app/deployments/arc-testnet.json \
     EVIDENCE_DIR=/data/evidence-store \
+    ORDERS_DIR=/data/order-store \
     PORT=8080
 EXPOSE 8080
 CMD ["recourse-backend"]

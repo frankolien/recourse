@@ -10,7 +10,7 @@ fn build_cors(origins: &[String]) -> Cors {
         return Cors::permissive();
     }
     let mut cors = Cors::default()
-        .allowed_methods(vec!["GET", "POST", "OPTIONS"])
+        .allowed_methods(vec!["GET", "POST", "PUT", "OPTIONS"])
         .allowed_headers(vec![
             header::CONTENT_TYPE,
             header::AUTHORIZATION,
@@ -29,6 +29,7 @@ use crate::services::attestor::AttestorClient;
 use crate::services::chain::ChainClient;
 use crate::services::evidence::EvidenceStore;
 use crate::services::google_auth::GoogleAuthService;
+use crate::services::orders::OrderStore;
 use crate::services::passkey::PasskeyService;
 use crate::services::AppConfig;
 
@@ -45,6 +46,7 @@ pub fn build_app(
     google_auth: Option<GoogleAuthService>,
     passkey: Option<PasskeyService>,
     evidence: EvidenceStore,
+    orders: OrderStore,
 ) -> App<
     impl actix_web::dev::ServiceFactory<
         actix_web::dev::ServiceRequest,
@@ -64,6 +66,7 @@ pub fn build_app(
         .app_data(web::Data::new(google_auth))
         .app_data(web::Data::new(passkey))
         .app_data(web::Data::new(evidence))
+        .app_data(web::Data::new(orders))
         .route("/health", web::get().to(handlers::health::health_check))
         .service(
             web::scope("/api")
@@ -134,6 +137,7 @@ pub fn build_app(
                 .route("/auth/refresh", web::post().to(handlers::auth::refresh))
                 .route("/auth/logout", web::post().to(handlers::auth::logout))
                 .route("/me", web::get().to(handlers::auth::me))
+                .route("/me/profile", web::put().to(handlers::auth::update_profile))
                 // Verify + record a payment's evidence list against the onchain root.
                 .route(
                     "/evidence/manifest",
@@ -148,6 +152,27 @@ pub fn build_app(
                 .route(
                     "/evidence/{hash}",
                     web::get().to(handlers::evidence::get_evidence),
+                )
+                // Merchant order manifests: exact bytes in, keccak256 = orderRef out.
+                .service(
+                    web::resource("/orders")
+                        .app_data(web::PayloadConfig::new(32 * 1024))
+                        .route(web::post().to(handlers::orders::put_manifest)),
+                )
+                // Product images exceed the default 256 KB body cap; the app compresses
+                // before upload, this is the hard server-side ceiling.
+                .service(
+                    web::resource("/orders/image")
+                        .app_data(web::PayloadConfig::new(5 * 1024 * 1024))
+                        .route(web::post().to(handlers::orders::put_image)),
+                )
+                .route(
+                    "/orders/image/{hash}",
+                    web::get().to(handlers::orders::get_image),
+                )
+                .route(
+                    "/orders/{order_ref}",
+                    web::get().to(handlers::orders::get_manifest),
                 ),
         )
 }

@@ -44,6 +44,10 @@ engine/src/addresses.ts
 evidence-store/
 backend/evidence-store/
 
+# Backend order store: merchant order manifests and product images (user data)
+order-store/
+backend/order-store/
+
 # Apple authentication private keys. Keep only documentation in this directory.
 backend/secrets/*
 !backend/secrets/README.md

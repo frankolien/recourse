@@ -71,8 +71,8 @@ fn parse_b256(s: &str) -> Result<B256> {
 }
 
 // Accepts a 32-byte hex hash with or without 0x; also guards path traversal since the
-// hash becomes a filename.
-fn normalize_hash(s: &str) -> Option<String> {
+// hash becomes a filename. Shared with the order store, which keys files the same way.
+pub(crate) fn normalize_hash(s: &str) -> Option<String> {
     let h = s.strip_prefix("0x").unwrap_or(s);
     if h.len() == 64 && h.bytes().all(|b| b.is_ascii_hexdigit()) {
         Some(h.to_lowercase())

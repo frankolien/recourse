@@ -14,6 +14,7 @@ use crate::services::attestor::AttestorClient;
 use crate::services::chain::ChainClient;
 use crate::services::evidence::EvidenceStore;
 use crate::services::google_auth::GoogleAuthService;
+use crate::services::orders::OrderStore;
 use crate::services::passkey::PasskeyService;
 use crate::services::AppConfig;
 
@@ -89,6 +90,7 @@ async fn main() -> Result<()> {
     }
 
     let evidence = EvidenceStore::new(config.evidence_dir.clone().into())?;
+    let orders = OrderStore::new(config.orders_dir.clone().into())?;
 
     tracing::info!(
         "recourse-backend listening on :{} (Arc chain {})",
@@ -109,6 +111,7 @@ async fn main() -> Result<()> {
             google_auth.clone(),
             passkey.clone(),
             evidence.clone(),
+            orders.clone(),
         )
     })
     .bind(bind)?

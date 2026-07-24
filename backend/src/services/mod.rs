@@ -5,6 +5,7 @@ pub mod auth;
 pub mod chain;
 pub mod evidence;
 pub mod google_auth;
+pub mod orders;
 pub mod passkey;
 
 use alloy::primitives::Address;
@@ -45,6 +46,9 @@ pub struct AppConfig {
     pub attestor_pk: Option<String>,
     // Filesystem directory for the content-addressed evidence blob store.
     pub evidence_dir: String,
+    // Filesystem directory for the content-addressed order store (manifests + product
+    // images). Like evidence, real user data kept off the disposable indexer projection.
+    pub orders_dir: String,
     // Shared secret guarding the privileged demo routes (attest/resolve). Absent means
     // those routes fail closed: without it, no one can trigger settlement.
     pub admin_api_key: Option<String>,
@@ -62,6 +66,8 @@ pub struct AppConfig {
     pub apple_client_id: Option<String>,
     #[allow(dead_code)]
     pub apple_private_key_path: Option<PathBuf>,
+    #[allow(dead_code)]
+    pub apple_private_key_p8: Option<String>,
     // Google OAuth client id (the aud of ID tokens from Google Identity Services on web).
     // Absent means the Google sign-in endpoint stays disabled.
     pub google_client_id: Option<String>,
@@ -119,6 +125,7 @@ impl AppConfig {
                 .ok()
                 .filter(|s| !s.trim().is_empty()),
             evidence_dir: env_or("EVIDENCE_DIR", "./evidence-store"),
+            orders_dir: env_or("ORDERS_DIR", "./order-store"),
             admin_api_key: std::env::var("ADMIN_API_KEY")
                 .ok()
                 .filter(|s| !s.trim().is_empty()),
@@ -130,6 +137,7 @@ impl AppConfig {
             apple_key_id: optional_env("APPLE_KEY_ID"),
             apple_client_id: optional_env("APPLE_CLIENT_ID"),
             apple_private_key_path: optional_env("APPLE_PRIVATE_KEY_PATH").map(PathBuf::from),
+            apple_private_key_p8: optional_env("APPLE_PRIVATE_KEY_P8"),
             google_client_id: optional_env("GOOGLE_CLIENT_ID"),
             google_ios_client_id: optional_env("GOOGLE_IOS_CLIENT_ID"),
             cors_allowed_origins: optional_env("CORS_ALLOWED_ORIGINS")

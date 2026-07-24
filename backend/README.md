@@ -61,8 +61,15 @@ boot, so a fresh database self-provisions. Railway injects `PORT` and the app bi
    # Optional attestor + automated resolver:
    ATTESTOR_PK=0x<testnet-throwaway>
    ATTESTOR_AUTO_RESOLVE=true
-   # Optional Sign in with Apple: APPLE_TEAM_ID / APPLE_KEY_ID / APPLE_CLIENT_ID (+ the .p8)
+   # Sign in with Apple:
+   APPLE_TEAM_ID=<Apple-team-id>
+   APPLE_KEY_ID=<Apple-key-id>
+   APPLE_CLIENT_ID=com.recourse.buyer
+   APPLE_PRIVATE_KEY_P8=<complete multiline contents of AuthKey_*.p8>
    ```
+   Store `APPLE_PRIVATE_KEY_P8` as a sealed Railway variable. Railway supports multiline
+   values; paste the complete PEM including its BEGIN/END lines. Use
+   `APPLE_PRIVATE_KEY_PATH` only for local development, and set exactly one key source.
 5. **Deploy**, then generate a public domain (service Settings -> Networking -> Generate
    Domain). Confirm `https://<app>.up.railway.app/health` returns status/chainId/indexedPayments,
    and check the deploy logs for "listening on" and the indexer ticking.
@@ -258,6 +265,36 @@ curl localhost:8080/api/payments/10/evidence
 
 `engine/scripts/open-dispute.mjs` exercises the whole chain on Arc: it uploads evidence,
 pins it in `fileDispute`, then posts the manifest and prints whether it verified.
+
+## Order store
+
+Content-addressed store for merchant order manifests and product images (`ORDERS_DIR`,
+default `./order-store`; `/data/order-store` in the image). An order manifest is an exact
+JSON document: its keccak256 over the raw bytes IS the bytes32 `orderRef` the escrow
+receives in `pay()`, so the buyer fetches the document, rehashes it, and cross-checks
+every economic field (chain, escrow, merchant, policy, amount) against the scanned QR
+before paying. The backend is trusted for transport only, never content: a tampered
+manifest simply fails the hash check. The stored bytes are verbatim, never re-serialized
+(re-serialization would change the hash and break the orderRef binding). The golden
+orderRef vector is asserted in Rust, Swift, and TypeScript.
+
+```
+# merchant flow: image first (content-typed), then the manifest referencing its hash
+curl -X POST localhost:8080/api/orders/image -H 'content-type: image/jpeg' \
+  --data-binary @product.jpg
+curl -X POST localhost:8080/api/orders -H 'content-type: application/json' \
+  --data-binary @manifest.json
+# buyer flow: fetch by orderRef, rehash, then fetch the image by its manifest hash
+curl localhost:8080/api/orders/0x<orderRef>
+curl localhost:8080/api/orders/image/0x<imageHash> --output product.jpg
+```
+
+`POST /api/orders` validates structure (version 1, required item name and description,
+base-unit amount, address shapes), requires the manifest's chainId and escrow to match
+this deployment, and rejects a manifest whose `imageHash` was never uploaded. Manifest
+bodies cap at 32 KB and images at 5 MB (the app compresses before upload). Merchant
+wallet-signature authorization for publication is a known follow-up; reads are public
+like every other content-addressed artifact here.
 
 ## Not here yet
 
