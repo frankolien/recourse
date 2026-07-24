@@ -47,3 +47,4 @@ backend/evidence-store/
 # Apple authentication private keys. Keep only documentation in this directory.
 backend/secrets/*
 !backend/secrets/README.md
+.vercel
