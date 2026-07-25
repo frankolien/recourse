@@ -167,10 +167,35 @@ pub async fn verify_buyer(
 
     // Authorization proper: the signer must be the payment's on-chain buyer. A policyId
     // of 0 means the payment does not exist (getPayment returns a zeroed record).
-    let payment = chain
-        .get_payment(envelope.payment_id as u64)
-        .await
-        .map_err(|e| AuthError::Upstream(format!("chain read failed: {e}")))?;
+    // Retried briefly: public RPC endpoints burst-throttle (429), and without a retry a
+    // single throttled read bounces a user-visible upload as if it were rejected.
+    let mut payment = None;
+    let mut chain_err = None;
+    for attempt in 0..3u32 {
+        if attempt > 0 {
+            tokio::time::sleep(std::time::Duration::from_millis(250 * 2u64.pow(attempt - 1)))
+                .await;
+        }
+        match chain.get_payment(envelope.payment_id as u64).await {
+            Ok(p) => {
+                payment = Some(p);
+                break;
+            }
+            Err(e) => {
+                tracing::warn!(
+                    "verify_buyer get_payment failed (attempt {}): {e:#}",
+                    attempt + 1
+                );
+                chain_err = Some(e);
+            }
+        }
+    }
+    let Some(payment) = payment else {
+        return Err(AuthError::Upstream(format!(
+            "chain read failed: {}",
+            chain_err.map(|e| e.to_string()).unwrap_or_default()
+        )));
+    };
     if payment.policy_id == 0 {
         return Err(AuthError::Forbidden("payment does not exist".into()));
     }
