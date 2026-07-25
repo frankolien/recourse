@@ -183,8 +183,6 @@ struct OnboardingSignupStoryView: View {
                     Capsule().stroke(RecourseColor.ledger.opacity(0.28), lineWidth: 1)
                 }
                 .buttonStyle(.plain)
-
-            Spacer(minLength: 4)
         }
         .padding(.horizontal, 24)
         .padding(.top, 12)

@@ -222,7 +222,7 @@ struct OnboardingSetupView: View {
                 hero(width: proxy.size.width, height: heroHeight)
                 roleSheet(compact: compact)
             }
-            .frame(width: proxy.size.width, height: proxy.size.height)
+            .frame(width: proxy.size.width, height: proxy.size.height + proxy.safeAreaInsets.top)
             .ignoresSafeArea(edges: .top)
         }
         .background(RecourseColor.canvas)

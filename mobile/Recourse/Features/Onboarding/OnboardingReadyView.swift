@@ -26,9 +26,11 @@ struct OnboardingReadyView: View {
             )
             .ignoresSafeArea(edges: .top)
             .overlay(alignment: .top) {
+                // The overlay inherits the safe-area inset on its own; adding
+                // it again doubled the offset and sank the bar into the photo.
                 readyAppBar
                     .padding(.horizontal, 20)
-                    .padding(.top, proxy.safeAreaInsets.top + 8)
+                    .padding(.top, 8)
             }
         }
         .background(RecourseColor.canvas)
