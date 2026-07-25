@@ -65,7 +65,7 @@ struct ReceiveSheet: View {
         }
         .padding(.vertical, 26)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(Color.white)
+        .background(RecourseColor.surface)
         .task {
             address = try? await environment.buyerSigner.address().value
         }

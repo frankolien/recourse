@@ -72,7 +72,7 @@ struct MerchantArtwork: View {
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .stroke(.white.opacity(0.72), lineWidth: 0.7)
+                .stroke(.white.opacity(0.1), lineWidth: 0.7)
         }
         .task(id: payment.merchantImageURL) {
             guard let url = payment.merchantImageURL, loaded == nil else { return }

@@ -63,7 +63,7 @@ struct ReceiptsFoundationView: View {
         .task {
             await environment.paymentStore.refreshBuyer()
         }
-        .background(Color.white)
+        .background(RecourseColor.surface)
     }
 
     private var scrollPositionReader: some View {
@@ -99,7 +99,7 @@ struct ReceiptsFoundationView: View {
             }
             .padding(.horizontal, 16)
             .frame(height: 44)
-            .background(Color(red: 0.96, green: 0.96, blue: 0.95), in: Capsule())
+            .background(RecourseColor.clay, in: Capsule())
         }
     }
 
@@ -192,7 +192,7 @@ struct ReceiptsFoundationView: View {
                             .foregroundStyle(filter == item ? .white : RecourseColor.ink)
                             .padding(.horizontal, 15)
                             .frame(height: 32)
-                            .background(filter == item ? RecourseColor.ledger : Color(red: 0.96, green: 0.96, blue: 0.95), in: Capsule())
+                            .background(filter == item ? RecourseColor.ledger : RecourseColor.clay, in: Capsule())
                     }
                     .buttonStyle(.plain)
                 }
@@ -212,7 +212,7 @@ struct ReceiptsFoundationView: View {
                     Image(systemName: "line.3.horizontal.decrease")
                         .foregroundStyle(RecourseColor.ink)
                         .frame(width: 32, height: 32)
-                        .background(Color(red: 0.96, green: 0.96, blue: 0.95), in: Circle())
+                        .background(RecourseColor.clay, in: Circle())
                 }
                 .buttonStyle(.plain)
             }

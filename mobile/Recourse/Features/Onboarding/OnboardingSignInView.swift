@@ -208,7 +208,7 @@ private struct RecourseAnimatedStoryBackground: View {
             let t = reduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate
 
             ZStack {
-                Color.white
+                RecourseColor.surface
 
                 RadialGradient(
                     colors: [RecourseColor.ledger.opacity(0.15 + 0.04 * sin(t * 0.21)), .clear],

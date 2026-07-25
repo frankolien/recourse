@@ -41,7 +41,7 @@ struct EarnView: View {
             .padding(20)
             .padding(.bottom, 120)
         }
-        .background(Color.white)
+        .background(RecourseColor.surface)
         .navigationTitle("Earn")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
@@ -190,7 +190,7 @@ struct EarnView: View {
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 21, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 21, style: .continuous)
-                .stroke(.white.opacity(0.78), lineWidth: 0.9)
+                .stroke(.white.opacity(0.08), lineWidth: 0.9)
         }
     }
 
@@ -263,7 +263,7 @@ private struct VaultActionSheet: View {
         }
         .padding(22)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Color.white)
+        .background(RecourseColor.surface)
     }
 
     private var successBody: some View {

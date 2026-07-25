@@ -32,7 +32,7 @@ struct SendMoneyView: View {
             .padding(.bottom, 120)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color.white)
+        .background(RecourseColor.surface)
         .navigationTitle("Send USDC")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
@@ -95,7 +95,7 @@ struct SendMoneyView: View {
             }
             .padding(.horizontal, 15)
             .frame(height: 52)
-            .background(RecourseColor.surface, in: RoundedRectangle(cornerRadius: 16))
+            .background(RecourseColor.clay, in: RoundedRectangle(cornerRadius: 16))
             if !recipientText.isEmpty, recipient == nil {
                 Text("That is not a valid wallet address.")
                     .font(.system(size: 11, weight: .medium))
@@ -120,7 +120,7 @@ struct SendMoneyView: View {
             }
         }
         .padding(15)
-        .background(Color(red: 0.97, green: 0.97, blue: 0.96), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(RecourseColor.clay, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     private var recipient: EthereumAddress? {
@@ -265,7 +265,7 @@ private struct SendSuccessView: View {
                 .buttonStyle(RecoursePrimaryButtonStyle())
         }
         .padding(24)
-        .background(Color.white.ignoresSafeArea())
+        .background(RecourseColor.surface.ignoresSafeArea())
         .task {
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {

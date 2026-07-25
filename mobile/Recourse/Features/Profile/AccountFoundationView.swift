@@ -32,7 +32,7 @@ struct AccountFoundationView: View {
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
-        .background(Color.white)
+        .background(RecourseColor.surface)
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.large)
         .sheet(isPresented: $showsNameEditor) {
