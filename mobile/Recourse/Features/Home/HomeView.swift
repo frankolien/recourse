@@ -7,7 +7,13 @@ struct HomeView: View {
     @State private var previousScrollOffset: CGFloat = 0
     @State private var hidesAttention = false
     @State private var showsReceive = false
+    @State private var showsCardPicker = false
     @State private var earnVaultState: VaultState?
+    @AppStorage(WalletCardStyle.defaultsKey) private var cardStyleRaw = WalletCardStyle.ink.rawValue
+
+    private var cardStyle: WalletCardStyle {
+        WalletCardStyle.stored(rawValue: cardStyleRaw)
+    }
 
     init(
         environment: AppEnvironment,
@@ -99,6 +105,10 @@ struct HomeView: View {
         .sheet(isPresented: $showsReceive) {
             ReceiveSheet(environment: environment)
                 .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $showsCardPicker) {
+            WalletCardStylePicker(selectedRawValue: $cardStyleRaw)
+                .presentationDetents([.medium])
         }
         .task {
             while !Task.isCancelled {
@@ -269,24 +279,38 @@ struct HomeView: View {
     }
 
     // One composed wallet card carrying the number, the live balance, and every
-    // action; it mirrors the merchant hero so both roles share one visual family.
+    // action. The face is the user's pick; text derives from the style so light
+    // faces read as well as dark ones.
     private var protectionHero: some View {
         ZStack(alignment: .topTrailing) {
-            Circle()
-                .fill(RecourseColor.ledger.opacity(0.1))
-                .frame(width: 170, height: 170)
-                .blur(radius: 46)
-                .offset(x: 54, y: -62)
+            if cardStyle.showsGlow {
+                Circle()
+                    .fill(RecourseColor.ledger.opacity(0.1))
+                    .frame(width: 170, height: 170)
+                    .blur(radius: 46)
+                    .offset(x: 54, y: -62)
+            }
 
             VStack(alignment: .leading, spacing: 18) {
-                HStack {
+                HStack(spacing: 10) {
                     Label("Your wallet", systemImage: "checkmark.shield.fill")
                         .font(.system(size: 12, weight: .bold))
                     Spacer()
                     Text("ARC TESTNET")
                         .font(.system(size: 10, weight: .bold))
                         .tracking(1.35)
-                        .foregroundStyle(.white.opacity(0.68))
+                        .foregroundStyle(cardStyle.textSecondary)
+                    Button {
+                        showsCardPicker = true
+                    } label: {
+                        Image(systemName: "paintbrush.fill")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(cardStyle.textSecondary)
+                            .frame(width: 26, height: 26)
+                            .background(cardStyle.chipFill, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Change card style")
                 }
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -295,24 +319,17 @@ struct HomeView: View {
                             .minimumScaleFactor(0.72)
                         Text("USDC")
                             .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.68))
+                            .foregroundStyle(cardStyle.textSecondary)
                     }
                     Text(heroSubtitle)
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.68))
+                        .foregroundStyle(cardStyle.textSecondary)
                 }
                 heroActions
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .foregroundStyle(.white)
-        .padding(20)
-        .background(RecourseColor.ink, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(.white.opacity(0.1), lineWidth: 1)
-        }
-        .shadow(color: RecourseColor.ink.opacity(0.15), radius: 18, y: 10)
+        .foregroundStyle(cardStyle.textPrimary)
+        .modifier(WalletCardSurface(style: cardStyle))
     }
 
     private var balanceHeadline: String {

@@ -10,6 +10,11 @@ struct EarnView: View {
     @State private var vaultState: VaultState?
     @State private var loadError: String?
     @State private var activeSheet: VaultSheet?
+    @AppStorage(WalletCardStyle.defaultsKey) private var cardStyleRaw = WalletCardStyle.ink.rawValue
+
+    private var cardStyle: WalletCardStyle {
+        WalletCardStyle.stored(rawValue: cardStyleRaw)
+    }
 
     private enum VaultSheet: String, Identifiable {
         case deposit
@@ -66,11 +71,13 @@ struct EarnView: View {
 
     private var positionCard: some View {
         ZStack(alignment: .topTrailing) {
-            Circle()
-                .fill(RecourseColor.ledger.opacity(0.1))
-                .frame(width: 170, height: 170)
-                .blur(radius: 46)
-                .offset(x: 54, y: -62)
+            if cardStyle.showsGlow {
+                Circle()
+                    .fill(RecourseColor.ledger.opacity(0.1))
+                    .frame(width: 170, height: 170)
+                    .blur(radius: 46)
+                    .offset(x: 54, y: -62)
+            }
 
             VStack(alignment: .leading, spacing: 18) {
                 HStack {
@@ -80,7 +87,7 @@ struct EarnView: View {
                     Text("ARC TESTNET")
                         .font(.system(size: 10, weight: .bold))
                         .tracking(1.35)
-                        .foregroundStyle(.white.opacity(0.68))
+                        .foregroundStyle(cardStyle.textSecondary)
                 }
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -89,11 +96,11 @@ struct EarnView: View {
                             .minimumScaleFactor(0.72)
                         Text("your position")
                             .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.68))
+                            .foregroundStyle(cardStyle.textSecondary)
                     }
                     Text(positionSubtitle)
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.68))
+                        .foregroundStyle(cardStyle.textSecondary)
                 }
                 HStack(spacing: 10) {
                     Button {
@@ -113,11 +120,11 @@ struct EarnView: View {
                     } label: {
                         Text("Withdraw")
                             .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(cardStyle.textPrimary)
                             .frame(maxWidth: .infinity)
                             .frame(height: 46)
-                            .background(.white.opacity(0.12), in: Capsule())
-                            .overlay { Capsule().stroke(.white.opacity(0.16), lineWidth: 1) }
+                            .background(cardStyle.chipFill, in: Capsule())
+                            .overlay { Capsule().stroke(cardStyle.chipStroke, lineWidth: 1) }
                     }
                     .buttonStyle(.plain)
                     .disabled((vaultState?.myShares ?? 0) == 0)
@@ -126,14 +133,8 @@ struct EarnView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .foregroundStyle(.white)
-        .padding(20)
-        .background(RecourseColor.ink, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(.white.opacity(0.1), lineWidth: 1)
-        }
-        .shadow(color: RecourseColor.ink.opacity(0.15), radius: 18, y: 10)
+        .foregroundStyle(cardStyle.textPrimary)
+        .modifier(WalletCardSurface(style: cardStyle))
     }
 
     private var positionValue: String {
