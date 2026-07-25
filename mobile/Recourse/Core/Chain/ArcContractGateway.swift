@@ -52,6 +52,10 @@ struct ArcContractGateway: ContractGateway {
         try await writer.approveUSDC(amount: amount)
     }
 
+    func transferUSDC(to recipient: EthereumAddress, amount: USDCAmount) async throws -> ChainHash {
+        try await writer.transferUSDC(to: recipient, amount: amount)
+    }
+
     func registerStarterPolicy() async throws -> ChainHash {
         try await writer.registerStarterPolicy()
     }

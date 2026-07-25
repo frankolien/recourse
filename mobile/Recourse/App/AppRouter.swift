@@ -5,6 +5,7 @@ enum AppRoute: Hashable {
     case payment(UInt64)
     case dispute(UInt64)
     case verdict(UInt64)
+    case send
     case account
     case support
 }

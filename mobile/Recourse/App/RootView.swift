@@ -87,6 +87,8 @@ struct RootView: View {
             } else {
                 missingPayment(paymentID)
             }
+        case .send:
+            SendMoneyView(environment: environment)
         case .account:
             AccountFoundationView(
                 configuration: environment.configuration,

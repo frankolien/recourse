@@ -330,6 +330,22 @@ struct HomeView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Scan to pay")
+
+            Button {
+                environment.router.push(.send)
+            } label: {
+                Image(systemName: "paperplane.fill")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(RecourseColor.ledger)
+                    .frame(width: 50, height: 50)
+                    .background(.ultraThinMaterial, in: Circle())
+                    .overlay {
+                        Circle().stroke(.white.opacity(0.8), lineWidth: 0.8)
+                    }
+                    .shadow(color: .black.opacity(0.08), radius: 14, y: 7)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Send USDC")
         }
     }
 

@@ -63,6 +63,15 @@ actor ArcContractWriter: ContractWriting {
         return try await submit(to: configuration.usdcAddress, data: data)
     }
 
+    func transferUSDC(to recipient: EthereumAddress, amount: USDCAmount) async throws -> ChainHash {
+        let data = try encode(
+            contract: erc20,
+            method: "transfer",
+            parameters: [try web3Address(recipient), BigUInt(amount.baseUnits)]
+        )
+        return try await submit(to: configuration.usdcAddress, data: data)
+    }
+
     func registerStarterPolicy() async throws -> ChainHash {
         let day = 24 * 60 * 60
         let rules: [[Any]] = [

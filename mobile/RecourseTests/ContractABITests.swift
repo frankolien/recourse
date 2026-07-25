@@ -5,7 +5,7 @@ final class ContractABITests: XCTestCase {
     func testReviewedABIsExposeOnlyRequiredReadMethods() throws {
         XCTAssertEqual(
             try functionNames(in: .erc20),
-            ["allowance", "approve", "balanceOf"]
+            ["allowance", "approve", "balanceOf", "transfer"]
         )
         // registerPolicy is the one reviewed write here: the merchant workspace
         // publishes its starter protection policy on-chain through it.

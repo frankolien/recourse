@@ -22,6 +22,9 @@ protocol ContractReading: Sendable {
 
 protocol ContractWriting: Sendable {
     func approveUSDC(amount: USDCAmount) async throws -> ChainHash
+    // Direct USDC transfer, deliberately outside the escrow: no policy, no protection.
+    // The product's protected path stays pay(); this exists for person-to-person sends.
+    func transferUSDC(to recipient: EthereumAddress, amount: USDCAmount) async throws -> ChainHash
     func registerStarterPolicy() async throws -> ChainHash
     func pay(_ request: PaymentRequest) async throws -> ChainHash
     func fileDispute(

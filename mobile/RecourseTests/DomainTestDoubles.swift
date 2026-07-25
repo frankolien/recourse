@@ -13,6 +13,7 @@ enum DomainFixture {
     static let paymentHash = ChainHash(trusted: "0x" + String(repeating: "02", count: 32))
     static let disputeHash = ChainHash(trusted: "0x" + String(repeating: "03", count: 32))
     static let resolveHash = ChainHash(trusted: "0x" + String(repeating: "04", count: 32))
+    static let transferHash = ChainHash(trusted: "0x" + String(repeating: "05", count: 32))
 
     static let policy = PolicyRecord(
         id: 3,
@@ -70,6 +71,7 @@ enum DomainFixture {
 actor FakeContractGateway: ContractGateway {
     enum Call: Equatable {
         case approve(USDCAmount)
+        case transfer(EthereumAddress, USDCAmount)
         case registerStarterPolicy
         case pay
         case fileDispute(ClaimType, [UploadedEvidence])
@@ -117,6 +119,11 @@ actor FakeContractGateway: ContractGateway {
         calls.append(.approve(amount))
         currentAllowance = amount
         return DomainFixture.approvalHash
+    }
+
+    func transferUSDC(to recipient: EthereumAddress, amount: USDCAmount) async throws -> ChainHash {
+        calls.append(.transfer(recipient, amount))
+        return DomainFixture.transferHash
     }
 
     func registerStarterPolicy() async throws -> ChainHash {
