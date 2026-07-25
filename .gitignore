@@ -37,6 +37,13 @@ deployments/local-*.json
 deployments/seed-local-*.json
 engine/src/addresses.ts
 
+# Symlink into web/node_modules so ops scripts resolve viem (a symlink, so the
+# directory-only node_modules/ pattern above misses it)
+ops/node_modules
+
+# Raw screenshot originals; the resized copies live in web/public/app
+web/assets/
+
 # OS
 .DS_Store
 
