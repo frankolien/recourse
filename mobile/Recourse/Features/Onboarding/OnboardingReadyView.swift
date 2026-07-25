@@ -17,7 +17,13 @@ struct OnboardingReadyView: View {
                 hero(width: proxy.size.width, height: heroHeight)
                 readySheet(compact: compact)
             }
-            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
+            // The hero runs under the status bar, so the reclaimed top inset is
+            // added back; otherwise the sheet ends short and the CTA floats.
+            .frame(
+                width: proxy.size.width,
+                height: proxy.size.height + proxy.safeAreaInsets.top,
+                alignment: .top
+            )
             .ignoresSafeArea(edges: .top)
             .overlay(alignment: .top) {
                 readyAppBar
