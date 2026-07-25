@@ -4,6 +4,18 @@ Convention: every session appends one entry above this line's predecessors. Form
 
 ---
 
+## 2026-07-25: Session 39, the vault goes live: LP deposit, T+0 merchant advance, and a chain-read vault page
+
+Found: the settlement vault was deployed but never exercised, the third actor (LP) had no demo, and the web vault page showed fixture rows. The vault owner is the deployer key (the attestor signer), payment 14 (AirPods, $7, Paid, beneficiary still the merchant) was the natural advance target, and one seeded advance (payment 7, $0.25) was already outstanding with its window open until Aug 3. Arc's USDC at 0x3600.. cannot execute on an anvil fork (transfers revert; the token leans on node-native machinery), which would have blocked the R13 dry run.
+
+Built: ops/vault-demo.mjs (enroll, LP deposit, advance, reconcile; --anvil adds a 16-day warp, escrow release, reconcile, and asserts the merchant's exact net, claim assignment, outstanding bookkeeping, and a rising share price). The fork dry run etches MockForkUSDC (compiled, never deployed) at the USDC address and seeds real balances via storage writes; the dry run passed in full (share price 1.071829 to 1.073481 across release plus reconcile). Web: vault page rewritten to chain reads (TVL, share price, outstanding, escrow TVL, advances table scanned from the vault's advances mapping with settle dates from policy windows, LP position) with real deposit and withdraw signed by the account's provisioned Arc wallet.
+
+Executed live on Arc: enrollMerchant(0x0492..eb69, 100 bps, 50 USDC cap) tx 0x1234ebce93ce78b15a937fdadbfaa0e6f0ca47c45e6539d5312c0b2908f8e824; LP deposit of 4 USDC tx 0x30a3d30d36bd7bb6e5d036539e87f3e08b88a8ce6c5fe7d527f7d202337658cf; advance(14) tx 0xa2411d96a41fcca1dd9075b619dfa53f91012ad2380b3a22eeb3dfe06b4fb1b8. The merchant received exactly 6.93 USDC net at T+0 (21.985149 to 28.915149), the escrow claim assigned to the vault, outstanding rose to 7.25 USDC, and the share price moved from 1.000312 to 1.009064 on the booked fee. Payment 14 settles Aug 7; reconcile then via --reconcile-only (payment 7 likewise on Aug 3). All three actors are now demonstrated on the real chain: buyer refund (Session 38), merchant instant settlement, LP earning.
+
+Rules earned: R16, a fork is only as real as its precompiles; when a chain's core token is node-native, etch a faithful mock at the same address and dry-run your own contracts' logic rather than skipping the rehearsal.
+
+---
+
 ## 2026-07-25: Session 38, the first real dispute settled end to end, Cloudinary image mirror, and real screenshots on the landing page
 
 Found: the first real-device dispute attempt failed with "the evidence service rejected this upload": rpc.testnet.arc.network had begun 429-throttling the Railway backend too (the same limit that hit phones on carrier NAT in Session 37), and verify_buyer's one-shot get_payment had no retry, unlike the indexer, so one throttled read bounced a signed upload as if it were rejected. Separately, order 15 (Watch) published without its product image: PhotosPicker loads the selection asynchronously, and generating the QR before the load finished silently shipped a manifest with no imageHash. The landing hero still showed the hand-built CSS dashboard collage, and recourse.frankolien.com had lost its Vercel domain binding.
