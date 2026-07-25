@@ -128,7 +128,8 @@ struct RootView: View {
         case .account:
             AccountFoundationView(
                 configuration: environment.configuration,
-                accountSession: environment.accountSession
+                accountSession: environment.accountSession,
+                signer: environment.buyerSigner
             )
         case .support:
             SupportView()

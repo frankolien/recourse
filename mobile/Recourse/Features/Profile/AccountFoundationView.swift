@@ -1,13 +1,17 @@
 import SwiftUI
+import UIKit
 
 struct AccountFoundationView: View {
     let configuration: AppConfiguration
     let accountSession: AccountSession
+    var signer: (any BuyerSigner)?
 
     @AppStorage("recourse.hasCompletedOnboarding") private var hasCompletedOnboarding = true
     @AppStorage("recourse.workspaceRole") private var storedWorkspaceRole = OnboardingRole.buyer.rawValue
     @AppStorage("recourse.appearance") private var appearanceRaw = "dark"
     @State private var showsNameEditor = false
+    @State private var walletAddress: EthereumAddress?
+    @State private var copiedAddress = false
 
     // The account session is the single source of profile truth: names persist through
     // PUT /api/me/profile and come back on GET /api/me, so nothing profile-shaped lives
@@ -43,6 +47,9 @@ struct AccountFoundationView: View {
                 familyName: accountSession.account?.familyName ?? "",
                 accountSession: accountSession
             )
+        }
+        .task {
+            walletAddress = try? await signer?.address()
         }
     }
 
@@ -100,9 +107,41 @@ struct AccountFoundationView: View {
     private var securitySection: some View {
         Section("Security") {
             settingsRow("Passkeys & recovery", "person.badge.key.fill")
-            settingsRow("Device signing key", "iphone.gen3.radiowaves.left.and.right")
+            deviceKeyRow
             settingsRow("Payment limits", "gauge.with.dots.needle.67percent")
         }
+    }
+
+    // The wallet is a per-device key, so payments and balance follow the device,
+    // not the account. Showing the address here makes that split visible.
+    private var deviceKeyRow: some View {
+        Button {
+            guard let walletAddress else { return }
+            UIPasteboard.general.string = walletAddress.value
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            copiedAddress = true
+            Task {
+                try? await Task.sleep(for: .seconds(2))
+                copiedAddress = false
+            }
+        } label: {
+            HStack {
+                settingsRowLabel("Device signing key", "iphone.gen3.radiowaves.left.and.right")
+                Spacer()
+                if copiedAddress {
+                    Label("Copied", systemImage: "checkmark")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(RecourseColor.ledger)
+                } else if let walletAddress {
+                    Text(walletAddress.shortened)
+                        .font(.system(size: 12, weight: .medium, design: .monospaced))
+                        .foregroundStyle(RecourseColor.nightMuted)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Copy this device's wallet address")
     }
 
     private var generalSection: some View {
