@@ -143,7 +143,7 @@ struct WalletCardStylePicker: View {
             VStack(alignment: .leading, spacing: 18) {
                 Text("Card style")
                     .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(RecourseColor.ink)
+                    .foregroundStyle(RecourseColor.nightText)
 
                 LazyVGrid(
                     columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3),
@@ -164,7 +164,7 @@ struct WalletCardStylePicker: View {
             }
             .padding(22)
         }
-        .background(Color.white)
+        .background(RecourseColor.night)
     }
 
     private func miniCard(_ style: WalletCardStyle) -> some View {
@@ -196,7 +196,7 @@ struct WalletCardStylePicker: View {
                 }
                 Text(style.displayName)
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(RecourseColor.ink)
+                    .foregroundStyle(RecourseColor.nightText)
                     .lineLimit(1)
             }
         }

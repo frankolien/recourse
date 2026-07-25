@@ -96,7 +96,7 @@ struct HomeView: View {
             identityHeader
                 .padding(.horizontal, 20)
                 .frame(height: 72)
-                .background(RecourseColor.surface)
+                .background(RecourseColor.night)
         }
         .coordinateSpace(name: "recourse-home-scroll")
         .onPreferenceChange(RecourseScrollOffsetPreferenceKey.self) { newOffset in
@@ -125,8 +125,17 @@ struct HomeView: View {
         }
     }
 
+    // Flat greenish-black ground with a soft brand glow bleeding from the top.
     private var homeCanvas: some View {
-        RecourseColor.surface
+        ZStack(alignment: .top) {
+            RecourseColor.night
+            LinearGradient(
+                colors: [RecourseColor.ledgerDeep.opacity(0.32), .clear],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(height: 320)
+        }
     }
 
     private var scrollPositionReader: some View {
@@ -153,7 +162,7 @@ struct HomeView: View {
             } label: {
                 Image(systemName: "person.crop.circle.fill")
                     .font(.system(size: 38, weight: .regular))
-                    .foregroundStyle(RecourseColor.ink)
+                    .foregroundStyle(RecourseColor.nightText)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Open profile")
@@ -161,14 +170,14 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(displayName)
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(RecourseColor.ink)
+                    .foregroundStyle(RecourseColor.nightText)
                     .lineLimit(2)
                     .minimumScaleFactor(0.78)
                 HStack(spacing: 5) {
                     Circle().fill(RecourseColor.ledger).frame(width: 7, height: 7)
                     Text("Protected on Arc Testnet")
                         .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(RecourseColor.muted)
+                        .foregroundStyle(RecourseColor.nightMuted)
                 }
             }
 
@@ -192,7 +201,7 @@ struct HomeView: View {
                     Circle()
                         .fill(RecourseColor.ledger)
                         .frame(width: 7, height: 7)
-                        .overlay(Circle().stroke(.white, lineWidth: 1.5))
+                        .overlay(Circle().stroke(RecourseColor.night, lineWidth: 1.5))
                         .offset(x: -5, y: 1)
                 }
             }
@@ -210,7 +219,7 @@ struct HomeView: View {
                 .font(.system(size: 8, weight: .semibold))
         }
         .frame(width: 38)
-        .foregroundStyle(RecourseColor.ink)
+        .foregroundStyle(RecourseColor.nightText)
     }
 
     private var attentionLead: some View {
@@ -218,7 +227,7 @@ struct HomeView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("Needs your attention")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(RecourseColor.ink)
+                    .foregroundStyle(RecourseColor.nightText)
                 Spacer()
                 Text("1 action")
                     .font(.system(size: 10, weight: .bold))
@@ -246,12 +255,12 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Evidence requested")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(RecourseColor.ink)
+                        .foregroundStyle(RecourseColor.nightText)
                     Text(attentionPayment.map {
                         "\($0.merchant) · \($0.orderReference)"
                     } ?? "A protected payment needs you")
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(RecourseColor.muted)
+                        .foregroundStyle(RecourseColor.nightMuted)
                         .lineLimit(2)
                     Label("Add evidence", systemImage: "arrow.right")
                         .labelStyle(.titleAndIcon)
@@ -268,7 +277,7 @@ struct HomeView: View {
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
                     .frame(width: 28, height: 58, alignment: .top)
             }
             .buttonStyle(.plain)
@@ -382,12 +391,12 @@ struct HomeView: View {
             VStack(spacing: 7) {
                 Image(systemName: systemImage)
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(RecourseColor.ink)
+                    .foregroundStyle(RecourseColor.nightText)
                     .frame(width: 46, height: 46)
-                    .background(RecourseColor.clay, in: Circle())
+                    .background(RecourseColor.nightChip, in: Circle())
                 Text(title)
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(RecourseColor.ink)
+                    .foregroundStyle(RecourseColor.nightText)
             }
             .frame(maxWidth: .infinity)
         }
@@ -402,22 +411,22 @@ struct HomeView: View {
             HStack(spacing: 12) {
                 Image(systemName: "chart.line.uptrend.xyaxis")
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(RecourseColor.ink)
+                    .foregroundStyle(RecourseColor.nightText)
                     .frame(width: 38, height: 38)
-                    .background(RecourseColor.clay, in: Circle())
+                    .background(RecourseColor.nightChip, in: Circle())
                 VStack(alignment: .leading, spacing: 3) {
                     Text(earnPreviewTitle)
                         .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(RecourseColor.ink)
+                        .foregroundStyle(RecourseColor.nightText)
                     Text(earnPreviewDetail)
                         .font(.system(size: 11))
-                        .foregroundStyle(RecourseColor.muted)
+                        .foregroundStyle(RecourseColor.nightMuted)
                         .lineLimit(2)
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
             }
             .padding(14)
             .contentShape(Rectangle())
@@ -447,7 +456,7 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("How your first payment works")
                 .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(RecourseColor.ink)
+                .foregroundStyle(RecourseColor.nightText)
             firstStep("qrcode.viewfinder", "Scan a merchant checkout", "Recourse QRs open here, straight from the Camera app too.")
             firstStep("lock.shield.fill", "USDC escrows under the policy", "Refund rules are locked onchain before any funds move.")
             firstStep("checkmark.seal.fill", "Every outcome is provable", "Refunds compute from evidence, and you can verify the result yourself.")
@@ -461,16 +470,16 @@ struct HomeView: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(RecourseColor.ink)
+                .foregroundStyle(RecourseColor.nightText)
                 .frame(width: 34, height: 34)
-                .background(RecourseColor.clay, in: Circle())
+                .background(RecourseColor.nightChip, in: Circle())
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(RecourseColor.ink)
+                    .foregroundStyle(RecourseColor.nightText)
                 Text(detail)
                     .font(.system(size: 11.5))
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
@@ -501,20 +510,20 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 5) {
                 Text(payment.merchant)
                     .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(RecourseColor.ink)
+                    .foregroundStyle(RecourseColor.nightText)
                 Text(payment.item)
                     .font(.system(size: 10))
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
                     .lineLimit(1)
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 5) {
                 Text("$\(payment.amountText.replacingOccurrences(of: " USDC", with: "")) protected")
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(RecourseColor.ink)
+                    .foregroundStyle(RecourseColor.nightText)
                 Text(timeLeft(for: payment))
                     .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
             }
         }
         .padding(.vertical, 11)
@@ -544,19 +553,19 @@ struct HomeView: View {
             Image(systemName: payment.state == .refunded ? "arrow.uturn.backward.circle.fill" : "checkmark.seal.fill")
                 .font(.system(size: 17))
                 // Green only when money came back; a completed sale is a neutral fact.
-                .foregroundStyle(payment.state == .refunded ? RecourseColor.ledger : RecourseColor.ink)
+                .foregroundStyle(payment.state == .refunded ? RecourseColor.ledger : RecourseColor.nightText)
                 .frame(width: 40, height: 40)
-                .background(RecourseColor.clay, in: Circle())
+                .background(RecourseColor.nightChip, in: Circle())
             Button {
                 environment.router.push(.payment(payment.id))
             } label: {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(payment.merchant)
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(RecourseColor.ink)
+                        .foregroundStyle(RecourseColor.nightText)
                     Text("\(payment.state.rawValue) · \(payment.amountText)")
                         .font(.system(size: 11))
-                        .foregroundStyle(RecourseColor.muted)
+                        .foregroundStyle(RecourseColor.nightMuted)
                 }
             }
             .buttonStyle(.plain)
@@ -575,11 +584,11 @@ struct HomeView: View {
         HStack {
             Text(title)
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(RecourseColor.ink)
+                .foregroundStyle(RecourseColor.nightText)
             Spacer()
             Text(trailing)
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(RecourseColor.muted)
+                .foregroundStyle(RecourseColor.nightMuted)
         }
     }
 
@@ -589,19 +598,14 @@ struct HomeView: View {
     }
 }
 
+// Sections sit directly on the black ground; the old floating box is gone on
+// purpose, so this only keeps the corner clip for tap highlights.
 private struct HomeFloatingSurface: ViewModifier {
     let cornerRadius: CGFloat
 
     func body(content: Content) -> some View {
         content
-            .background(.ultraThinMaterial)
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(.white.opacity(0.78), lineWidth: 0.9)
-            }
-            .shadow(color: RecourseColor.ledger.opacity(0.06), radius: 18, y: 9)
-            .shadow(color: .black.opacity(0.04), radius: 3, y: 1)
     }
 }
 

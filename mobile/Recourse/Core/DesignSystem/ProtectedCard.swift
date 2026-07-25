@@ -11,11 +11,11 @@ struct ProtectedCard<Content: View>: View {
         content
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RecourseColor.surface)
+            .background(RecourseColor.night)
             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(RecourseColor.line, lineWidth: 1)
+                    .stroke(RecourseColor.nightLine, lineWidth: 1)
             }
     }
 }
@@ -72,7 +72,7 @@ struct MerchantArtwork: View {
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .stroke(.white.opacity(0.72), lineWidth: 0.7)
+                .stroke(.white.opacity(0.1), lineWidth: 0.7)
         }
         .task(id: payment.merchantImageURL) {
             guard let url = payment.merchantImageURL, loaded == nil else { return }

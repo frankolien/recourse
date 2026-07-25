@@ -5,16 +5,20 @@ struct RootView: View {
     @AppStorage("recourse.hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("recourse.workspaceRole") private var storedWorkspaceRole = ""
 
+    private var workspaceDestination: WorkspaceDestination {
+        WorkspaceRouting.destination(
+            isRestoring: environment.accountSession.isRestoring,
+            isAuthenticated: environment.accountSession.isAuthenticated,
+            hasCompletedOnboarding: hasCompletedOnboarding,
+            storedRole: storedWorkspaceRole
+        )
+    }
+
     var body: some View {
         @Bindable var router = environment.router
 
         Group {
-            switch WorkspaceRouting.destination(
-                isRestoring: environment.accountSession.isRestoring,
-                isAuthenticated: environment.accountSession.isAuthenticated,
-                hasCompletedOnboarding: hasCompletedOnboarding,
-                storedRole: storedWorkspaceRole
-            ) {
+            switch workspaceDestination {
             case .restoring:
                 ProgressView()
                     .tint(RecourseColor.ledger)
@@ -53,7 +57,10 @@ struct RootView: View {
             }
         }
         .recourseKeyboardDismissal()
-        .background(RecourseColor.canvas)
+        // The app interior is dark; onboarding keeps its white-and-green world.
+        // The scheme also flips system chrome (sheets, keyboards) per branch.
+        .background(workspaceDestination == .buyerApp ? RecourseColor.night : RecourseColor.canvas)
+        .preferredColorScheme(workspaceDestination == .buyerApp ? .dark : .light)
         .task {
             await environment.accountSession.restore()
         }

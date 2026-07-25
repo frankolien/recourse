@@ -32,7 +32,7 @@ struct AccountFoundationView: View {
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
-        .background(Color.white)
+        .background(RecourseColor.night)
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.large)
         .sheet(isPresented: $showsNameEditor) {
@@ -57,12 +57,12 @@ struct AccountFoundationView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(accountName)
                             .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(RecourseColor.ink)
+                            .foregroundStyle(RecourseColor.nightText)
                             .lineLimit(1)
                         if let accountEmail {
                             Text(accountEmail)
                                 .font(.system(size: 13))
-                                .foregroundStyle(RecourseColor.muted)
+                                .foregroundStyle(RecourseColor.nightMuted)
                                 .lineLimit(1)
                         }
                         Label("Protected on \(configuration.chainName)", systemImage: "circle.fill")
@@ -118,7 +118,7 @@ struct AccountFoundationView: View {
                 Spacer()
                 Text(configuration.chainName)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
             }
             settingsRow("Privacy", "hand.raised.fill")
             settingsRow("Terms", "doc.text.fill")
@@ -157,7 +157,7 @@ struct AccountFoundationView: View {
         Label {
             Text(title)
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(RecourseColor.ink)
+                .foregroundStyle(RecourseColor.nightText)
         } icon: {
             Image(systemName: systemImage)
                 .font(.system(size: 14, weight: .semibold))

@@ -42,7 +42,7 @@ struct CheckoutReviewView: View {
             .padding(.bottom, 120)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color.white)
+        .background(RecourseColor.night)
         .navigationTitle("Confirm payment")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
@@ -127,10 +127,10 @@ struct CheckoutReviewView: View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Payment blocked", systemImage: "hand.raised.fill")
                 .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(RecourseColor.ink)
+                .foregroundStyle(RecourseColor.nightText)
             Text(reason)
                 .font(.system(size: 12))
-                .foregroundStyle(RecourseColor.muted)
+                .foregroundStyle(RecourseColor.nightMuted)
                 .fixedSize(horizontal: false, vertical: true)
             Button("Try again") {
                 Task { await loadOrder() }
@@ -140,10 +140,10 @@ struct CheckoutReviewView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(RecourseColor.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(RecourseColor.line, lineWidth: 1)
+                .stroke(RecourseColor.nightLine, lineWidth: 1)
         }
     }
 
@@ -229,14 +229,14 @@ struct CheckoutReviewView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Paying")
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(RecourseColor.muted)
+                        .foregroundStyle(RecourseColor.nightMuted)
                     Text(orderTitle)
                         .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(RecourseColor.ink)
+                        .foregroundStyle(RecourseColor.nightText)
                         .lineLimit(2)
                     Text(request.merchant.shortened)
                         .font(.system(size: 12, weight: .medium, design: .monospaced))
-                        .foregroundStyle(RecourseColor.muted)
+                        .foregroundStyle(RecourseColor.nightMuted)
                 }
                 Spacer()
                 orderStatusBadge
@@ -245,11 +245,11 @@ struct CheckoutReviewView: View {
             if case .verified(let manifest, _) = orderReview {
                 Text(manifest.description)
                     .font(.system(size: 13))
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(manifest.orderReference)
                     .font(.system(size: 11, weight: .medium, design: .monospaced))
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
             }
 
             Divider()
@@ -258,13 +258,13 @@ struct CheckoutReviewView: View {
                 Text("TOTAL")
                     .font(.system(size: 10, weight: .bold))
                     .tracking(1.4)
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
                 Text(currencyAmount)
                     .font(.system(size: 46, weight: .medium, design: .rounded))
-                    .foregroundStyle(RecourseColor.ink)
+                    .foregroundStyle(RecourseColor.nightText)
                 Text("\(request.amount.formatted) · Arc Testnet")
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
             }
 
             HStack(spacing: 9) {
@@ -277,14 +277,14 @@ struct CheckoutReviewView: View {
             .font(.system(size: 12, weight: .semibold))
             .foregroundStyle(RecourseColor.ledger)
             .padding(14)
-            .background(RecourseColor.softGreen, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(RecourseColor.ledger.opacity(0.18), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .padding(18)
-        .background(Color.white)
+        .background(RecourseColor.night)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(RecourseColor.line, lineWidth: 1)
+                .stroke(RecourseColor.nightLine, lineWidth: 1)
         }
     }
 
@@ -302,7 +302,7 @@ struct CheckoutReviewView: View {
                 .font(.system(size: 21, weight: .semibold))
                 .foregroundStyle(RecourseColor.ledger)
                 .frame(width: 58, height: 58)
-                .background(RecourseColor.softGreen, in: RoundedRectangle(cornerRadius: 17, style: .continuous))
+                .background(RecourseColor.ledger.opacity(0.18), in: RoundedRectangle(cornerRadius: 17, style: .continuous))
         }
     }
 
@@ -337,7 +337,7 @@ struct CheckoutReviewView: View {
         case .blocked:
             Image(systemName: "hand.raised.fill")
                 .font(.system(size: 19))
-                .foregroundStyle(RecourseColor.ink)
+                .foregroundStyle(RecourseColor.nightText)
                 .accessibilityLabel("Payment blocked")
         }
     }
@@ -366,7 +366,7 @@ struct CheckoutReviewView: View {
 
             Text("Face ID confirms this protected Arc payment")
                 .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(RecourseColor.muted)
+                .foregroundStyle(RecourseColor.nightMuted)
         }
         .padding(.horizontal, 20)
         .padding(.top, 12)
@@ -395,7 +395,7 @@ struct CheckoutReviewView: View {
                     Text("YOUR PROTECTION").recourseEyebrow()
                     Text("Digital service delivery")
                         .font(.system(size: 20, weight: .bold))
-                        .foregroundStyle(RecourseColor.ink)
+                        .foregroundStyle(RecourseColor.nightText)
                 }
                 Spacer()
                 Text("POLICY #\(request.policyID)")
@@ -416,11 +416,11 @@ struct CheckoutReviewView: View {
         HStack(alignment: .top, spacing: 13) {
             Image(systemName: icon)
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(RecourseColor.ink)
+                .foregroundStyle(RecourseColor.nightText)
                 .frame(width: 22, height: 22)
             VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.system(size: 14, weight: .semibold)).foregroundStyle(RecourseColor.ink)
-                Text(text).font(.system(size: 12)).foregroundStyle(RecourseColor.muted)
+                Text(title).font(.system(size: 14, weight: .semibold)).foregroundStyle(RecourseColor.nightText)
+                Text(text).font(.system(size: 12)).foregroundStyle(RecourseColor.nightMuted)
             }
         }
     }
@@ -432,14 +432,14 @@ struct CheckoutReviewView: View {
             breakdownRow("Settlement", "Instant to merchant")
         }
         .padding(18)
-        .background(Color(red: 0.97, green: 0.97, blue: 0.96), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
     private func breakdownRow(_ label: String, _ value: String, bold: Bool = false) -> some View {
         HStack {
-            Text(label).foregroundStyle(bold ? RecourseColor.ink : RecourseColor.muted)
+            Text(label).foregroundStyle(bold ? RecourseColor.nightText : RecourseColor.nightMuted)
             Spacer()
-            Text(value).fontWeight(bold ? .bold : .medium).foregroundStyle(RecourseColor.ink)
+            Text(value).fontWeight(bold ? .bold : .medium).foregroundStyle(RecourseColor.nightText)
         }
         .font(.system(size: 14))
     }
@@ -447,7 +447,7 @@ struct CheckoutReviewView: View {
     private var safetyNote: some View {
         Label("Recourse cannot change the policy after you confirm.", systemImage: "lock.fill")
             .font(.system(size: 12))
-            .foregroundStyle(RecourseColor.muted)
+            .foregroundStyle(RecourseColor.nightMuted)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
@@ -484,16 +484,16 @@ private struct PaymentSuccessView: View {
                 VStack(spacing: 8) {
                     Text("Payment protected")
                         .font(.system(size: 30, weight: .bold))
-                        .foregroundStyle(RecourseColor.ink)
+                        .foregroundStyle(RecourseColor.nightText)
                         .opacity(showsShield ? 1 : 0)
                     Text(countedAmount)
                         .font(.system(size: 54, weight: .semibold, design: .rounded))
                         .monospacedDigit()
-                        .foregroundStyle(RecourseColor.ink)
+                        .foregroundStyle(RecourseColor.nightText)
                         .opacity(showsShield ? 1 : 0)
                     Text("Paid for \(paidToLabel) on Arc Testnet")
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(RecourseColor.muted)
+                        .foregroundStyle(RecourseColor.nightMuted)
                         .lineLimit(1)
                         .opacity(showsCaption ? 1 : 0)
                         .offset(y: showsCaption ? 0 : 6)
@@ -508,7 +508,7 @@ private struct PaymentSuccessView: View {
                 }
                 .padding(.horizontal, 16)
                 .background(
-                    Color(red: 0.97, green: 0.97, blue: 0.96),
+                    RecourseColor.nightChip,
                     in: RoundedRectangle(cornerRadius: 22, style: .continuous)
                 )
             }
@@ -520,7 +520,7 @@ private struct PaymentSuccessView: View {
                     .buttonStyle(RecoursePrimaryButtonStyle())
                 Text("Your receipt and policy are saved together.")
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
             }
             .opacity(showsFooter ? 1 : 0)
             .offset(y: showsFooter ? 0 : 10)
@@ -570,7 +570,7 @@ private struct PaymentSuccessView: View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: reduceMotion)) { timeline in
             let t = reduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate
             ZStack {
-                Color.white
+                RecourseColor.night
                 bloom(RecourseColor.ledger, size: 460)
                     .opacity(0.22 + 0.05 * sin(t * 0.19))
                     .offset(x: -130 + 30 * sin(t * 0.23), y: 430 + 18 * cos(t * 0.17))
@@ -611,11 +611,11 @@ private struct PaymentSuccessView: View {
                 .frame(width: 30)
             Text(label)
                 .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(RecourseColor.muted)
+                .foregroundStyle(RecourseColor.nightMuted)
             Spacer()
             Text(value)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(RecourseColor.ink)
+                .foregroundStyle(RecourseColor.nightText)
         }
         .frame(height: 52)
         .opacity(visibleRows >= index ? 1 : 0)
@@ -692,7 +692,7 @@ struct PaymentDetailView: View {
             .padding(20)
             .padding(.bottom, 120)
         }
-        .background(Color.white)
+        .background(RecourseColor.night)
         .navigationTitle("Protected payment")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
@@ -707,14 +707,14 @@ struct PaymentDetailView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(payment.merchant)
                         .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(RecourseColor.ink)
+                        .foregroundStyle(RecourseColor.nightText)
                     Text(payment.item)
                         .font(.system(size: 12))
-                        .foregroundStyle(RecourseColor.muted)
+                        .foregroundStyle(RecourseColor.nightMuted)
                         .lineLimit(1)
                     Text(payment.orderReference)
                         .font(.system(size: 10, weight: .medium, design: .monospaced))
-                        .foregroundStyle(RecourseColor.muted)
+                        .foregroundStyle(RecourseColor.nightMuted)
                 }
                 Spacer()
                 Label(payment.state.rawValue, systemImage: payment.state.systemImage)
@@ -731,10 +731,10 @@ struct PaymentDetailView: View {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(currencyAmount)
                         .font(.system(size: 42, weight: .medium, design: .rounded))
-                        .foregroundStyle(RecourseColor.ink)
+                        .foregroundStyle(RecourseColor.nightText)
                     Text("\(payment.amountText) paid \(payment.date.formatted(date: .abbreviated, time: .shortened))")
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(RecourseColor.muted)
+                        .foregroundStyle(RecourseColor.nightMuted)
                 }
                 Spacer()
                 Text(payment.state.rawValue.uppercased())
@@ -747,11 +747,11 @@ struct PaymentDetailView: View {
             }
         }
         .padding(18)
-        .background(Color.white)
+        .background(RecourseColor.night)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(RecourseColor.line, lineWidth: 1)
+                .stroke(RecourseColor.nightLine, lineWidth: 1)
         }
     }
 
@@ -762,7 +762,7 @@ struct PaymentDetailView: View {
                     Text("PROTECTION").recourseEyebrow()
                     Text(payment.policyName)
                         .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(RecourseColor.ink)
+                        .foregroundStyle(RecourseColor.nightText)
                 }
                 Spacer()
                 Image(systemName: "shield.checkered")
@@ -773,7 +773,7 @@ struct PaymentDetailView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(protectionStatusTitle)
                     .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(RecourseColor.ink)
+                    .foregroundStyle(RecourseColor.nightText)
                 Spacer()
                 Text(protectionStatusDetail)
                     .font(.system(size: 11, weight: .semibold))
@@ -784,7 +784,7 @@ struct PaymentDetailView: View {
                 .tint(RecourseColor.ledger)
         }
         .padding(18)
-        .background(Color(red: 0.97, green: 0.98, blue: 0.965), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 
     private var protectionStatusTitle: String {
@@ -834,8 +834,8 @@ struct PaymentDetailView: View {
             Image(systemName: complete ? "checkmark.circle.fill" : "circle")
                 .foregroundStyle(RecourseColor.ledger)
             VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.system(size: 14, weight: .semibold)).foregroundStyle(RecourseColor.ink)
-                Text(subtitle).font(.system(size: 12)).foregroundStyle(RecourseColor.muted)
+                Text(title).font(.system(size: 14, weight: .semibold)).foregroundStyle(RecourseColor.nightText)
+                Text(subtitle).font(.system(size: 12)).foregroundStyle(RecourseColor.nightMuted)
             }
             Spacer()
         }
@@ -853,14 +853,14 @@ struct PaymentDetailView: View {
             detailRow("Payment ID", "#\(payment.id)")
         }
         .padding(18)
-        .background(Color(red: 0.97, green: 0.97, blue: 0.96), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
     private func detailRow(_ title: String, _ value: String) -> some View {
         HStack(alignment: .top) {
-            Text(title).foregroundStyle(RecourseColor.muted)
+            Text(title).foregroundStyle(RecourseColor.nightMuted)
             Spacer()
-            Text(value).fontWeight(.medium).foregroundStyle(RecourseColor.ink).multilineTextAlignment(.trailing)
+            Text(value).fontWeight(.medium).foregroundStyle(RecourseColor.nightText).multilineTextAlignment(.trailing)
         }
         .font(.system(size: 13))
     }
@@ -878,11 +878,11 @@ struct PaymentDetailView: View {
             } label: {
                 Label("Verify onchain proof", systemImage: "checkmark.seal")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(RecourseColor.ink)
+                    .foregroundStyle(RecourseColor.nightText)
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
-                    .background(Color.white, in: Capsule())
-                    .overlay(Capsule().stroke(RecourseColor.line, lineWidth: 1))
+                    .background(RecourseColor.nightChip, in: Capsule())
+                    .overlay(Capsule().stroke(RecourseColor.nightLine, lineWidth: 1))
             }
             .buttonStyle(.plain)
         }
@@ -935,7 +935,7 @@ struct DisputeFilingView: View {
             .padding(.bottom, 120)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color.white)
+        .background(RecourseColor.night)
         .navigationTitle("Add evidence")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
@@ -954,7 +954,7 @@ struct DisputeFilingView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(payment.merchant).font(.system(size: 16, weight: .bold))
                 Text("\(currencyAmount) · \(payment.orderReference)")
-                    .font(.system(size: 12)).foregroundStyle(RecourseColor.muted)
+                    .font(.system(size: 12)).foregroundStyle(RecourseColor.nightMuted)
             }
             Spacer()
             Image(systemName: "exclamationmark.shield.fill")
@@ -962,12 +962,12 @@ struct DisputeFilingView: View {
                 .foregroundStyle(RecourseColor.ledger)
         }
         .padding(16)
-        .background(Color(red: 0.98, green: 0.97, blue: 0.95), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
     private var claimPicker: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("What went wrong?").font(.system(size: 21, weight: .bold)).foregroundStyle(RecourseColor.ink)
+            Text("What went wrong?").font(.system(size: 21, weight: .bold)).foregroundStyle(RecourseColor.nightText)
             VStack(spacing: 0) {
                 ForEach(Array(ClaimType.allCases.enumerated()), id: \.element) { index, claim in
                     Button {
@@ -975,18 +975,18 @@ struct DisputeFilingView: View {
                     } label: {
                         HStack(spacing: 13) {
                             Image(systemName: claimIcon(claim))
-                                .foregroundStyle(selectedClaim == claim ? RecourseColor.ledger : RecourseColor.muted)
+                                .foregroundStyle(selectedClaim == claim ? RecourseColor.ledger : RecourseColor.nightMuted)
                                 .frame(width: 24)
                             Text(claimTitle(claim))
                                 .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(RecourseColor.ink)
+                                .foregroundStyle(RecourseColor.nightText)
                             Spacer()
                             Image(systemName: selectedClaim == claim ? "checkmark.circle.fill" : "circle")
-                                .foregroundStyle(selectedClaim == claim ? RecourseColor.ledger : RecourseColor.line)
+                                .foregroundStyle(selectedClaim == claim ? RecourseColor.ledger : RecourseColor.nightLine)
                         }
                         .padding(.horizontal, 14)
                         .frame(height: 52)
-                        .background(selectedClaim == claim ? RecourseColor.softGreen : Color.white)
+                        .background(selectedClaim == claim ? RecourseColor.ledger.opacity(0.18) : Color.clear)
                     }
                     .buttonStyle(.plain)
                     if index < ClaimType.allCases.count - 1 {
@@ -995,7 +995,7 @@ struct DisputeFilingView: View {
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(RecourseColor.line))
+            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(RecourseColor.nightLine))
         }
     }
 
@@ -1003,7 +1003,7 @@ struct DisputeFilingView: View {
         let hasPhoto = photoData != nil
 
         return VStack(alignment: .leading, spacing: 12) {
-            Text("Add evidence").font(.system(size: 21, weight: .bold)).foregroundStyle(RecourseColor.ink)
+            Text("Add evidence").font(.system(size: 21, weight: .bold)).foregroundStyle(RecourseColor.nightText)
             PhotosPicker(selection: $selectedPhoto, matching: .images) {
                 PhotoEvidencePickerLabel(hasPhoto: hasPhoto)
             }
@@ -1023,8 +1023,8 @@ struct DisputeFilingView: View {
                 .frame(minHeight: 110)
                 .padding(12)
                 .scrollContentBackground(.hidden)
-                .background(RecourseColor.surface, in: RoundedRectangle(cornerRadius: 18))
-                .overlay(RoundedRectangle(cornerRadius: 18).stroke(RecourseColor.line))
+                .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 18))
+                .overlay(RoundedRectangle(cornerRadius: 18).stroke(RecourseColor.nightLine))
         }
     }
 
@@ -1083,7 +1083,7 @@ struct DisputeFilingView: View {
 
             Text("Your device key signs the evidence manifest")
                 .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(RecourseColor.muted)
+                .foregroundStyle(RecourseColor.nightMuted)
         }
         .padding(.horizontal, 20)
         .padding(.top, 12)
@@ -1203,18 +1203,18 @@ private struct PhotoEvidencePickerLabel: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(hasPhoto ? "Evidence photo selected" : "Add a photo")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(RecourseColor.ink)
+                    .foregroundStyle(RecourseColor.nightText)
                 Text(hasPhoto ? "Ready for encrypted upload" : "Show what happened clearly")
                     .font(.system(size: 12))
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
             }
             Spacer()
             Image(systemName: hasPhoto ? "checkmark.circle.fill" : "plus.circle")
                 .foregroundStyle(RecourseColor.ledger)
         }
         .padding(18)
-        .background(RecourseColor.surface, in: RoundedRectangle(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(RecourseColor.line))
+        .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).stroke(RecourseColor.nightLine))
     }
 }
 
@@ -1232,7 +1232,7 @@ struct VerdictDetailView: View {
             .padding(20)
             .padding(.bottom, 50)
         }
-        .background(Color.white)
+        .background(RecourseColor.night)
         .navigationTitle("Verify outcome")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -1246,10 +1246,10 @@ struct VerdictDetailView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(payment.merchant)
                         .font(.system(size: 17, weight: .bold))
-                        .foregroundStyle(RecourseColor.ink)
+                        .foregroundStyle(RecourseColor.nightText)
                     Text(payment.orderReference)
                         .font(.system(size: 11, weight: .medium, design: .monospaced))
-                        .foregroundStyle(RecourseColor.muted)
+                        .foregroundStyle(RecourseColor.nightMuted)
                 }
                 Spacer()
                 Image(systemName: isRefunded ? "arrow.uturn.backward.circle.fill" : "checkmark.seal.fill")
@@ -1264,18 +1264,18 @@ struct VerdictDetailView: View {
                     .foregroundStyle(RecourseColor.ledger)
                 Text(isRefunded ? "The policy returned your payment." : "The receipt matches Arc state.")
                     .font(.system(size: 26, weight: .bold))
-                    .foregroundStyle(RecourseColor.ink)
+                    .foregroundStyle(RecourseColor.nightText)
                 Text(isRefunded ? "100% buyer refund · \(currencyAmount)" : "\(currencyAmount) independently reproducible")
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
             }
         }
         .padding(18)
-        .background(Color.white)
+        .background(RecourseColor.night)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(RecourseColor.line, lineWidth: 1)
+                .stroke(RecourseColor.nightLine, lineWidth: 1)
         }
     }
 
@@ -1351,25 +1351,25 @@ struct VerdictDetailView: View {
 
     private func rule(_ number: String, _ title: String, _ result: String, _ matched: Bool) -> some View {
         HStack(spacing: 12) {
-            Text(number).font(.system(size: 12, weight: .bold)).foregroundStyle(matched ? .white : RecourseColor.muted).frame(width: 28, height: 28).background(matched ? RecourseColor.ledger : RecourseColor.softGreen, in: RoundedRectangle(cornerRadius: 8))
+            Text(number).font(.system(size: 12, weight: .bold)).foregroundStyle(matched ? .white : RecourseColor.nightMuted).frame(width: 28, height: 28).background(matched ? RecourseColor.ledger : RecourseColor.ledger.opacity(0.18), in: RoundedRectangle(cornerRadius: 8))
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.system(size: 13, weight: .semibold)).foregroundStyle(RecourseColor.ink)
-                Text(result).font(.system(size: 11)).foregroundStyle(RecourseColor.muted)
+                Text(title).font(.system(size: 13, weight: .semibold)).foregroundStyle(RecourseColor.nightText)
+                Text(result).font(.system(size: 11)).foregroundStyle(RecourseColor.nightMuted)
             }
             Spacer()
             if matched { Label("Matched", systemImage: "checkmark").font(.system(size: 10, weight: .bold)).foregroundStyle(RecourseColor.ledger) }
         }
         .padding(12)
-        .background(matched ? RecourseColor.softGreen : RecourseColor.surface, in: RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(RecourseColor.line))
+        .background(matched ? RecourseColor.ledger.opacity(0.18) : RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(RecourseColor.nightLine))
     }
 
     private var sourceCard: some View {
         HStack(spacing: 12) {
             Image(systemName: "link.circle.fill").font(.system(size: 24)).foregroundStyle(RecourseColor.ledger)
             VStack(alignment: .leading, spacing: 3) {
-                Text("Public proof").font(.system(size: 14, weight: .bold)).foregroundStyle(RecourseColor.ink)
-                Text("Anyone can recompute this verdict from Arc state.").font(.system(size: 12)).foregroundStyle(RecourseColor.muted)
+                Text("Public proof").font(.system(size: 14, weight: .bold)).foregroundStyle(RecourseColor.nightText)
+                Text("Anyone can recompute this verdict from Arc state.").font(.system(size: 12)).foregroundStyle(RecourseColor.nightMuted)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1388,9 +1388,9 @@ struct SupportView: View {
             VStack(alignment: .leading, spacing: 22) {
                 Text("Help when money\nfeels uncertain.")
                     .font(.system(size: 36, weight: .bold))
-                    .foregroundStyle(RecourseColor.ink)
+                    .foregroundStyle(RecourseColor.nightText)
                 Text("Start with the payment. Recourse keeps its policy, proof, and support context together.")
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
                     .lineSpacing(4)
                 ProtectedCard {
                     VStack(spacing: 0) {
@@ -1408,7 +1408,7 @@ struct SupportView: View {
             }
             .padding(20)
         }
-        .background(RecourseColor.canvas)
+        .background(RecourseColor.night)
         .navigationTitle("Support")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -1417,11 +1417,11 @@ struct SupportView: View {
         HStack(spacing: 14) {
             Image(systemName: icon).foregroundStyle(RecourseColor.ledger).frame(width: 34)
             VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.system(size: 14, weight: .semibold)).foregroundStyle(RecourseColor.ink)
-                Text(subtitle).font(.system(size: 12)).foregroundStyle(RecourseColor.muted)
+                Text(title).font(.system(size: 14, weight: .semibold)).foregroundStyle(RecourseColor.nightText)
+                Text(subtitle).font(.system(size: 12)).foregroundStyle(RecourseColor.nightMuted)
             }
             Spacer()
-            Image(systemName: "chevron.right").font(.system(size: 11, weight: .bold)).foregroundStyle(RecourseColor.muted)
+            Image(systemName: "chevron.right").font(.system(size: 11, weight: .bold)).foregroundStyle(RecourseColor.nightMuted)
         }
         .padding(.vertical, 14)
     }

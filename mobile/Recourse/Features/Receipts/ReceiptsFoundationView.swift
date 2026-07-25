@@ -63,7 +63,7 @@ struct ReceiptsFoundationView: View {
         .task {
             await environment.paymentStore.refreshBuyer()
         }
-        .background(Color.white)
+        .background(RecourseColor.night)
     }
 
     private var scrollPositionReader: some View {
@@ -87,19 +87,19 @@ struct ReceiptsFoundationView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass")
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
                 TextField("Search payments", text: $query)
                     .textInputAutocapitalization(.never)
                 if !query.isEmpty {
                     Button { query = "" } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(RecourseColor.muted)
+                            .foregroundStyle(RecourseColor.nightMuted)
                     }
                 }
             }
             .padding(.horizontal, 16)
             .frame(height: 44)
-            .background(Color(red: 0.96, green: 0.96, blue: 0.95), in: Capsule())
+            .background(RecourseColor.nightChip, in: Capsule())
         }
     }
 
@@ -107,7 +107,7 @@ struct ReceiptsFoundationView: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Protection overview")
                 .font(.system(size: 18, weight: .bold))
-                .foregroundStyle(RecourseColor.ink)
+                .foregroundStyle(RecourseColor.nightText)
             HStack(alignment: .top, spacing: 0) {
                 overviewMetric(currency(currentlyProtected), "Currently protected", "shield.fill")
                 Divider().frame(height: 62).padding(.horizontal, 14)
@@ -125,10 +125,10 @@ struct ReceiptsFoundationView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("\(environment.paymentStore.payments.count) independently reproducible receipts")
                             .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(RecourseColor.ink)
+                            .foregroundStyle(RecourseColor.nightText)
                         Text("Verified directly from Arc")
                             .font(.system(size: 10, weight: .medium))
-                            .foregroundStyle(RecourseColor.muted)
+                            .foregroundStyle(RecourseColor.nightMuted)
                     }
                     Spacer()
                     Image(systemName: "arrow.up.right")
@@ -136,7 +136,7 @@ struct ReceiptsFoundationView: View {
                         .foregroundStyle(RecourseColor.ledger)
                 }
                 .padding(12)
-                .background(RecourseColor.softGreen, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+                .background(RecourseColor.ledger.opacity(0.18), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
             }
             .buttonStyle(.plain)
         }
@@ -149,10 +149,10 @@ struct ReceiptsFoundationView: View {
                 .foregroundStyle(RecourseColor.ledger)
             Text(value)
                 .font(.system(size: 23, weight: .bold, design: .rounded))
-                .foregroundStyle(RecourseColor.ink)
+                .foregroundStyle(RecourseColor.nightText)
             Text(caption)
                 .font(.system(size: 11))
-                .foregroundStyle(RecourseColor.muted)
+                .foregroundStyle(RecourseColor.nightMuted)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -189,10 +189,10 @@ struct ReceiptsFoundationView: View {
                     } label: {
                         Text(item.rawValue)
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(filter == item ? .white : RecourseColor.ink)
+                            .foregroundStyle(filter == item ? .white : RecourseColor.nightText)
                             .padding(.horizontal, 15)
                             .frame(height: 32)
-                            .background(filter == item ? RecourseColor.ledger : Color(red: 0.96, green: 0.96, blue: 0.95), in: Capsule())
+                            .background(filter == item ? RecourseColor.ledger : RecourseColor.nightChip, in: Capsule())
                     }
                     .buttonStyle(.plain)
                 }
@@ -206,13 +206,13 @@ struct ReceiptsFoundationView: View {
             HStack {
                 Text("Latest")
                     .font(.system(size: 19, weight: .bold))
-                    .foregroundStyle(RecourseColor.ink)
+                    .foregroundStyle(RecourseColor.nightText)
                 Spacer()
                 Button {} label: {
                     Image(systemName: "line.3.horizontal.decrease")
-                        .foregroundStyle(RecourseColor.ink)
+                        .foregroundStyle(RecourseColor.nightText)
                         .frame(width: 32, height: 32)
-                        .background(Color(red: 0.96, green: 0.96, blue: 0.95), in: Circle())
+                        .background(RecourseColor.nightChip, in: Circle())
                 }
                 .buttonStyle(.plain)
             }
@@ -253,10 +253,10 @@ private struct WalletReceiptRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(payment.merchant)
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(RecourseColor.ink)
+                    .foregroundStyle(RecourseColor.nightText)
                 Text(payment.item)
                     .font(.system(size: 11))
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
                     .lineLimit(1)
                 Text(payment.state.rawValue)
                     .font(.system(size: 10, weight: .semibold))
@@ -266,14 +266,14 @@ private struct WalletReceiptRow: View {
             VStack(alignment: .trailing, spacing: 5) {
                 Text(currencyAmount)
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(RecourseColor.ink)
+                    .foregroundStyle(RecourseColor.nightText)
                 Text(payment.date.formatted(date: .abbreviated, time: .omitted))
                     .font(.system(size: 10))
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
             }
             Image(systemName: "chevron.right")
                 .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(RecourseColor.muted)
+                .foregroundStyle(RecourseColor.nightMuted)
         }
         .padding(.vertical, 11)
         .contentShape(Rectangle())

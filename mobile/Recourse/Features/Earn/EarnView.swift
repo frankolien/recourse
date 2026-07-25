@@ -34,14 +34,14 @@ struct EarnView: View {
                 if let loadError {
                     Label(loadError, systemImage: "exclamationmark.triangle.fill")
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(RecourseColor.muted)
+                        .foregroundStyle(RecourseColor.nightMuted)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
             .padding(20)
             .padding(.bottom, 120)
         }
-        .background(Color.white)
+        .background(RecourseColor.night)
         .navigationTitle("Earn")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
@@ -158,19 +158,18 @@ struct EarnView: View {
             Divider()
             statRow("Share price", priceText(state.sharePrice))
         }
-        .padding(.horizontal, 16)
-        .background(RecourseColor.clay, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .padding(.horizontal, 2)
     }
 
     private func statRow(_ title: String, _ value: String) -> some View {
         HStack {
             Text(title)
                 .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(RecourseColor.muted)
+                .foregroundStyle(RecourseColor.nightMuted)
             Spacer()
             Text(value)
                 .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundStyle(RecourseColor.ink)
+                .foregroundStyle(RecourseColor.nightText)
                 .monospacedDigit()
         }
         .padding(.vertical, 13)
@@ -180,34 +179,30 @@ struct EarnView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("How the vault earns")
                 .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(RecourseColor.ink)
+                .foregroundStyle(RecourseColor.nightText)
             explainerRow("bolt.fill", "Deposits pay merchants instantly", "The vault advances protected sales at T+0 and takes over the escrow claim.")
             explainerRow("percent", "Fees and yield accrue to shares", "Each advance books a fee, and escrowed funds earn float yield until settlement.")
             explainerRow("shield.lefthalf.filled", "Risk is bounded, not vague", "Refund exposure is capped by immutable policies and per-merchant limits, all onchain.")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(18)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 21, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 21, style: .continuous)
-                .stroke(.white.opacity(0.78), lineWidth: 0.9)
-        }
+        .padding(.horizontal, 2)
+        .padding(.vertical, 8)
     }
 
     private func explainerRow(_ icon: String, _ title: String, _ detail: String) -> some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(RecourseColor.ink)
+                .foregroundStyle(RecourseColor.nightText)
                 .frame(width: 34, height: 34)
-                .background(RecourseColor.clay, in: Circle())
+                .background(RecourseColor.nightChip, in: Circle())
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(RecourseColor.ink)
+                    .foregroundStyle(RecourseColor.nightText)
                 Text(detail)
                     .font(.system(size: 11.5))
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
@@ -253,7 +248,7 @@ private struct VaultActionSheet: View {
         VStack(alignment: .leading, spacing: 18) {
             Text(mode == .deposit ? "Deposit USDC" : "Withdraw USDC")
                 .font(.system(size: 20, weight: .bold))
-                .foregroundStyle(RecourseColor.ink)
+                .foregroundStyle(RecourseColor.nightText)
 
             if succeeded {
                 successBody
@@ -263,7 +258,7 @@ private struct VaultActionSheet: View {
         }
         .padding(22)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Color.white)
+        .background(RecourseColor.night)
     }
 
     private var successBody: some View {
@@ -273,7 +268,7 @@ private struct VaultActionSheet: View {
                 .foregroundStyle(RecourseColor.ledger)
             Text(mode == .deposit ? "Deposited on Arc" : "Withdrawn on Arc")
                 .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(RecourseColor.ink)
+                .foregroundStyle(RecourseColor.nightText)
             Button("Done") { dismiss() }
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(.white)
@@ -296,14 +291,14 @@ private struct VaultActionSheet: View {
                     .keyboardType(.decimalPad)
                 Text("USDC")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
             }
             .frame(maxWidth: .infinity)
 
             HStack {
                 Text(capText)
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
                 Spacer()
                 Button("Max") { amountText = maxText }
                     .font(.system(size: 12, weight: .bold))
@@ -314,7 +309,7 @@ private struct VaultActionSheet: View {
             if let errorMessage {
                 Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(RecourseColor.ink)
+                    .foregroundStyle(RecourseColor.nightText)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -343,7 +338,7 @@ private struct VaultActionSheet: View {
                     ? "Two Face ID confirmations: approve, then deposit."
                     : "Face ID confirms the withdrawal on Arc Testnet.")
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
                     .frame(maxWidth: .infinity)
             }
         }

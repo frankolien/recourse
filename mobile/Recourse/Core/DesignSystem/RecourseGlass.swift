@@ -22,7 +22,7 @@ struct RecourseGlassIconButton: View {
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .foregroundStyle(RecourseColor.ink)
+        .foregroundStyle(RecourseColor.nightText)
         .modifier(RecourseGlassCircle())
         .accessibilityLabel(accessibilityLabel)
     }
@@ -37,7 +37,7 @@ private struct RecourseGlassCircle: ViewModifier {
             content
                 .background(.ultraThinMaterial, in: Circle())
                 .overlay {
-                    Circle().stroke(.white.opacity(0.5), lineWidth: 1)
+                    Circle().stroke(.white.opacity(0.12), lineWidth: 1)
                 }
         }
     }
@@ -86,7 +86,7 @@ private struct RecourseGlassBar: ViewModifier {
             content
                 .background(.ultraThinMaterial, in: Capsule())
                 .overlay {
-                    Capsule().stroke(.white.opacity(0.7), lineWidth: 0.8)
+                    Capsule().stroke(.white.opacity(0.12), lineWidth: 0.8)
                 }
                 .shadow(color: .black.opacity(0.12), radius: 24, y: 10)
         }
@@ -125,13 +125,13 @@ struct RecourseSecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(RecourseColor.ink)
+            .foregroundStyle(RecourseColor.nightText)
             .frame(maxWidth: .infinity)
             .frame(height: 50)
             .background(RecourseColor.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(RecourseColor.line, lineWidth: 1)
+                    .stroke(RecourseColor.nightLine, lineWidth: 1)
             }
             .opacity(configuration.isPressed ? 0.72 : 1)
     }

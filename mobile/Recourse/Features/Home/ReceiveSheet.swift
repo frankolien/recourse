@@ -15,7 +15,7 @@ struct ReceiveSheet: View {
         VStack(spacing: 20) {
             Text("Receive USDC")
                 .font(.system(size: 20, weight: .bold))
-                .foregroundStyle(RecourseColor.ink)
+                .foregroundStyle(RecourseColor.nightText)
 
             if let address {
                 if let qr = qrImage(for: address) {
@@ -28,13 +28,13 @@ struct ReceiveSheet: View {
                         .background(.white, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
                         .overlay {
                             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .stroke(RecourseColor.line, lineWidth: 1)
+                                .stroke(RecourseColor.nightLine, lineWidth: 1)
                         }
                 }
 
                 Text(address)
                     .font(.system(size: 13, weight: .medium, design: .monospaced))
-                    .foregroundStyle(RecourseColor.ink)
+                    .foregroundStyle(RecourseColor.nightText)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 26)
 
@@ -59,13 +59,13 @@ struct ReceiveSheet: View {
 
             Text("Arc Testnet only. USDC sent here lands in this device's wallet.")
                 .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(RecourseColor.muted)
+                .foregroundStyle(RecourseColor.nightMuted)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 30)
         }
         .padding(.vertical, 26)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(Color.white)
+        .background(RecourseColor.night)
         .task {
             address = try? await environment.buyerSigner.address().value
         }

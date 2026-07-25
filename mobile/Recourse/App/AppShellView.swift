@@ -272,7 +272,7 @@ struct MerchantWorkspaceView: View {
                     Spacer()
                     Text("\(environment.paymentStore.merchantPayments.count)")
                         .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(RecourseColor.muted)
+                        .foregroundStyle(RecourseColor.nightMuted)
                 }
                 paymentLedger
             }
@@ -383,26 +383,26 @@ struct MerchantWorkspaceView: View {
         }
         .foregroundStyle(.white)
         .padding(20)
-        .background(RecourseColor.ink, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .stroke(.white.opacity(0.1), lineWidth: 1)
         }
-        .shadow(color: RecourseColor.ink.opacity(0.15), radius: 18, y: 10)
+        .shadow(color: RecourseColor.nightText.opacity(0.15), radius: 18, y: 10)
     }
 
     private var walletBalanceStrip: some View {
         HStack(spacing: 11) {
             Image(systemName: "wallet.bifold")
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(RecourseColor.muted)
+                .foregroundStyle(RecourseColor.nightMuted)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Wallet balance")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
                 Text(merchantAddress?.shortened ?? "Preparing wallet…")
                     .font(.system(size: 11, weight: .medium, design: .monospaced))
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 2) {
@@ -412,14 +412,14 @@ struct MerchantWorkspaceView: View {
                 Text("USDC")
                     .font(.system(size: 9, weight: .bold))
                     .tracking(0.7)
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
             }
             Button(action: copyMerchantWalletAddress) {
                 Image(systemName: hasCopiedWalletAddress ? "checkmark" : "doc.on.doc")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(hasCopiedWalletAddress ? merchantAccent : RecourseColor.ink)
+                    .foregroundStyle(hasCopiedWalletAddress ? merchantAccent : RecourseColor.nightText)
                     .frame(width: 32, height: 32)
-                    .background(RecourseColor.clay, in: Circle())
+                    .background(RecourseColor.nightChip, in: Circle())
             }
             .buttonStyle(.plain)
             .disabled(merchantAddress == nil)
@@ -454,10 +454,10 @@ struct MerchantWorkspaceView: View {
                     .recourseEyebrow()
                 Text("What should the buyer pay?")
                     .font(.system(size: 28, weight: .bold))
-                    .foregroundStyle(RecourseColor.ink)
+                    .foregroundStyle(RecourseColor.nightText)
                 Text("They will review the protection policy before approving it.")
                     .font(.system(size: 13))
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
             }
 
             VStack(spacing: 8) {
@@ -469,12 +469,12 @@ struct MerchantWorkspaceView: View {
                     .keyboardType(.decimalPad)
                     Text("USDC")
                         .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(RecourseColor.muted)
+                        .foregroundStyle(RecourseColor.nightMuted)
                 }
                 .frame(maxWidth: .infinity)
                 Text("Funds settle to \(merchantAddress?.shortened ?? "your merchant wallet")")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
             }
             .padding(.vertical, 20)
 
@@ -485,13 +485,13 @@ struct MerchantWorkspaceView: View {
                 TextField("Item or service name", text: $itemName)
                     .padding(.horizontal, 15)
                     .frame(height: 52)
-                    .background(RecourseColor.surface, in: RoundedRectangle(cornerRadius: 16))
+                    .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 16))
 
                 TextField("What does the buyer receive?", text: $itemDescription, axis: .vertical)
                     .lineLimit(2 ... 4)
                     .padding(.horizontal, 15)
                     .padding(.vertical, 15)
-                    .background(RecourseColor.surface, in: RoundedRectangle(cornerRadius: 16))
+                    .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 16))
 
                 productImagePicker
 
@@ -499,7 +499,7 @@ struct MerchantWorkspaceView: View {
                     .textInputAutocapitalization(.characters)
                     .padding(.horizontal, 15)
                     .frame(height: 52)
-                    .background(RecourseColor.surface, in: RoundedRectangle(cornerRadius: 16))
+                    .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 16))
 
                 if merchantPolicies.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {
@@ -508,7 +508,7 @@ struct MerchantWorkspaceView: View {
                             systemImage: "shield.checkered"
                         )
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(RecourseColor.muted)
+                        .foregroundStyle(RecourseColor.nightMuted)
 
                         Button {
                             Task { await publishStarterPolicy() }
@@ -541,7 +541,7 @@ struct MerchantWorkspaceView: View {
                         if let policyStatusMessage {
                             Text(policyStatusMessage)
                                 .font(.system(size: 11, weight: .medium))
-                                .foregroundStyle(RecourseColor.muted)
+                                .foregroundStyle(RecourseColor.nightMuted)
                         }
                     }
                 } else {
@@ -557,15 +557,15 @@ struct MerchantWorkspaceView: View {
                                 .foregroundStyle(RecourseColor.ledger)
                             Text(selectedPolicyID.map { "Policy #\($0)" } ?? "Choose protection policy")
                                 .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(RecourseColor.ink)
+                                .foregroundStyle(RecourseColor.nightText)
                             Spacer()
                             Image(systemName: "chevron.up.chevron.down")
                                 .font(.system(size: 10, weight: .bold))
-                                .foregroundStyle(RecourseColor.muted)
+                                .foregroundStyle(RecourseColor.nightMuted)
                         }
                         .padding(.horizontal, 15)
                         .frame(height: 52)
-                        .background(RecourseColor.surface, in: RoundedRectangle(cornerRadius: 16))
+                        .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 16))
                     }
                 }
 
@@ -604,10 +604,10 @@ struct MerchantWorkspaceView: View {
                 }
             }
             .padding(18)
-            .background(Color.white, in: RoundedRectangle(cornerRadius: 22))
+            .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 22))
             .overlay {
                 RoundedRectangle(cornerRadius: 22)
-                    .stroke(RecourseColor.line, lineWidth: 1)
+                    .stroke(RecourseColor.nightLine, lineWidth: 1)
             }
 
         }
@@ -644,7 +644,7 @@ struct MerchantWorkspaceView: View {
                 .foregroundStyle(merchantDark)
             Text("Create a checkout QR after publishing a policy for this wallet.")
                 .font(.system(size: 13))
-                .foregroundStyle(RecourseColor.muted)
+                .foregroundStyle(RecourseColor.nightMuted)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -664,7 +664,7 @@ struct MerchantWorkspaceView: View {
                     .font(.system(size: 24, weight: .bold))
                 Text("Save or share this card. The buyer scans it live or imports the image.")
                     .font(.system(size: 13))
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
                     .multilineTextAlignment(.center)
             }
             Spacer(minLength: 0)
@@ -702,10 +702,10 @@ struct MerchantWorkspaceView: View {
             }
             Text("Closing this starts a fresh checkout.")
                 .font(.system(size: 11))
-                .foregroundStyle(RecourseColor.muted)
+                .foregroundStyle(RecourseColor.nightMuted)
         }
         .padding(24)
-        .background(RecourseColor.surface)
+        .background(RecourseColor.night)
     }
 
     // The exported card: brand, QR, and order summary on an always-light canvas so it
@@ -941,10 +941,10 @@ struct MerchantWorkspaceView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Product photo attached")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(RecourseColor.ink)
+                        .foregroundStyle(RecourseColor.nightText)
                     Text("Buyers see it before paying")
                         .font(.system(size: 11))
-                        .foregroundStyle(RecourseColor.muted)
+                        .foregroundStyle(RecourseColor.nightMuted)
                 }
                 Spacer()
                 Button {
@@ -953,7 +953,7 @@ struct MerchantWorkspaceView: View {
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 18))
-                        .foregroundStyle(RecourseColor.muted)
+                        .foregroundStyle(RecourseColor.nightMuted)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Remove product photo")
@@ -965,11 +965,11 @@ struct MerchantWorkspaceView: View {
                             .foregroundStyle(merchantAccent)
                         Text("Add a product photo (optional)")
                             .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(RecourseColor.ink)
+                            .foregroundStyle(RecourseColor.nightText)
                         Spacer()
                         Image(systemName: "chevron.right")
                             .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(RecourseColor.muted)
+                            .foregroundStyle(RecourseColor.nightMuted)
                     }
                 }
                 .buttonStyle(.plain)
@@ -977,7 +977,7 @@ struct MerchantWorkspaceView: View {
         }
         .padding(.horizontal, 15)
         .frame(height: 60)
-        .background(RecourseColor.surface, in: RoundedRectangle(cornerRadius: 16))
+        .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 16))
         .onChange(of: selectedProductPhoto) { _, item in
             guard let item else { return }
             isLoadingProductPhoto = true
@@ -1078,15 +1078,15 @@ struct MerchantWorkspaceView: View {
         HStack(spacing: 12) {
             Image(systemName: payment.state.systemImage)
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(RecourseColor.ink)
+                .foregroundStyle(RecourseColor.nightText)
                 .frame(width: 40, height: 40)
-                .background(RecourseColor.clay, in: RoundedRectangle(cornerRadius: 12))
+                .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 12))
             VStack(alignment: .leading, spacing: 3) {
                 Text(payment.orderReference)
                     .font(.system(size: 14, weight: .semibold))
                 Text(payment.state.rawValue)
                     .font(.system(size: 11))
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
             }
             Spacer()
             Text(currency(payment.amount))

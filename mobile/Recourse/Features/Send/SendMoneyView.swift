@@ -32,7 +32,7 @@ struct SendMoneyView: View {
             .padding(.bottom, 120)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color.white)
+        .background(RecourseColor.night)
         .navigationTitle("Send USDC")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
@@ -59,13 +59,13 @@ struct SendMoneyView: View {
                     .keyboardType(.decimalPad)
                 Text("USDC")
                     .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
             }
             .frame(maxWidth: .infinity)
             if let balance = environment.paymentStore.balance {
                 Text("Available: \(balance.formatted)")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
             }
         }
         .padding(.vertical, 20)
@@ -75,7 +75,7 @@ struct SendMoneyView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("To")
                 .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(RecourseColor.ink)
+                .foregroundStyle(RecourseColor.nightText)
             HStack(spacing: 10) {
                 TextField("Wallet address (0x…)", text: $recipientText)
                     .font(.system(size: 13, weight: .medium, design: .monospaced))
@@ -95,7 +95,7 @@ struct SendMoneyView: View {
             }
             .padding(.horizontal, 15)
             .frame(height: 52)
-            .background(RecourseColor.surface, in: RoundedRectangle(cornerRadius: 16))
+            .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 16))
             if !recipientText.isEmpty, recipient == nil {
                 Text("That is not a valid wallet address.")
                     .font(.system(size: 11, weight: .medium))
@@ -108,19 +108,19 @@ struct SendMoneyView: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: "shield.slash")
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(RecourseColor.ink)
+                .foregroundStyle(RecourseColor.nightText)
             VStack(alignment: .leading, spacing: 3) {
                 Text("Direct sends have no protection")
                     .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(RecourseColor.ink)
+                    .foregroundStyle(RecourseColor.nightText)
                 Text("This transfer is final, with no dispute or refund path. Buying something? Ask the seller for a Recourse checkout instead.")
                     .font(.system(size: 12))
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(15)
-        .background(Color(red: 0.97, green: 0.97, blue: 0.96), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     private var recipient: EthereumAddress? {
@@ -160,7 +160,7 @@ struct SendMoneyView: View {
 
             Text("Face ID confirms this transfer on Arc Testnet")
                 .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(RecourseColor.muted)
+                .foregroundStyle(RecourseColor.nightMuted)
         }
         .padding(.horizontal, 20)
         .padding(.top, 12)
@@ -246,17 +246,17 @@ private struct SendSuccessView: View {
                 VStack(spacing: 8) {
                     Text("Sent")
                         .font(.system(size: 30, weight: .bold))
-                        .foregroundStyle(RecourseColor.ink)
+                        .foregroundStyle(RecourseColor.nightText)
                     Text(result.amount.formatted)
                         .font(.system(size: 44, weight: .medium, design: .rounded))
-                        .foregroundStyle(RecourseColor.ink)
+                        .foregroundStyle(RecourseColor.nightText)
                     Text("To \(result.recipient.shortened) on Arc Testnet")
                         .font(.system(size: 13, weight: .medium, design: .monospaced))
-                        .foregroundStyle(RecourseColor.muted)
+                        .foregroundStyle(RecourseColor.nightMuted)
                 }
                 Text(result.transactionHash.shortened)
                     .font(.system(size: 11, weight: .medium, design: .monospaced))
-                    .foregroundStyle(RecourseColor.muted)
+                    .foregroundStyle(RecourseColor.nightMuted)
             }
             .offset(y: revealed ? 0 : 14)
             .opacity(revealed ? 1 : 0)
@@ -265,7 +265,7 @@ private struct SendSuccessView: View {
                 .buttonStyle(RecoursePrimaryButtonStyle())
         }
         .padding(24)
-        .background(Color.white.ignoresSafeArea())
+        .background(RecourseColor.night.ignoresSafeArea())
         .task {
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {

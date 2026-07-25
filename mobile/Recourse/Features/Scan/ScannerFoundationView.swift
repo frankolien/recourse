@@ -138,10 +138,10 @@ struct ScannerFoundationView: View {
                         .font(.system(size: 11, weight: .bold))
                 }
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(RecourseColor.ink)
+                .foregroundStyle(RecourseColor.nightText)
                 .padding(.horizontal, 16)
                 .frame(height: 52)
-                .background(Color.white, in: RoundedRectangle(cornerRadius: 17))
+                .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 17))
             }
             .disabled(isReadingPhoto)
 
@@ -152,7 +152,7 @@ struct ScannerFoundationView: View {
                     .textInputAutocapitalization(.characters)
                     .autocorrectionDisabled()
                     .submitLabel(.go)
-                    .foregroundStyle(RecourseColor.ink)
+                    .foregroundStyle(RecourseColor.nightText)
                     .onSubmit(openManualCode)
                 Button("Open") {
                     openManualCode()
@@ -163,7 +163,7 @@ struct ScannerFoundationView: View {
             }
             .padding(.horizontal, 16)
             .frame(height: 52)
-            .background(Color.white, in: RoundedRectangle(cornerRadius: 17))
+            .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 17))
 
             Label("Only QR codes for this Arc escrow are accepted", systemImage: "lock.shield")
                 .font(.system(size: 11, weight: .medium))
