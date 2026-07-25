@@ -54,10 +54,10 @@ struct OnboardingReadyView: View {
     private var readyAppBar: some View {
         HStack {
             Label("Recourse", systemImage: "shield.checkered")
-                .font(.system(size: 18, weight: .bold))
+                .font(.system(size: 16, weight: .bold))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 15)
-                .frame(height: 40)
+                .frame(height: 36)
                 .recourseGlassCapsule()
             Spacer()
             Text("READY")
@@ -65,7 +65,7 @@ struct OnboardingReadyView: View {
                 .tracking(1)
                 .foregroundStyle(.white)
                 .padding(.horizontal, 15)
-                .frame(height: 40)
+                .frame(height: 36)
                 .recourseGlassCapsule()
         }
     }
@@ -111,7 +111,9 @@ struct OnboardingReadyView: View {
 
     private func readySheet(compact: Bool) -> some View {
         VStack(spacing: compact ? 12 : 16) {
-            Spacer(minLength: compact ? 28 : 42)
+            // Fixed clearance for the receipt card overhanging the hero; the
+            // single flexible spacer below pins the button to the bottom.
+            Color.clear.frame(height: compact ? 30 : 40)
 
             VStack(spacing: 8) {
                 Text(readyTitle)
@@ -131,7 +133,7 @@ struct OnboardingReadyView: View {
                 readyPoint("doc.text", "Proof saved")
             }
 
-            Spacer(minLength: 4)
+            Spacer(minLength: 12)
 
             Button(role == .buyer ? "Open Recourse" : "Continue to merchant workspace", action: onComplete)
                 .buttonStyle(RecoursePrimaryButtonStyle())

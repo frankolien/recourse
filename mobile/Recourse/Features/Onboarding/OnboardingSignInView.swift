@@ -167,7 +167,7 @@ struct OnboardingSignupStoryView: View {
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 50)
+                    .frame(height: 52)
                     .background(RecourseColor.ledger, in: Capsule())
                     .shadow(color: RecourseColor.ledger.opacity(0.35), radius: 16, y: 8)
             }
@@ -177,7 +177,7 @@ struct OnboardingSignupStoryView: View {
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(RecourseColor.ink)
                 .frame(maxWidth: .infinity)
-                .frame(height: 44)
+                .frame(height: 52)
                 .background(.white.opacity(0.72), in: Capsule())
                 .overlay {
                     Capsule().stroke(RecourseColor.ledger.opacity(0.28), lineWidth: 1)
@@ -323,7 +323,7 @@ struct OnboardingSignInView: View {
                     .tracking(0.8)
                     .foregroundStyle(RecourseColor.ledgerDeep)
                     .padding(.horizontal, 14)
-                    .frame(height: 46)
+                    .frame(height: 44)
                     .background(RecourseColor.surface, in: Capsule())
             }
             .padding(.horizontal, 20)
@@ -356,7 +356,7 @@ struct OnboardingSignInView: View {
             )
             .signInWithAppleButtonStyle(.black)
             .frame(maxWidth: 375)
-            .frame(height: 56)
+            .frame(height: 52)
             .frame(maxWidth: .infinity)
             .clipShape(Capsule())
             .allowsHitTesting(accountSession.isAppleSignInReady)
@@ -375,9 +375,8 @@ struct OnboardingSignInView: View {
                         .scaledToFit()
                         .frame(width: 20, height: 20)
                     Text("Continue with Google")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(RecourseColor.ink)
-                    Spacer()
                 }
                 .padding(.horizontal, 18)
                 .frame(maxWidth: .infinity)

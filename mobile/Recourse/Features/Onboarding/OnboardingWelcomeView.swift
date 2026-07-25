@@ -51,10 +51,10 @@ struct OnboardingWelcomeView: View {
 
             HStack {
                 Label("Recourse", systemImage: "shield.checkered")
-                    .font(.system(size: 17, weight: .bold))
+                    .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 16)
-                    .frame(height: 32)
+                    .frame(height: 36)
                     .recourseGlassCapsule()
 
                 Spacer()
@@ -70,7 +70,7 @@ struct OnboardingWelcomeView: View {
                 }
                 .foregroundStyle(.white)
                 .padding(.horizontal, 14)
-                .frame(height: 32)
+                .frame(height: 36)
                 .recourseGlassCapsule()
             }
             .padding(.horizontal, 20)

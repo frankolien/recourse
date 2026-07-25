@@ -254,7 +254,7 @@ struct OnboardingSetupView: View {
                     .tracking(0.8)
                     .foregroundStyle(RecourseColor.ledgerDeep)
                     .padding(.horizontal, 14)
-                    .frame(height: 46)
+                    .frame(height: 44)
                     .background(RecourseColor.surface, in: Capsule())
             }
             .padding(.horizontal, 20)
