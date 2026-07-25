@@ -1030,8 +1030,9 @@ code {
 
 .brand-mark {
   width: 32px;
-  height: 37px;
+  height: 32px;
   flex: 0 0 auto;
+  border-radius: 27%;
 }
 
 .brand-subtitle {
@@ -2023,7 +2024,7 @@ footer {
 
 .footer-brand .brand-mark {
   width: 20px;
-  height: 24px;
+  height: 20px;
 }
 
 .state-card {
@@ -2244,7 +2245,7 @@ footer {
 
 .dash-brand .brand-mark {
   width: 34px;
-  height: 40px;
+  height: 34px;
 }
 
 .dash-brand-copy {
@@ -4075,7 +4076,7 @@ footer {
 
 .landing-brand .brand-mark {
   width: 28px;
-  height: 33px;
+  height: 28px;
 }
 
 .landing-links {
@@ -5086,7 +5087,7 @@ footer {
 
 .landing-footer-brand .brand-mark {
   width: 22px;
-  height: 26px;
+  height: 22px;
 }
 
 .landing-footer p {
