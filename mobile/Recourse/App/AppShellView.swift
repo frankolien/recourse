@@ -110,6 +110,7 @@ struct MerchantWorkspaceView: View {
     @State private var itemDescription = ""
     @State private var selectedProductPhoto: PhotosPickerItem?
     @State private var productImageData: Data?
+    @State private var isLoadingProductPhoto = false
     @State private var isCreatingCheckout = false
     @State private var checkoutStatusMessage: String?
     @State private var checkoutPresentation: CheckoutPresentation?
@@ -725,6 +726,12 @@ struct MerchantWorkspaceView: View {
             checkoutErrorMessage = "Describe what the buyer receives."
             return
         }
+        // A picked photo loads asynchronously (iCloud originals can take seconds), and
+        // publishing before it lands would silently ship the order without its image.
+        guard !isLoadingProductPhoto else {
+            checkoutErrorMessage = "The product photo is still loading. Try again in a second."
+            return
+        }
 
         let trimmedReference = orderReference.trimmingCharacters(in: .whitespacesAndNewlines)
         let resolvedReference = trimmedReference.isEmpty
@@ -855,6 +862,7 @@ struct MerchantWorkspaceView: View {
         .background(RecourseColor.surface, in: RoundedRectangle(cornerRadius: 16))
         .onChange(of: selectedProductPhoto) { _, item in
             guard let item else { return }
+            isLoadingProductPhoto = true
             Task {
                 let data = try? await item.loadTransferable(type: Data.self)
                 await MainActor.run {
@@ -864,6 +872,7 @@ struct MerchantWorkspaceView: View {
                         checkoutErrorMessage = "The selected photo could not be loaded. Choose another image."
                         selectedProductPhoto = nil
                     }
+                    isLoadingProductPhoto = false
                 }
             }
         }
