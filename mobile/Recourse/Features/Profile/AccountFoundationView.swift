@@ -256,6 +256,7 @@ private struct EditProfileNameView: View {
     }
 }
 
+#if DEBUG
 #Preview("Settings") {
     NavigationStack {
         AccountFoundationView(
@@ -265,3 +266,4 @@ private struct EditProfileNameView: View {
     }
     .tint(RecourseColor.ledger)
 }
+#endif

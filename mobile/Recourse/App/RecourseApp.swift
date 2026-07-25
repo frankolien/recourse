@@ -13,6 +13,8 @@ struct RecourseApp: App {
     }
 }
 
+#if DEBUG
 #Preview("First launch") {
     OnboardingFlowView(accountSession: .preview(), onComplete: { _ in })
 }
+#endif

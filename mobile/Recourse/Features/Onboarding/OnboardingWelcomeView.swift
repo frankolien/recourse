@@ -159,9 +159,11 @@ struct OnboardingWelcomeView: View {
     }
 }
 
+#if DEBUG
 #Preview("Welcome") {
     OnboardingWelcomeView(
         onGetStarted: {},
         onSignIn: {}
     )
 }
+#endif

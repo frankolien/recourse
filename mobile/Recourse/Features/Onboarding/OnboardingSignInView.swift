@@ -449,6 +449,7 @@ struct OnboardingSignInView: View {
     }
 }
 
+#if DEBUG
 #Preview("Animated signup story") {
     OnboardingSignupStoryView(
         onBack: {},
@@ -465,3 +466,4 @@ struct OnboardingSignInView: View {
         onAuthenticated: {}
     )
 }
+#endif

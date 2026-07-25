@@ -1103,6 +1103,7 @@ struct MerchantWorkspaceView: View {
     }
 }
 
+#if DEBUG
 #Preview("Buyer app · Liquid Glass") {
     NavigationStack {
         AppShellView(environment: .preview())
@@ -1119,3 +1120,4 @@ struct MerchantWorkspaceView: View {
     )
     .tint(RecourseColor.ledger)
 }
+#endif

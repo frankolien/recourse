@@ -169,6 +169,8 @@ struct OnboardingReadyView: View {
     }
 }
 
+#if DEBUG
 #Preview("Ready") {
     OnboardingReadyView(role: .buyer, walletAddress: nil, onComplete: {})
 }
+#endif

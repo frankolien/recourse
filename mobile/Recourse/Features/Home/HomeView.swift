@@ -534,9 +534,11 @@ private struct HomeFloatingSurface: ViewModifier {
     }
 }
 
+#if DEBUG
 #Preview("Buyer protection home") {
     NavigationStack {
         AppShellView(environment: .preview())
     }
     .tint(RecourseColor.ledger)
 }
+#endif

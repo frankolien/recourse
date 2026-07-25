@@ -1427,6 +1427,7 @@ struct SupportView: View {
     }
 }
 
+#if DEBUG
 #Preview("Checkout review") {
     NavigationStack {
         CheckoutReviewView(
@@ -1470,3 +1471,4 @@ struct SupportView: View {
     }
     .tint(RecourseColor.ledger)
 }
+#endif

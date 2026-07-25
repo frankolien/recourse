@@ -338,6 +338,7 @@ struct OnboardingSetupView: View {
     }
 }
 
+#if DEBUG
 #Preview("Role selection") {
     OnboardingSetupView(
         accountLabel: "FRANK@RECOURSE.APP",
@@ -345,3 +346,4 @@ struct OnboardingSetupView: View {
         onContinue: { _ in }
     )
 }
+#endif

@@ -321,6 +321,8 @@ private struct LiveQRScanner: UIViewControllerRepresentable {
     }
 }
 
+#if DEBUG
 #Preview("Protected scanner") {
     ScannerFoundationView(configuration: .live) { _ in }
 }
+#endif

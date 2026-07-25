@@ -289,9 +289,11 @@ private struct WalletReceiptRow: View {
     }
 }
 
+#if DEBUG
 #Preview("Receipts · Wallet ledger") {
     NavigationStack {
         ReceiptsFoundationView(environment: .preview())
     }
     .tint(RecourseColor.ledger)
 }
+#endif
