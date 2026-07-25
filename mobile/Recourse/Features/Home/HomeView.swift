@@ -6,6 +6,8 @@ struct HomeView: View {
     let onScanRequested: () -> Void
     @State private var previousScrollOffset: CGFloat = 0
     @State private var hidesAttention = false
+    @State private var showsReceive = false
+    @State private var earnVaultState: VaultState?
 
     init(
         environment: AppEnvironment,
@@ -58,9 +60,11 @@ struct HomeView: View {
                 LazyVStack(alignment: .leading, spacing: 18) {
                     scrollPositionReader
                     protectionHero
+                    actionGrid
                     if attentionPayment != nil && !hidesAttention {
                         attentionLead
                     }
+                    earnPreview
                     // A fresh account gets one guided card, not a stack of empty
                     // section shells; sections appear as soon as they have content.
                     if allPayments.isEmpty {
@@ -92,11 +96,22 @@ struct HomeView: View {
         .onPreferenceChange(RecourseScrollOffsetPreferenceKey.self) { newOffset in
             reportScrollDirection(newOffset)
         }
+        .sheet(isPresented: $showsReceive) {
+            ReceiveSheet(environment: environment)
+                .presentationDetents([.medium, .large])
+        }
         .task {
             while !Task.isCancelled {
                 await environment.paymentStore.refreshBuyer()
                 try? await Task.sleep(for: .seconds(10))
             }
+        }
+        .task {
+            // One live snapshot for the Earn teaser; the Earn screen itself
+            // refreshes on every visit.
+            guard let owner = try? await environment.buyerSigner.address(),
+                  let gateway = try? environment.makeContractGateway() else { return }
+            earnVaultState = try? await gateway.vaultState(of: owner)
         }
     }
 
@@ -265,7 +280,7 @@ struct HomeView: View {
 
             VStack(alignment: .leading, spacing: 18) {
                 HStack {
-                    Label("Your protection", systemImage: "checkmark.shield.fill")
+                    Label("Your wallet", systemImage: "checkmark.shield.fill")
                         .font(.system(size: 12, weight: .bold))
                     Spacer()
                     Text("ARC TESTNET")
@@ -275,10 +290,10 @@ struct HomeView: View {
                 }
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(currency(protectedTotal))
+                        Text(balanceHeadline)
                             .font(.system(size: 38, weight: .semibold, design: .rounded))
                             .minimumScaleFactor(0.72)
-                        Text("protected")
+                        Text("USDC")
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(.white.opacity(0.68))
                     }
@@ -300,48 +315,115 @@ struct HomeView: View {
         .shadow(color: RecourseColor.ink.opacity(0.15), radius: 18, y: 10)
     }
 
+    private var balanceHeadline: String {
+        guard let balance = environment.paymentStore.balance else { return "$—" }
+        return currency(balance)
+    }
+
     private var heroSubtitle: String {
-        guard let balance = environment.paymentStore.balance else {
-            return "Checking live USDC balance…"
-        }
         if activePayments.isEmpty {
-            return "\(balance.formatted) ready to spend"
+            return "Nothing protected yet · scan a checkout to start"
         }
-        return "\(activePayments.count) active · \(balance.formatted) to spend"
+        return "\(currency(protectedTotal)) protected · \(activePayments.count) active"
     }
 
     private var heroActions: some View {
-        HStack(spacing: 10) {
-            Button(action: onScanRequested) {
-                Label("Pay with protection", systemImage: "arrow.up.right")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 46)
-                    .background(RecourseColor.ledger, in: Capsule())
-            }
-            .buttonStyle(.plain)
+        Button(action: onScanRequested) {
+            Label("Pay with protection", systemImage: "qrcode.viewfinder")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 46)
+                .background(RecourseColor.ledger, in: Capsule())
+        }
+        .buttonStyle(.plain)
+    }
 
-            heroCircleButton("qrcode.viewfinder", label: "Scan to pay", action: onScanRequested)
-            heroCircleButton("paperplane.fill", label: "Send USDC") {
+    // The wallet's feature row: every capability gets equal billing, so the app
+    // reads as a wallet with protection built in, not a single-purpose screen.
+    private var actionGrid: some View {
+        HStack(spacing: 10) {
+            actionTile("paperplane.fill", "Send") {
                 environment.router.push(.send)
+            }
+            actionTile("arrow.down.left", "Receive") {
+                showsReceive = true
+            }
+            actionTile("chart.line.uptrend.xyaxis", "Earn") {
+                environment.router.push(.earn)
+            }
+            actionTile("checkmark.seal.fill", "Verify") {
+                if let paymentID = settledPayments.first?.id ?? allPayments.first?.id {
+                    environment.router.push(.verdict(paymentID))
+                }
             }
         }
     }
 
-    private func heroCircleButton(_ systemImage: String, label: String, action: @escaping () -> Void) -> some View {
+    private func actionTile(_ systemImage: String, _ title: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 46, height: 46)
-                .background(.white.opacity(0.12), in: Circle())
-                .overlay {
-                    Circle().stroke(.white.opacity(0.16), lineWidth: 1)
-                }
+            VStack(spacing: 7) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(RecourseColor.ink)
+                    .frame(width: 46, height: 46)
+                    .background(RecourseColor.clay, in: Circle())
+                Text(title)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(RecourseColor.ink)
+            }
+            .frame(maxWidth: .infinity)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(label)
+        .accessibilityLabel(title)
+    }
+
+    private var earnPreview: some View {
+        Button {
+            environment.router.push(.earn)
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "chart.line.uptrend.xyaxis")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(RecourseColor.ink)
+                    .frame(width: 38, height: 38)
+                    .background(RecourseColor.clay, in: Circle())
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(earnPreviewTitle)
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(RecourseColor.ink)
+                    Text(earnPreviewDetail)
+                        .font(.system(size: 11))
+                        .foregroundStyle(RecourseColor.muted)
+                        .lineLimit(2)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(RecourseColor.muted)
+            }
+            .padding(14)
+            .contentShape(Rectangle())
+            .modifier(HomeFloatingSurface(cornerRadius: 20))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var earnPreviewTitle: String {
+        if let earnVaultState, earnVaultState.myShares > 0 {
+            return "Your Earn position"
+        }
+        return "Earn on idle USDC"
+    }
+
+    private var earnPreviewDetail: String {
+        guard let earnVaultState else {
+            return "Fund instant merchant settlements, collect fees and yield"
+        }
+        if earnVaultState.myShares > 0 {
+            return "\(currency(earnVaultState.myValue)) · share price \(String(format: "%.4f", earnVaultState.sharePrice))"
+        }
+        return "\(currency(earnVaultState.totalAssets)) in the vault · share price \(String(format: "%.4f", earnVaultState.sharePrice))"
     }
 
     private var firstStepsCard: some View {

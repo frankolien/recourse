@@ -109,6 +109,8 @@ struct RootView: View {
             }
         case .send:
             SendMoneyView(environment: environment)
+        case .earn:
+            EarnView(environment: environment)
         case .account:
             AccountFoundationView(
                 configuration: environment.configuration,

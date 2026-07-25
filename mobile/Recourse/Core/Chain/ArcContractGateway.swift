@@ -48,6 +48,10 @@ struct ArcContractGateway: ContractGateway {
         try await reader.resolveDelay()
     }
 
+    func vaultState(of owner: EthereumAddress) async throws -> VaultState {
+        try await reader.vaultState(of: owner)
+    }
+
     func approveUSDC(amount: USDCAmount) async throws -> ChainHash {
         try await writer.approveUSDC(amount: amount)
     }
@@ -78,6 +82,18 @@ struct ArcContractGateway: ContractGateway {
 
     func resolve(paymentID: UInt64) async throws -> ChainHash {
         try await writer.resolve(paymentID: paymentID)
+    }
+
+    func approveVaultUSDC(amount: USDCAmount) async throws -> ChainHash {
+        try await writer.approveVaultUSDC(amount: amount)
+    }
+
+    func vaultDeposit(amount: USDCAmount) async throws -> ChainHash {
+        try await writer.vaultDeposit(amount: amount)
+    }
+
+    func vaultWithdraw(shares: UInt64) async throws -> ChainHash {
+        try await writer.vaultWithdraw(shares: shares)
     }
 
     func waitForReceipt(transactionHash: ChainHash) async throws -> ChainReceipt {

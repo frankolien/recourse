@@ -114,6 +114,28 @@ actor FakeContractGateway: ContractGateway {
     func payment(id: UInt64) async throws -> PaymentRecord { paymentRecord }
     func previewVerdict(paymentID: UInt64) async throws -> VerdictPreview { verdict }
     func resolveDelay() async throws -> UInt64 { delay }
+    func vaultState(of owner: EthereumAddress) async throws -> VaultState { vault }
+
+    var vault = VaultState(
+        totalAssets: USDCAmount(baseUnits: 11_251_250),
+        totalShares: 7_998_750,
+        outstanding: USDCAmount(baseUnits: 7_250_000),
+        myShares: 0
+    )
+
+    func approveVaultUSDC(amount: USDCAmount) async throws -> ChainHash {
+        calls.append(.approve(amount))
+        currentAllowance = amount
+        return DomainFixture.approvalHash
+    }
+
+    func vaultDeposit(amount: USDCAmount) async throws -> ChainHash {
+        DomainFixture.transferHash
+    }
+
+    func vaultWithdraw(shares: UInt64) async throws -> ChainHash {
+        DomainFixture.transferHash
+    }
 
     func approveUSDC(amount: USDCAmount) async throws -> ChainHash {
         calls.append(.approve(amount))

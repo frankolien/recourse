@@ -20,6 +20,7 @@ actor ArcContractReader: ContractReading {
     private let erc20: EthereumContract
     private let policyRegistry: EthereumContract
     private let escrow: EthereumContract
+    private let vault: EthereumContract
 
     init(
         configuration: AppConfiguration,
@@ -42,6 +43,11 @@ actor ArcContractReader: ContractReading {
             abi: ContractABI.recourseEscrow.load(from: bundle),
             address: configuration.escrowAddress,
             name: ContractABI.recourseEscrow.rawValue
+        )
+        vault = try Self.makeContract(
+            abi: ContractABI.settlementVault.load(from: bundle),
+            address: configuration.settlementVaultAddress,
+            name: ContractABI.settlementVault.rawValue
         )
     }
 
@@ -172,6 +178,25 @@ actor ArcContractReader: ContractReading {
             method: "resolveDelay"
         )
         return try uint64(result["0"], method: "resolveDelay")
+    }
+
+    func vaultState(of owner: EthereumAddress) async throws -> VaultState {
+        let vaultAddress = configuration.settlementVaultAddress
+        let assets = try await call(contract: vault, address: vaultAddress, method: "totalAssets")
+        let shares = try await call(contract: vault, address: vaultAddress, method: "totalShares")
+        let outstanding = try await call(contract: vault, address: vaultAddress, method: "outstanding")
+        let mine = try await call(
+            contract: vault,
+            address: vaultAddress,
+            method: "sharesOf",
+            parameters: [try web3Address(owner)]
+        )
+        return VaultState(
+            totalAssets: USDCAmount(baseUnits: try uint64(assets["0"], method: "totalAssets")),
+            totalShares: try uint64(shares["0"], method: "totalShares"),
+            outstanding: USDCAmount(baseUnits: try uint64(outstanding["0"], method: "outstanding")),
+            myShares: try uint64(mine["0"], method: "sharesOf")
+        )
     }
 
     private func call(

@@ -23,6 +23,7 @@ actor ArcContractWriter: ContractWriting {
     private let erc20: EthereumContract
     private let registry: EthereumContract
     private let escrow: EthereumContract
+    private let vault: EthereumContract
 
     init(
         configuration: AppConfiguration,
@@ -51,6 +52,11 @@ actor ArcContractWriter: ContractWriting {
             abi: ContractABI.recourseEscrow.load(from: bundle),
             address: configuration.escrowAddress,
             name: ContractABI.recourseEscrow.rawValue
+        )
+        vault = try Self.makeContract(
+            abi: ContractABI.settlementVault.load(from: bundle),
+            address: configuration.settlementVaultAddress,
+            name: ContractABI.settlementVault.rawValue
         )
     }
 
@@ -143,6 +149,33 @@ actor ArcContractWriter: ContractWriting {
             parameters: [BigUInt(paymentID)]
         )
         return try await submit(to: configuration.escrowAddress, data: data)
+    }
+
+    func approveVaultUSDC(amount: USDCAmount) async throws -> ChainHash {
+        let data = try encode(
+            contract: erc20,
+            method: "approve",
+            parameters: [try web3Address(configuration.settlementVaultAddress), BigUInt(amount.baseUnits)]
+        )
+        return try await submit(to: configuration.usdcAddress, data: data)
+    }
+
+    func vaultDeposit(amount: USDCAmount) async throws -> ChainHash {
+        let data = try encode(
+            contract: vault,
+            method: "deposit",
+            parameters: [BigUInt(amount.baseUnits)]
+        )
+        return try await submit(to: configuration.settlementVaultAddress, data: data)
+    }
+
+    func vaultWithdraw(shares: UInt64) async throws -> ChainHash {
+        let data = try encode(
+            contract: vault,
+            method: "withdraw",
+            parameters: [BigUInt(shares)]
+        )
+        return try await submit(to: configuration.settlementVaultAddress, data: data)
     }
 
     func waitForReceipt(transactionHash: ChainHash) async throws -> ChainReceipt {

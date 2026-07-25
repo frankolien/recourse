@@ -11,6 +11,31 @@ struct ChainReceipt: Hashable, Sendable {
     let paymentID: UInt64?
 }
 
+// Live LP snapshot of the settlement vault. Share price and position value are
+// display math; the contract's own conversion is what moves funds.
+struct VaultState: Hashable, Sendable {
+    let totalAssets: USDCAmount
+    let totalShares: UInt64
+    let outstanding: USDCAmount
+    let myShares: UInt64
+
+    var sharePrice: Double {
+        guard totalShares > 0 else { return 1 }
+        return Double(totalAssets.baseUnits) / Double(totalShares)
+    }
+
+    var myValue: USDCAmount {
+        USDCAmount(baseUnits: UInt64(Double(myShares) * sharePrice))
+    }
+
+    // Shares carried by an assets figure, rounded down so a withdraw can never
+    // ask for more than the position holds.
+    func shares(for assets: USDCAmount) -> UInt64 {
+        guard sharePrice > 0 else { return 0 }
+        return min(myShares, UInt64(Double(assets.baseUnits) / sharePrice))
+    }
+}
+
 protocol ContractReading: Sendable {
     func usdcBalance(of owner: EthereumAddress) async throws -> USDCAmount
     func allowance(owner: EthereumAddress, spender: EthereumAddress) async throws -> USDCAmount
@@ -18,6 +43,7 @@ protocol ContractReading: Sendable {
     func payment(id: UInt64) async throws -> PaymentRecord
     func previewVerdict(paymentID: UInt64) async throws -> VerdictPreview
     func resolveDelay() async throws -> UInt64
+    func vaultState(of owner: EthereumAddress) async throws -> VaultState
 }
 
 protocol ContractWriting: Sendable {
@@ -33,6 +59,9 @@ protocol ContractWriting: Sendable {
         evidence: [UploadedEvidence]
     ) async throws -> ChainHash
     func resolve(paymentID: UInt64) async throws -> ChainHash
+    func approveVaultUSDC(amount: USDCAmount) async throws -> ChainHash
+    func vaultDeposit(amount: USDCAmount) async throws -> ChainHash
+    func vaultWithdraw(shares: UInt64) async throws -> ChainHash
     func waitForReceipt(transactionHash: ChainHash) async throws -> ChainReceipt
 }
 
