@@ -7,6 +7,7 @@
 <p align="center">
   <a href="https://recourse-arc.vercel.app">Live web app</a> ·
   <a href="https://recourse-arc.vercel.app/verify/13">Public verifier</a> ·
+  <a href="https://recourse-arc.vercel.app/litepaper">Litepaper</a> ·
   <a href="https://api.frankolien.com/health">Live API</a>
 </p>
 

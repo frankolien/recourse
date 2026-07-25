@@ -339,6 +339,7 @@ export function LandingPage() {
         <div className="landing-footer-links">
           <Link href="/signin">Launch App</Link>
           <Link href="/verify/13">Verifier</Link>
+          <Link href="/litepaper">Litepaper</Link>
           <Link href="/privacy">Privacy</Link>
           <a href="https://github.com/frankolien/recourse" target="_blank" rel="noreferrer">GitHub</a>
         </div>

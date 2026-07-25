@@ -6187,3 +6187,100 @@ footer {
 .legal-footer a:hover {
   color: var(--ink);
 }
+
+/* Litepaper: document typography over the legal-page chrome. */
+.paper-body {
+  max-width: 720px;
+}
+
+.paper-body h1 {
+  font-family: var(--display);
+  font-size: clamp(26px, 4vw, 34px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin-bottom: 14px;
+}
+
+.paper-body h2 {
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  margin: 34px 0 12px;
+}
+
+.paper-body p {
+  font-size: 15.5px;
+  line-height: 1.75;
+  margin-bottom: 14px;
+}
+
+.paper-body strong {
+  font-weight: 650;
+}
+
+.paper-body a {
+  color: var(--green);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.paper-body a:hover {
+  text-decoration: underline;
+}
+
+.paper-body ul,
+.paper-body ol {
+  margin: 0 0 14px 22px;
+  font-size: 15.5px;
+  line-height: 1.75;
+}
+
+.paper-body li {
+  margin-bottom: 6px;
+}
+
+.paper-body pre {
+  background: var(--green-soft);
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  margin-bottom: 16px;
+}
+
+.paper-body code {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.paper-body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  margin: 6px 0 18px;
+  display: block;
+  overflow-x: auto;
+}
+
+.paper-body th,
+.paper-body td {
+  text-align: left;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  white-space: nowrap;
+}
+
+.paper-body td:last-child {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.paper-body th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
