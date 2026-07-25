@@ -8,7 +8,7 @@
 import { useEffect, useState } from "react";
 import { createWalletClient, erc20Abi, http } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
-import { arcTestnet, publicClient, usdcAddress } from "./contracts";
+import { arcTestnet, publicClient, usdcAddress, vaultAbi, vaultAddress } from "./contracts";
 
 const KEY_PREFIX = "recourse.arcwallet.v1.";
 
@@ -73,5 +73,46 @@ export async function sendUsdc(
   });
   const receipt = await publicClient.waitForTransactionReceipt({ hash });
   if (receipt.status !== "success") throw new Error("transfer reverted onchain");
+  return hash;
+}
+
+export async function vaultDeposit(
+  accountId: number,
+  amountBaseUnits: bigint,
+): Promise<`0x${string}`> {
+  const account = walletFor(accountId);
+  const wallet = createWalletClient({ account, chain: arcTestnet, transport: http() });
+  const approval = await wallet.writeContract({
+    address: usdcAddress,
+    abi: erc20Abi,
+    functionName: "approve",
+    args: [vaultAddress, amountBaseUnits],
+  });
+  await publicClient.waitForTransactionReceipt({ hash: approval });
+  const hash = await wallet.writeContract({
+    address: vaultAddress,
+    abi: vaultAbi,
+    functionName: "deposit",
+    args: [amountBaseUnits],
+  });
+  const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  if (receipt.status !== "success") throw new Error("deposit reverted onchain");
+  return hash;
+}
+
+export async function vaultWithdraw(
+  accountId: number,
+  shares: bigint,
+): Promise<`0x${string}`> {
+  const account = walletFor(accountId);
+  const wallet = createWalletClient({ account, chain: arcTestnet, transport: http() });
+  const hash = await wallet.writeContract({
+    address: vaultAddress,
+    abi: vaultAbi,
+    functionName: "withdraw",
+    args: [shares],
+  });
+  const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  if (receipt.status !== "success") throw new Error("withdraw reverted onchain");
   return hash;
 }

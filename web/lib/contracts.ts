@@ -136,3 +136,25 @@ export const registryAbi = [
 ] as const;
 
 export const explorerPaymentUrl = `${arcTestnet.blockExplorers.default.url}/address/${escrowAddress}`;
+
+export const vaultAbi = [
+  { type: "function", name: "totalAssets", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "totalShares", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "outstanding", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "sharesOf", stateMutability: "view", inputs: [{ name: "lp", type: "address" }], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "convertToAssets", stateMutability: "view", inputs: [{ name: "shares", type: "uint256" }], outputs: [{ type: "uint256" }] },
+  {
+    type: "function",
+    name: "advances",
+    stateMutability: "view",
+    inputs: [{ name: "paymentId", type: "uint256" }],
+    outputs: [
+      { name: "merchant", type: "address" },
+      { name: "amount", type: "uint128" },
+      { name: "exists", type: "bool" },
+      { name: "reconciled", type: "bool" },
+    ],
+  },
+  { type: "function", name: "deposit", stateMutability: "nonpayable", inputs: [{ name: "assets", type: "uint256" }], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "withdraw", stateMutability: "nonpayable", inputs: [{ name: "shares", type: "uint256" }], outputs: [{ type: "uint256" }] },
+] as const;
