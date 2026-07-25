@@ -125,18 +125,8 @@ struct HomeView: View {
         }
     }
 
-    // Greenish-black canvas with a soft brand glow bleeding from the top,
-    // fading out well before the content dominates.
     private var homeCanvas: some View {
-        ZStack(alignment: .top) {
-            RecourseColor.surface
-            LinearGradient(
-                colors: [RecourseColor.ledgerDeep.opacity(0.38), .clear],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .frame(height: 340)
-        }
+        RecourseColor.surface
     }
 
     private var scrollPositionReader: some View {
@@ -202,7 +192,7 @@ struct HomeView: View {
                     Circle()
                         .fill(RecourseColor.ledger)
                         .frame(width: 7, height: 7)
-                        .overlay(Circle().stroke(RecourseColor.surface, lineWidth: 1.5))
+                        .overlay(Circle().stroke(.white, lineWidth: 1.5))
                         .offset(x: -5, y: 1)
                 }
             }
@@ -608,7 +598,7 @@ private struct HomeFloatingSurface: ViewModifier {
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(.white.opacity(0.08), lineWidth: 0.9)
+                    .stroke(.white.opacity(0.78), lineWidth: 0.9)
             }
             .shadow(color: RecourseColor.ledger.opacity(0.06), radius: 18, y: 9)
             .shadow(color: .black.opacity(0.04), radius: 3, y: 1)

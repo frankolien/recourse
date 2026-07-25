@@ -383,7 +383,7 @@ struct MerchantWorkspaceView: View {
         }
         .foregroundStyle(.white)
         .padding(20)
-        .background(RecourseColor.inkSurface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .background(RecourseColor.ink, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .stroke(.white.opacity(0.1), lineWidth: 1)
@@ -604,7 +604,7 @@ struct MerchantWorkspaceView: View {
                 }
             }
             .padding(18)
-            .background(RecourseColor.clay, in: RoundedRectangle(cornerRadius: 22))
+            .background(Color.white, in: RoundedRectangle(cornerRadius: 22))
             .overlay {
                 RoundedRectangle(cornerRadius: 22)
                     .stroke(RecourseColor.line, lineWidth: 1)

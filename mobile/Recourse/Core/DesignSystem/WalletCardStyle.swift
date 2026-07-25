@@ -69,23 +69,23 @@ enum WalletCardStyle: String, CaseIterable, Identifiable, Sendable {
     }
 
     var textPrimary: Color {
-        prefersDarkText ? RecourseColor.inkSurface : .white
+        prefersDarkText ? RecourseColor.ink : .white
     }
 
     var textSecondary: Color {
-        prefersDarkText ? RecourseColor.inkSurface.opacity(0.62) : .white.opacity(0.68)
+        prefersDarkText ? RecourseColor.ink.opacity(0.62) : .white.opacity(0.68)
     }
 
     var chipFill: Color {
-        prefersDarkText ? RecourseColor.inkSurface.opacity(0.08) : .white.opacity(0.12)
+        prefersDarkText ? RecourseColor.ink.opacity(0.08) : .white.opacity(0.12)
     }
 
     var chipStroke: Color {
-        prefersDarkText ? RecourseColor.inkSurface.opacity(0.14) : .white.opacity(0.16)
+        prefersDarkText ? RecourseColor.ink.opacity(0.14) : .white.opacity(0.16)
     }
 
     var border: Color {
-        prefersDarkText ? RecourseColor.inkSurface.opacity(0.12) : .white.opacity(0.1)
+        prefersDarkText ? RecourseColor.ink.opacity(0.12) : .white.opacity(0.1)
     }
 
     // The soft brand glow only reads on the flat ink face; art faces carry
@@ -99,7 +99,7 @@ enum WalletCardStyle: String, CaseIterable, Identifiable, Sendable {
                 .resizable()
                 .scaledToFill()
         } else {
-            RecourseColor.inkSurface
+            RecourseColor.ink
         }
     }
 
@@ -125,7 +125,7 @@ struct WalletCardSurface: ViewModifier {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .stroke(style.border, lineWidth: 1)
             }
-            .shadow(color: .black.opacity(0.35), radius: 18, y: 10)
+            .shadow(color: RecourseColor.ink.opacity(0.15), radius: 18, y: 10)
     }
 }
 
@@ -164,7 +164,7 @@ struct WalletCardStylePicker: View {
             }
             .padding(22)
         }
-        .background(RecourseColor.surface)
+        .background(Color.white)
     }
 
     private func miniCard(_ style: WalletCardStyle) -> some View {

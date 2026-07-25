@@ -42,7 +42,7 @@ struct CheckoutReviewView: View {
             .padding(.bottom, 120)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(RecourseColor.surface)
+        .background(Color.white)
         .navigationTitle("Confirm payment")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
@@ -280,7 +280,7 @@ struct CheckoutReviewView: View {
             .background(RecourseColor.softGreen, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .padding(18)
-        .background(RecourseColor.surface)
+        .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
@@ -432,7 +432,7 @@ struct CheckoutReviewView: View {
             breakdownRow("Settlement", "Instant to merchant")
         }
         .padding(18)
-        .background(RecourseColor.clay, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .background(Color(red: 0.97, green: 0.97, blue: 0.96), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
     private func breakdownRow(_ label: String, _ value: String, bold: Bool = false) -> some View {
@@ -508,7 +508,7 @@ private struct PaymentSuccessView: View {
                 }
                 .padding(.horizontal, 16)
                 .background(
-                    RecourseColor.clay,
+                    Color(red: 0.97, green: 0.97, blue: 0.96),
                     in: RoundedRectangle(cornerRadius: 22, style: .continuous)
                 )
             }
@@ -570,7 +570,7 @@ private struct PaymentSuccessView: View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: reduceMotion)) { timeline in
             let t = reduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate
             ZStack {
-                RecourseColor.surface
+                Color.white
                 bloom(RecourseColor.ledger, size: 460)
                     .opacity(0.22 + 0.05 * sin(t * 0.19))
                     .offset(x: -130 + 30 * sin(t * 0.23), y: 430 + 18 * cos(t * 0.17))
@@ -692,7 +692,7 @@ struct PaymentDetailView: View {
             .padding(20)
             .padding(.bottom, 120)
         }
-        .background(RecourseColor.surface)
+        .background(Color.white)
         .navigationTitle("Protected payment")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
@@ -747,7 +747,7 @@ struct PaymentDetailView: View {
             }
         }
         .padding(18)
-        .background(RecourseColor.surface)
+        .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
@@ -784,7 +784,7 @@ struct PaymentDetailView: View {
                 .tint(RecourseColor.ledger)
         }
         .padding(18)
-        .background(RecourseColor.clay, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(Color(red: 0.97, green: 0.98, blue: 0.965), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 
     private var protectionStatusTitle: String {
@@ -853,7 +853,7 @@ struct PaymentDetailView: View {
             detailRow("Payment ID", "#\(payment.id)")
         }
         .padding(18)
-        .background(RecourseColor.clay, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .background(Color(red: 0.97, green: 0.97, blue: 0.96), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
     private func detailRow(_ title: String, _ value: String) -> some View {
@@ -881,7 +881,7 @@ struct PaymentDetailView: View {
                     .foregroundStyle(RecourseColor.ink)
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
-                    .background(RecourseColor.clay, in: Capsule())
+                    .background(Color.white, in: Capsule())
                     .overlay(Capsule().stroke(RecourseColor.line, lineWidth: 1))
             }
             .buttonStyle(.plain)
@@ -935,7 +935,7 @@ struct DisputeFilingView: View {
             .padding(.bottom, 120)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(RecourseColor.surface)
+        .background(Color.white)
         .navigationTitle("Add evidence")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
@@ -962,7 +962,7 @@ struct DisputeFilingView: View {
                 .foregroundStyle(RecourseColor.ledger)
         }
         .padding(16)
-        .background(RecourseColor.clay, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .background(Color(red: 0.98, green: 0.97, blue: 0.95), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
     private var claimPicker: some View {
@@ -986,7 +986,7 @@ struct DisputeFilingView: View {
                         }
                         .padding(.horizontal, 14)
                         .frame(height: 52)
-                        .background(selectedClaim == claim ? RecourseColor.softGreen : RecourseColor.clay)
+                        .background(selectedClaim == claim ? RecourseColor.softGreen : Color.white)
                     }
                     .buttonStyle(.plain)
                     if index < ClaimType.allCases.count - 1 {
@@ -1232,7 +1232,7 @@ struct VerdictDetailView: View {
             .padding(20)
             .padding(.bottom, 50)
         }
-        .background(RecourseColor.surface)
+        .background(Color.white)
         .navigationTitle("Verify outcome")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -1271,7 +1271,7 @@ struct VerdictDetailView: View {
             }
         }
         .padding(18)
-        .background(RecourseColor.surface)
+        .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 24, style: .continuous)

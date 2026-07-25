@@ -8,7 +8,7 @@ struct RecourseApp: App {
         WindowGroup {
             RootView(environment: environment)
                 .tint(RecourseColor.ledger)
-                .preferredColorScheme(.dark)
+                .preferredColorScheme(.light)
         }
     }
 }

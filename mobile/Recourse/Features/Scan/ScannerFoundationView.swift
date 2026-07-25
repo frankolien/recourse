@@ -141,7 +141,7 @@ struct ScannerFoundationView: View {
                 .foregroundStyle(RecourseColor.ink)
                 .padding(.horizontal, 16)
                 .frame(height: 52)
-                .background(RecourseColor.clay, in: RoundedRectangle(cornerRadius: 17))
+                .background(Color.white, in: RoundedRectangle(cornerRadius: 17))
             }
             .disabled(isReadingPhoto)
 
@@ -163,7 +163,7 @@ struct ScannerFoundationView: View {
             }
             .padding(.horizontal, 16)
             .frame(height: 52)
-            .background(RecourseColor.clay, in: RoundedRectangle(cornerRadius: 17))
+            .background(Color.white, in: RoundedRectangle(cornerRadius: 17))
 
             Label("Only QR codes for this Arc escrow are accepted", systemImage: "lock.shield")
                 .font(.system(size: 11, weight: .medium))

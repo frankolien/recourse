@@ -37,7 +37,7 @@ private struct RecourseGlassCircle: ViewModifier {
             content
                 .background(.ultraThinMaterial, in: Circle())
                 .overlay {
-                    Circle().stroke(.white.opacity(0.12), lineWidth: 1)
+                    Circle().stroke(.white.opacity(0.5), lineWidth: 1)
                 }
         }
     }
@@ -86,7 +86,7 @@ private struct RecourseGlassBar: ViewModifier {
             content
                 .background(.ultraThinMaterial, in: Capsule())
                 .overlay {
-                    Capsule().stroke(.white.opacity(0.12), lineWidth: 0.8)
+                    Capsule().stroke(.white.opacity(0.7), lineWidth: 0.8)
                 }
                 .shadow(color: .black.opacity(0.12), radius: 24, y: 10)
         }
