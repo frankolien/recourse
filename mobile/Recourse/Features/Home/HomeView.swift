@@ -55,16 +55,26 @@ struct HomeView: View {
                 .ignoresSafeArea()
 
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 16) {
+                LazyVStack(alignment: .leading, spacing: 18) {
                     scrollPositionReader
                     protectionHero
-                    paymentActions
-                    attentionLead
-                    protectedNow
-                    receiptsAndOutcomes
+                    if attentionPayment != nil && !hidesAttention {
+                        attentionLead
+                    }
+                    // A fresh account gets one guided card, not a stack of empty
+                    // section shells; sections appear as soon as they have content.
+                    if allPayments.isEmpty {
+                        firstStepsCard
+                    }
+                    if !activePayments.isEmpty {
+                        protectedNow
+                    }
+                    if !settledPayments.isEmpty {
+                        receiptsAndOutcomes
+                    }
                 }
                 .padding(.horizontal, 20)
-                //.padding(.top, 20)
+                .padding(.top, 12)
                 .padding(.bottom, 164)
             }
             .scrollIndicators(.hidden)
@@ -181,24 +191,16 @@ struct HomeView: View {
     private var attentionLead: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
-                Text(hidesAttention ? "Protection status" : "Needs your attention")
-                    .font(.system(size: 19, weight: .bold))
+                Text("Needs your attention")
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(RecourseColor.ink)
                 Spacer()
-                if !hidesAttention, attentionPayment != nil {
-                    Text("1 action")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(RecourseColor.ledger)
-                }
+                Text("1 action")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(RecourseColor.ledger)
             }
-
-            if hidesAttention || attentionPayment == nil {
-                protectedStatusCard
-            } else {
-                attentionCard
-            }
+            attentionCard
         }
-        .animation(.snappy(duration: 0.3), value: hidesAttention)
     }
 
     private var attentionCard: some View {
@@ -251,126 +253,129 @@ struct HomeView: View {
         .modifier(HomeFloatingSurface(cornerRadius: 21))
     }
 
-    private var protectedStatusCard: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "checkmark.shield.fill")
-                .font(.system(size: 18))
-                .foregroundStyle(RecourseColor.ledger)
-            VStack(alignment: .leading, spacing: 3) {
-                Text("You're fully protected")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(RecourseColor.ink)
-                Text("No other payment needs you right now.")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(RecourseColor.muted)
-            }
-            Spacer()
-        }
-        .padding(14)
-        .modifier(HomeFloatingSurface(cornerRadius: 20))
-    }
-
+    // One composed wallet card carrying the number, the live balance, and every
+    // action; it mirrors the merchant hero so both roles share one visual family.
     private var protectionHero: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            Text("YOUR PROTECTION")
-                .font(.system(size: 10, weight: .bold))
-                .tracking(1.4)
-                .foregroundStyle(RecourseColor.muted)
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(currency(protectedTotal))
-                    .font(.system(size: 42, weight: .medium, design: .rounded))
-                    .foregroundStyle(RecourseColor.ink)
-                Text("protected")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(RecourseColor.muted)
+        ZStack(alignment: .topTrailing) {
+            Circle()
+                .fill(RecourseColor.ledger.opacity(0.1))
+                .frame(width: 170, height: 170)
+                .blur(radius: 46)
+                .offset(x: 54, y: -62)
+
+            VStack(alignment: .leading, spacing: 18) {
+                HStack {
+                    Label("Your protection", systemImage: "checkmark.shield.fill")
+                        .font(.system(size: 12, weight: .bold))
+                    Spacer()
+                    Text("ARC TESTNET")
+                        .font(.system(size: 10, weight: .bold))
+                        .tracking(1.35)
+                        .foregroundStyle(.white.opacity(0.68))
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(currency(protectedTotal))
+                            .font(.system(size: 38, weight: .semibold, design: .rounded))
+                            .minimumScaleFactor(0.72)
+                        Text("protected")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.68))
+                    }
+                    Text(heroSubtitle)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.68))
+                }
+                heroActions
             }
-            Text("Across \(activePayments.count) payments · indexed live from Arc")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(RecourseColor.muted)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .foregroundStyle(.white)
+        .padding(20)
+        .background(RecourseColor.ink, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(.white.opacity(0.1), lineWidth: 1)
+        }
+        .shadow(color: RecourseColor.ink.opacity(0.15), radius: 18, y: 10)
     }
 
-    private var primaryActions: some View {
-        HStack(spacing: 12) {
-            Button {
-                onScanRequested()
-            } label: {
+    private var heroSubtitle: String {
+        guard let balance = environment.paymentStore.balance else {
+            return "Checking live USDC balance…"
+        }
+        if activePayments.isEmpty {
+            return "\(balance.formatted) ready to spend"
+        }
+        return "\(activePayments.count) active · \(balance.formatted) to spend"
+    }
+
+    private var heroActions: some View {
+        HStack(spacing: 10) {
+            Button(action: onScanRequested) {
                 Label("Pay with protection", systemImage: "arrow.up.right")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .background(
-                        LinearGradient(
-                            colors: [RecourseColor.ledger.opacity(0.84), RecourseColor.ledger],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        in: Capsule()
-                    )
-                    .overlay {
-                        Capsule()
-                            .stroke(.white.opacity(0.42), lineWidth: 0.8)
-                    }
-                    .shadow(color: RecourseColor.ledger.opacity(0.24), radius: 14, y: 7)
+                    .frame(height: 46)
+                    .background(RecourseColor.ledger, in: Capsule())
             }
             .buttonStyle(.plain)
 
-            Button(action: onScanRequested) {
-                Image(systemName: "qrcode.viewfinder")
-                    .font(.system(size: 19, weight: .semibold))
-                    .foregroundStyle(RecourseColor.ink)
-                    .frame(width: 50, height: 50)
-                    .background(.ultraThinMaterial, in: Circle())
-                    .overlay {
-                        Circle().stroke(.white.opacity(0.8), lineWidth: 0.8)
-                    }
-                    .shadow(color: .black.opacity(0.08), radius: 14, y: 7)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Scan to pay")
-
-            Button {
+            heroCircleButton("qrcode.viewfinder", label: "Scan to pay", action: onScanRequested)
+            heroCircleButton("paperplane.fill", label: "Send USDC") {
                 environment.router.push(.send)
-            } label: {
-                Image(systemName: "paperplane.fill")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(RecourseColor.ink)
-                    .frame(width: 50, height: 50)
-                    .background(.ultraThinMaterial, in: Circle())
-                    .overlay {
-                        Circle().stroke(.white.opacity(0.8), lineWidth: 0.8)
-                    }
-                    .shadow(color: .black.opacity(0.08), radius: 14, y: 7)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Send USDC")
         }
     }
 
-    private var paymentActions: some View {
-        VStack(spacing: 11) {
-            primaryActions
-            availableFundsLine
+    private func heroCircleButton(_ systemImage: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 46, height: 46)
+                .background(.white.opacity(0.12), in: Circle())
+                .overlay {
+                    Circle().stroke(.white.opacity(0.16), lineWidth: 1)
+                }
         }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 
-    private var availableFundsLine: some View {
-        HStack(spacing: 8) {
-            Circle()
-                .fill(RecourseColor.ledger)
-                .frame(width: 7, height: 7)
-            Text(availableBalanceText)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(RecourseColor.muted)
-            Spacer()
-            Image(systemName: "chevron.right")
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(RecourseColor.muted)
+    private var firstStepsCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("How your first payment works")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(RecourseColor.ink)
+            firstStep("qrcode.viewfinder", "Scan a merchant checkout", "Recourse QRs open here, straight from the Camera app too.")
+            firstStep("lock.shield.fill", "USDC escrows under the policy", "Refund rules are locked onchain before any funds move.")
+            firstStep("checkmark.seal.fill", "Every outcome is provable", "Refunds compute from evidence, and you can verify the result yourself.")
         }
-        .padding(.horizontal, 4)
-        .accessibilityElement(children: .combine)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
+        .modifier(HomeFloatingSurface(cornerRadius: 21))
+    }
+
+    private func firstStep(_ icon: String, _ title: String, _ detail: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(RecourseColor.ink)
+                .frame(width: 34, height: 34)
+                .background(RecourseColor.clay, in: Circle())
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(RecourseColor.ink)
+                Text(detail)
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(RecourseColor.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
     }
 
     private var protectedNow: some View {
@@ -386,12 +391,6 @@ struct HomeView: View {
                             .modifier(HomeFloatingSurface(cornerRadius: 19))
                     }
                     .buttonStyle(.plain)
-                }
-                if activePayments.isEmpty {
-                    liveEmptyState(
-                        title: "No active protections",
-                        detail: "Scan a merchant checkout to create your first live protected payment."
-                    )
                 }
             }
         }
@@ -437,12 +436,6 @@ struct HomeView: View {
                         Divider().padding(.leading, 52)
                     }
                 }
-                if settledPayments.isEmpty {
-                    liveEmptyState(
-                        title: "No settled receipts yet",
-                        detail: "Verified outcomes will appear here after settlement."
-                    )
-                }
             }
         }
     }
@@ -482,7 +475,7 @@ struct HomeView: View {
     private func sectionTitle(_ title: String, trailing: String) -> some View {
         HStack {
             Text(title)
-                .font(.system(size: 19, weight: .bold))
+                .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(RecourseColor.ink)
             Spacer()
             Text(trailing)
@@ -491,30 +484,9 @@ struct HomeView: View {
         }
     }
 
-    private var availableBalanceText: String {
-        guard let balance = environment.paymentStore.balance else {
-            return "Checking live USDC balance…"
-        }
-        return "\(balance.formatted) available to pay"
-    }
-
     private func currency(_ amount: USDCAmount) -> String {
         let value = Double(amount.baseUnits) / Double(USDCAmount.base)
         return String(format: "$%.2f", value)
-    }
-
-    private func liveEmptyState(title: String, detail: String) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(title)
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(RecourseColor.ink)
-            Text(detail)
-                .font(.system(size: 11))
-                .foregroundStyle(RecourseColor.muted)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .modifier(HomeFloatingSurface(cornerRadius: 19))
     }
 }
 
