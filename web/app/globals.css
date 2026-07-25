@@ -4244,217 +4244,113 @@ footer {
   color: var(--green);
 }
 
-/* ---- Hero product mockups (decorative collage) ---- */
-.landing-mock {
+/* ---- Hero product shots (real app screens fanned like a hand of cards) ---- */
+.landing-phones {
+  --phone-front: 236px;
+  --phone-back: 186px;
   position: relative;
-  width: 680px;
+  width: 620px;
   max-width: 100%;
-  height: 500px;
+  height: calc(var(--phone-front) * 2.168 + 26px);
   margin-left: auto;
-  overflow: hidden;
-  border: 1px solid rgba(218, 222, 216, 0.76);
-  border-radius: 28px;
-  background: rgba(255, 255, 255, 0.22);
 }
 
-/* Two soft overlapping lobes make an organic backdrop, not a plain circle. */
-.landing-mock::before,
-.landing-mock::after {
-  content: "";
+.landing-phones-glow {
   position: absolute;
-  background: #eef1ec;
-  z-index: 0;
+  top: 48px;
+  left: 50%;
+  width: 430px;
+  height: 400px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(13, 118, 86, 0.18), rgba(238, 241, 236, 0.55) 62%, transparent);
+  filter: blur(44px);
 }
 
-.landing-mock::before {
-  top: 34px;
-  left: -6px;
-  width: 470px;
-  height: 396px;
-  border-radius: 52% 48% 60% 40% / 60% 54% 46% 40%;
-}
-
-.landing-mock::after {
-  top: 92px;
-  right: -4px;
-  width: 400px;
-  height: 344px;
-  border-radius: 48% 52% 44% 56% / 52% 48% 56% 44%;
-}
-
-.mock-card {
+.landing-phone {
   position: absolute;
-  padding: 22px 18px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: var(--white);
-  box-shadow: 0 16px 40px rgba(26, 43, 37, 0.10);
-  font-size: 12px;
-}
-
-.mock-dashboard {
-  top: 72px;
-  left: 20px;
-  z-index: 2;
-  width: 270px;
-}
-
-.mock-dispute {
-  top: 72px;
-  left: auto;
-  right: 20px;
   z-index: 1;
-  width: 252px;
+  padding: 6px;
+  border: 1px solid rgba(26, 43, 37, 0.14);
+  border-radius: 36px;
+  background: #17221d;
+  box-shadow: 0 30px 60px -24px rgba(26, 43, 37, 0.36);
 }
 
-.mock-dispute > .mock-title {
-  text-align: right;
-}
-
-.mock-receipt {
-  top: 20px;
-  left: 224px;
-  z-index: 4;
-  width: 238px;
-  padding: 25px 15px 19px;
-  text-align: center;
-  box-shadow: 0 26px 56px rgba(26, 43, 37, 0.15);
-}
-
-.mock-receipt::before,
-.mock-receipt::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 9px;
-  background-repeat: repeat-x;
-  background-size: 14px 9px;
-}
-
-.mock-receipt::before {
+.landing-phone.front {
+  z-index: 3;
   top: 0;
-  background-image: radial-gradient(circle at 7px 0, var(--paper-bright) 0 5px, transparent 5.5px);
+  left: 50%;
+  width: var(--phone-front);
+  transform: translateX(-50%);
 }
 
-.mock-receipt::after {
-  bottom: 0;
-  background-image: radial-gradient(circle at 7px 9px, var(--paper-bright) 0 5px, transparent 5.5px);
+.landing-phone.back-left {
+  top: 56px;
+  left: 0;
+  width: var(--phone-back);
+  transform: rotate(-12deg);
 }
 
-.mock-earnings {
-  right: 24px;
-  bottom: 20px;
-  z-index: 5;
-  width: 210px;
+.landing-phone.back-right {
+  top: 56px;
+  right: 0;
+  width: var(--phone-back);
+  transform: rotate(12deg);
 }
 
-.mock-title {
-  display: block;
-  margin-bottom: 12px;
+.landing-phone-screen {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 720 / 1561;
+  border-radius: 30px;
+  background: #0e1613;
+}
+
+.landing-phone-screen img {
+  object-fit: cover;
+  object-position: top;
+}
+
+/* Back screens recede so the protected payment stays the focal point. */
+.landing-phone.back-left img,
+.landing-phone.back-right img {
+  filter: brightness(0.86);
+}
+
+.landing-phones-chip {
+  position: absolute;
+  bottom: 22px;
+  left: 6px;
+  z-index: 4;
+  display: grid;
+  gap: 2px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--white);
+  box-shadow: 0 16px 36px -14px rgba(26, 43, 37, 0.28);
+  transform: rotate(-6deg);
+}
+
+.landing-phones-chip small {
+  color: #7c847f;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.landing-phones-chip strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: 13px;
   font-weight: 650;
 }
 
-.mock-stat {
-  display: grid;
-  gap: 2px;
-  padding: 13px;
-  border: 1px solid var(--line-soft);
-  border-radius: 11px;
-  background: var(--paper-bright);
-}
-
-.mock-stat small {
-  color: #6f7873;
-  font-size: 11px;
-}
-
-.mock-stat strong {
-  font-family: var(--display);
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-
-.mock-stat span {
-  color: #7c847f;
-  font-size: 11px;
-}
-
-.mock-subtitle {
-  display: block;
-  margin: 20px 0 13px;
-  color: #6f7873;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.mock-list {
-  display: grid;
-  gap: 16px;
-}
-
-.mock-row {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-}
-
-.mock-icon {
-  display: grid;
-  width: 28px;
-  height: 28px;
-  flex: 0 0 auto;
-  place-items: center;
-  border-radius: 8px;
-  color: #4a5551;
-  background: #eef0ea;
-}
-
-.mock-row > div {
-  flex: 1;
-}
-
-.mock-row strong {
-  display: block;
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.mock-row small {
-  color: #7c847f;
-  font-size: 10px;
-  white-space: nowrap;
-}
-
-.mock-row b {
-  flex: 0 0 auto;
-  font-size: 12px;
-  font-weight: 650;
-  white-space: nowrap;
-}
-
-.mock-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  margin-top: 18px;
+.landing-phones-chip strong svg {
   color: var(--green);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.mock-link.center {
-  justify-content: center;
-  width: 100%;
-}
-
-.mock-receipt-badge {
-  width: 50px;
-  height: 50px;
-  margin: 0 auto 12px;
 }
 
 .protection-mark {
@@ -4497,222 +4393,6 @@ footer {
 .landing-proof-demo .live-pulse {
   width: 16px;
   height: 16px;
-}
-
-.mock-eyebrow {
-  display: block;
-  color: #7c847f;
-  font-size: 10px;
-  font-weight: 650;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.mock-amount {
-  margin: 12px 0 18px;
-  font-family: var(--display);
-  font-size: 30px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-
-.mock-amount span {
-  color: #7c847f;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.mock-paidto {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 15px 0;
-  border-top: 1px solid var(--line-soft);
-  text-align: left;
-}
-
-.mock-paidto small {
-  display: block;
-  color: #7c847f;
-  font-size: 10px;
-}
-
-.mock-paidto strong {
-  font-size: 13px;
-  font-weight: 650;
-}
-
-.mock-pill {
-  padding: 4px 9px;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 650;
-}
-
-.mock-pill.green {
-  color: #0c6f52;
-  background: var(--green-soft);
-}
-
-.mock-pill.amber {
-  color: #8a5518;
-  background: var(--orange-soft);
-}
-
-.mock-details {
-  display: grid;
-  gap: 11px;
-  margin: 4px 0 0;
-  text-align: left;
-}
-
-.mock-details > div {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.mock-details dt {
-  color: #7c847f;
-  font-size: 10px;
-  white-space: nowrap;
-}
-
-.mock-details dd {
-  margin: 0;
-  font-size: 10px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.mock-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: #0c6f52;
-}
-
-.mock-dispute-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.mock-dispute-head small {
-  display: block;
-  color: #7c847f;
-  font-size: 10px;
-}
-
-.mock-dispute-head strong {
-  font-size: 14px;
-  font-weight: 650;
-}
-
-.mock-kv {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 11px 0;
-  border-top: 1px solid var(--line-soft);
-}
-
-.mock-kv span {
-  color: #7c847f;
-  font-size: 11px;
-  white-space: nowrap;
-}
-
-.mock-kv b {
-  font-size: 11px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.mock-timeline {
-  display: grid;
-  gap: 19px;
-  margin: 16px 0 4px;
-  padding-left: 3px;
-}
-
-.mock-step {
-  position: relative;
-  display: flex;
-  gap: 10px;
-  padding-left: 4px;
-}
-
-.mock-step > span {
-  width: 13px;
-  height: 13px;
-  flex: 0 0 auto;
-  margin-top: 1px;
-  border: 2px solid #cfd4ce;
-  border-radius: 50%;
-  background: var(--white);
-}
-
-.mock-step.done > span {
-  border-color: var(--green);
-  background: var(--green);
-}
-
-.mock-step.active > span {
-  border-color: var(--red);
-}
-
-.mock-step:not(:last-child)::before {
-  content: "";
-  position: absolute;
-  top: 15px;
-  left: 10px;
-  width: 2px;
-  height: 21px;
-  background: var(--line);
-}
-
-.mock-step strong {
-  display: block;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.mock-step.active strong {
-  color: var(--red);
-}
-
-.mock-step small {
-  color: #8a918c;
-  font-size: 10px;
-}
-
-.mock-earnings small {
-  color: #6f7873;
-  font-size: 11px;
-}
-
-.mock-earnings strong {
-  display: block;
-  margin: 3px 0 1px;
-  font-family: var(--display);
-  font-size: 19px;
-  font-weight: 650;
-  color: var(--green);
-  letter-spacing: -0.02em;
-}
-
-.mock-earnings > span {
-  color: #7c847f;
-  font-size: 10px;
-}
-
-.mock-spark {
-  width: 100%;
-  height: 34px;
-  margin-top: 4px;
 }
 
 /* ---- Powered-by strip ---- */
@@ -5436,12 +5116,10 @@ footer {
     gap: 10px;
   }
 
-  .landing-mock {
-    width: 680px;
-    max-width: none;
-    margin-right: -94px;
-    transform: scale(0.82);
-    transform-origin: left center;
+  .landing-phones {
+    --phone-front: 212px;
+    --phone-back: 166px;
+    width: 540px;
   }
 }
 
@@ -5455,11 +5133,8 @@ footer {
     max-width: 680px;
   }
 
-  .landing-mock {
-    width: 680px;
-    max-width: 100%;
+  .landing-phones {
     margin: 0 auto;
-    transform: none;
   }
 
   .landing-feature-grid {
@@ -5569,29 +5244,16 @@ footer {
     font-size: 10px;
   }
 
-  .landing-mock {
-    display: block;
-    width: 100%;
+  .landing-phones {
+    --phone-front: 190px;
+    --phone-back: 142px;
     max-width: 360px;
-    height: auto;
-    overflow: visible;
-    border: 0;
-    background: transparent;
+    margin: 0 auto;
   }
 
-  .landing-mock::before,
-  .landing-mock::after,
-  .mock-dashboard,
-  .mock-dispute,
-  .mock-earnings {
-    display: none;
-  }
-
-  .mock-receipt {
-    position: relative;
-    top: auto;
-    left: auto;
-    width: 100%;
+  .landing-phones-glow {
+    width: 320px;
+    height: 300px;
   }
 
   .landing-stack-inner {

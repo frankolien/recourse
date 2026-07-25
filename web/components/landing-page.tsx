@@ -3,7 +3,6 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
-  Cloud,
   Coins,
   CircleDollarSign,
   Code2,
@@ -20,11 +19,11 @@ import {
   TrendingUp,
   UserRound,
   Wallet,
-  Zap,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { BrandMark } from "@/components/brand-mark";
-import { LivePulse, ProtectionMark } from "@/components/live-pulse";
+import { LivePulse } from "@/components/live-pulse";
 
 const navLinks = [
   { label: "Product", href: "#features", caret: true },
@@ -33,12 +32,6 @@ const navLinks = [
   { label: "Developers", href: "https://github.com/frankolien/recourse", external: true },
   { label: "Docs", href: "https://github.com/frankolien/recourse", external: true },
   { label: "About", href: "#how-it-works" },
-];
-
-const protections = [
-  { name: "CloudCompute", ends: "Ends in 13 days", amount: "$24.00", icon: <Cloud size={15} /> },
-  { name: "FileStore", ends: "Ends in 25 days", amount: "$120.00", icon: <FileText size={15} /> },
-  { name: "DesignVault", ends: "Ends in 38 days", amount: "$320.00", icon: <Zap size={15} /> },
 ];
 
 const stack = [
@@ -174,70 +167,27 @@ export function LandingPage() {
           </div>
         </div>
 
-        <div className="landing-mock" aria-hidden="true">
-          <article className="mock-card mock-dashboard">
-            <span className="mock-title">Dashboard</span>
-            <div className="mock-stat">
-              <small>Total protected</small>
-              <strong>$464.00</strong>
-              <span>Across 3 active protections</span>
+        <div className="landing-phones" aria-hidden="true">
+          <div className="landing-phones-glow" />
+          <div className="landing-phone back-left">
+            <div className="landing-phone-screen">
+              <Image src="/app/home.png" alt="" fill sizes="200px" />
             </div>
-            <span className="mock-subtitle">Active protections</span>
-            <div className="mock-list">
-              {protections.map((item) => (
-                <div className="mock-row" key={item.name}>
-                  <span className="mock-icon">{item.icon}</span>
-                  <div><strong>{item.name}</strong><small>{item.ends}</small></div>
-                  <b>{item.amount}</b>
-                </div>
-              ))}
+          </div>
+          <div className="landing-phone back-right">
+            <div className="landing-phone-screen">
+              <Image src="/app/verify.png" alt="" fill sizes="200px" />
             </div>
-            <span className="mock-link">View all protections <ChevronRight size={13} /></span>
-          </article>
-
-          <article className="mock-card mock-receipt">
-            <ProtectionMark className="mock-receipt-badge" />
-            <span className="mock-eyebrow">Protected payment</span>
-            <div className="mock-amount">24.00 <span>USDC</span></div>
-            <div className="mock-paidto">
-              <div><small>Paid to</small><strong>CloudCompute</strong></div>
-              <span className="mock-pill green">Protected</span>
+          </div>
+          <div className="landing-phone front">
+            <div className="landing-phone-screen">
+              <Image src="/app/payment.png" alt="" fill sizes="240px" priority />
             </div>
-            <dl className="mock-details">
-              <div><dt>Paid</dt><dd>20 Jul 2026, 11:42 AM</dd></div>
-              <div><dt>Protection ends</dt><dd>3 Aug 2026, 4:30 PM</dd></div>
-              <div><dt>Policy</dt><dd>CloudCompute API Policy v1.2</dd></div>
-              <div><dt>Merchant settlement</dt><dd><span className="mock-tag">Paid instantly <Check size={12} /></span></dd></div>
-              <div><dt>Escrow status</dt><dd><span className="mock-tag">Earning yield <Check size={12} /></span></dd></div>
-            </dl>
-            <span className="mock-link center">View payment details <ChevronRight size={13} /></span>
-          </article>
-
-          <article className="mock-card mock-dispute">
-            <span className="mock-title">Dispute status</span>
-            <div className="mock-dispute-head">
-              <div><small>Order</small><strong>#RC-284</strong></div>
-              <span className="mock-pill amber">Under review</span>
-            </div>
-            <div className="mock-kv"><span>Evidence submitted</span><b>20 Jul, 9:18 AM</b></div>
-            <div className="mock-kv"><span>Verdict</span><b>Pending</b></div>
-            <div className="mock-timeline">
-              <div className="mock-step done"><span /><div><strong>Submitted</strong></div></div>
-              <div className="mock-step active"><span /><div><strong>Under review</strong></div></div>
-              <div className="mock-step"><span /><div><strong>Decision</strong><small>Pending</small></div></div>
-              <div className="mock-step"><span /><div><strong>Resolved</strong><small>Pending</small></div></div>
-            </div>
-            <span className="mock-link">View dispute <ChevronRight size={13} /></span>
-          </article>
-
-          <article className="mock-card mock-earnings">
-            <small>Escrow earnings</small>
-            <strong>+$1.24 USDC</strong>
-            <span>This month</span>
-            <svg viewBox="0 0 120 40" className="mock-spark" aria-hidden="true">
-              <path d="M2 32 C14 30 20 24 30 26 S46 20 56 22 S72 10 84 12 S104 3 118 4" fill="none" stroke="#0d7656" strokeWidth="2.4" strokeLinecap="round" />
-            </svg>
-          </article>
+          </div>
+          <div className="landing-phones-chip">
+            <small>Payment #13 · Arc Testnet</small>
+            <strong><Check size={13} /> Hashes match exactly</strong>
+          </div>
         </div>
       </section>
 
