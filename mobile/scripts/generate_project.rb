@@ -90,6 +90,7 @@ app_target.build_configurations.each do |configuration|
     "ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS" => "YES",
     "CODE_SIGN_STYLE" => "Automatic",
     "CODE_SIGN_ENTITLEMENTS" => "Recourse/Recourse.entitlements",
+    "INFOPLIST_FILE" => "Recourse/Info.plist",
     "CURRENT_PROJECT_VERSION" => "1",
     "DEVELOPMENT_TEAM" => "",
     "ENABLE_PREVIEWS" => "YES",

@@ -228,9 +228,8 @@ struct ScannerFoundationView: View {
 
     private func decodeAndOpen(_ value: String) {
         do {
-            let payload = try paymentPayload(from: value)
             let request = try PaymentRequestDecoder(configuration: configuration)
-                .decode(base64URL: payload)
+                .decode(scanned: value)
             openRequest(request)
         } catch {
             isScanning = false
@@ -246,22 +245,6 @@ struct ScannerFoundationView: View {
         }
     }
 
-    private func paymentPayload(from value: String) throws -> String {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { throw ValidationError.invalidPaymentRequest }
-
-        if let components = URLComponents(string: trimmed),
-           components.scheme != nil {
-            let names = ["request", "payload", "code"]
-            if let payload = components.queryItems?
-                .first(where: { names.contains($0.name.lowercased()) })?
-                .value,
-               !payload.isEmpty {
-                return payload
-            }
-        }
-        return trimmed
-    }
 }
 
 private extension UIImage {

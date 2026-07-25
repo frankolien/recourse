@@ -896,11 +896,12 @@ struct MerchantWorkspaceView: View {
                 amount: amount,
                 orderReference: orderReferenceHash
             )
-            guard let encodedRequest = encoded(request),
-                  let image = qrCode(encodedRequest) else {
+            guard let payload = encoded(request),
+                  let image = qrCode(checkoutLink(payload)) else {
                 checkoutErrorMessage = "Recourse could not render this checkout QR. Try again."
                 return
             }
+            let encodedRequest = checkoutLink(payload)
             qrCardSaved = false
             checkoutPresentation = CheckoutPresentation(
                 request: request,
@@ -1051,6 +1052,12 @@ struct MerchantWorkspaceView: View {
             .replacingOccurrences(of: "+", with: "-")
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: "=", with: "")
+    }
+
+    // The QR carries a universal link, not a bare payload, so the iPhone Camera opens
+    // the app directly (or the web fallback without it). base64url is URL-safe as-is.
+    private func checkoutLink(_ payload: String) -> String {
+        "\(AppConfiguration.webAppURL.absoluteString)/pay?request=\(payload)"
     }
 
     private func qrCode(_ value: String) -> UIImage? {

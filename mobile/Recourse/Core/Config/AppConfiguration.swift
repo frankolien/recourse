@@ -56,7 +56,15 @@ struct AppConfiguration: Sendable {
 
     private static let defaultMerchantWebURL = URL(
         string: ProcessInfo.processInfo.environment["RECOURSE_MERCHANT_URL"]
-            ?? "https://recourse.frankolien.com/dashboard"
+            ?? "https://recourse-arc.vercel.app/dashboard"
+    )!
+
+    // Public web origin the checkout QR links to. The Camera app opens it as a universal
+    // link straight into this app when installed, and as a normal web page otherwise.
+    // Must stay in sync with the applinks entitlement and the AASA the web app serves.
+    static let webAppURL = URL(
+        string: ProcessInfo.processInfo.environment["RECOURSE_WEB_URL"]
+            ?? "https://recourse-arc.vercel.app"
     )!
 
     // Google iOS OAuth client id: a public identifier (it ships in every Google-enabled

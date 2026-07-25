@@ -57,11 +57,31 @@ struct RootView: View {
         .task {
             await environment.accountSession.restore()
         }
+        // A checkout QR scanned with the Camera app arrives here: as a universal link
+        // (https://<web>/pay?request=...) or via the recourse:// scheme from the web
+        // fallback page. Both decode to the same request the in-app scanner produces.
+        .onOpenURL { url in
+            openIncomingCheckout(url)
+        }
+        .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+            if let url = activity.webpageURL {
+                openIncomingCheckout(url)
+            }
+        }
     }
 
     private func resetOnboarding() {
         hasCompletedOnboarding = false
         storedWorkspaceRole = ""
+    }
+
+    private func openIncomingCheckout(_ url: URL) {
+        guard let request = try? PaymentRequestDecoder(configuration: environment.configuration)
+            .decode(scanned: url.absoluteString) else { return }
+        // Land on the review screen directly; whatever was mid-navigation is stale next
+        // to a checkout the user just pointed their camera at.
+        environment.router.reset()
+        environment.router.push(.checkout(request))
     }
 
     @ViewBuilder

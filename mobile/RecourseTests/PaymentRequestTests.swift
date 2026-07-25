@@ -59,6 +59,29 @@ final class PaymentRequestTests: XCTestCase {
         }
     }
 
+    func testDecodesUniversalLinkAndSchemeWrappers() throws {
+        let payload = try encodedPayload(chainID: Deployment.chainID, escrow: Deployment.escrow)
+        let decoder = PaymentRequestDecoder(configuration: .live)
+
+        for wrapped in [
+            "https://recourse-arc.vercel.app/pay?request=\(payload)",
+            "recourse://pay?request=\(payload)",
+            "https://recourse-arc.vercel.app/pay#\(payload)",
+            "https://recourse-arc.vercel.app/pay#request=\(payload)",
+            payload
+        ] {
+            let request = try decoder.decode(scanned: wrapped)
+            XCTAssertEqual(request.amount.baseUnits, 25_000_000, wrapped)
+        }
+    }
+
+    func testRejectsLinkWithoutPayload() {
+        XCTAssertThrowsError(
+            try PaymentRequestDecoder(configuration: .live)
+                .decode(scanned: "https://recourse-arc.vercel.app/pay")
+        )
+    }
+
     private func encodedPayload(
         version: UInt8 = 1,
         chainID: UInt64,
