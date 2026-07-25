@@ -27,6 +27,7 @@ use crate::handlers;
 use crate::services::apple_auth::AppleAuthService;
 use crate::services::attestor::AttestorClient;
 use crate::services::chain::ChainClient;
+use crate::services::cloudinary::Cloudinary;
 use crate::services::evidence::EvidenceStore;
 use crate::services::google_auth::GoogleAuthService;
 use crate::services::orders::OrderStore;
@@ -47,6 +48,7 @@ pub fn build_app(
     passkey: Option<PasskeyService>,
     evidence: EvidenceStore,
     orders: OrderStore,
+    cloudinary: Option<Cloudinary>,
 ) -> App<
     impl actix_web::dev::ServiceFactory<
         actix_web::dev::ServiceRequest,
@@ -67,6 +69,7 @@ pub fn build_app(
         .app_data(web::Data::new(passkey))
         .app_data(web::Data::new(evidence))
         .app_data(web::Data::new(orders))
+        .app_data(web::Data::new(cloudinary))
         .route("/health", web::get().to(handlers::health::health_check))
         .service(
             web::scope("/api")

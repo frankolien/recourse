@@ -12,6 +12,7 @@ use tracing_subscriber::EnvFilter;
 use crate::services::apple_auth::AppleAuthService;
 use crate::services::attestor::AttestorClient;
 use crate::services::chain::ChainClient;
+use crate::services::cloudinary::Cloudinary;
 use crate::services::evidence::EvidenceStore;
 use crate::services::google_auth::GoogleAuthService;
 use crate::services::orders::OrderStore;
@@ -91,6 +92,11 @@ async fn main() -> Result<()> {
 
     let evidence = EvidenceStore::new(config.evidence_dir.clone().into())?;
     let orders = OrderStore::new(config.orders_dir.clone().into())?;
+    let cloudinary = Cloudinary::from_env();
+    match &cloudinary {
+        Some(_) => tracing::info!("cloudinary image mirror enabled"),
+        None => tracing::info!("cloudinary image mirror disabled (CLOUDINARY_URL not set)"),
+    }
 
     tracing::info!(
         "recourse-backend listening on :{} (Arc chain {})",
@@ -112,6 +118,7 @@ async fn main() -> Result<()> {
             passkey.clone(),
             evidence.clone(),
             orders.clone(),
+            cloudinary.clone(),
         )
     })
     .bind(bind)?

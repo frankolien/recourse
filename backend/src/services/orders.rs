@@ -172,6 +172,25 @@ impl OrderStore {
             .map(|hex| self.dir.join("images").join(hex).exists())
             .unwrap_or(false)
     }
+
+    // A .cdn sidecar records where the image also lives on Cloudinary. Content
+    // addressing makes that copy immutable, so a recorded URL never goes stale.
+    pub fn set_cdn_url(&self, hash: &str, url: &str) -> Result<()> {
+        let hex = normalize_hash(hash).ok_or_else(|| anyhow!("invalid image hash"))?;
+        fs::write(
+            self.dir.join("images").join(format!("{hex}.cdn")),
+            url.as_bytes(),
+        )
+        .context("writing image cdn sidecar")
+    }
+
+    pub fn cdn_url(&self, hash: &str) -> Option<String> {
+        let hex = normalize_hash(hash)?;
+        fs::read_to_string(self.dir.join("images").join(format!("{hex}.cdn")))
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+    }
 }
 
 #[cfg(test)]

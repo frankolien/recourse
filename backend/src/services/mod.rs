@@ -3,6 +3,7 @@ pub mod apple_auth;
 pub mod attestor;
 pub mod auth;
 pub mod chain;
+pub mod cloudinary;
 pub mod evidence;
 pub mod google_auth;
 pub mod orders;
