@@ -169,9 +169,15 @@ pub fn build_app(
                         .app_data(web::PayloadConfig::new(5 * 1024 * 1024))
                         .route(web::post().to(handlers::orders::put_image)),
                 )
+                // HEAD is registered too: link-preview bots probe images with HEAD
+                // before fetching, and actix does not match HEAD to GET routes.
                 .route(
                     "/orders/image/{hash}",
                     web::get().to(handlers::orders::get_image),
+                )
+                .route(
+                    "/orders/image/{hash}",
+                    web::head().to(handlers::orders::get_image),
                 )
                 .route(
                     "/orders/{order_ref}",
