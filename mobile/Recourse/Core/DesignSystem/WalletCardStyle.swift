@@ -1,36 +1,70 @@
 import SwiftUI
 
-// The wallet card's face. Two styles are photographic textures, the rest are
-// drawn gradients, and the choice is the user's; it persists per device under
-// a single defaults key that Home and Earn both read.
+// The wallet card's face: the flat brand ink plus twelve art backgrounds the
+// user picks from. The choice persists per device under one defaults key that
+// Home and Earn both read. Text color is decided per face, dark ink on the
+// light ones, white on the dark ones.
 enum WalletCardStyle: String, CaseIterable, Identifiable, Sendable {
     static let defaultsKey = "recourse.walletcard.style"
 
     case ink
-    case ledger
-    case onyx
-    case gold
-    case mist
-    case ember
+    case graphite
+    case midnight
+    case citrus
+    case silver
+    case piggy
+    case bounty
+    case wanderer
+    case monarch
+    case jackpot
+    case prospector
+    case gem
+    case wolfpack
 
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
         case .ink: "Ink"
-        case .ledger: "Ledger"
-        case .onyx: "Onyx"
-        case .gold: "Gold"
-        case .mist: "Mist"
-        case .ember: "Ember"
+        case .graphite: "Graphite"
+        case .midnight: "Midnight"
+        case .citrus: "Citrus"
+        case .silver: "Silver"
+        case .piggy: "Piggy"
+        case .bounty: "Bounty"
+        case .wanderer: "Wanderer"
+        case .monarch: "Monarch"
+        case .jackpot: "Jackpot"
+        case .prospector: "Prospector"
+        case .gem: "Gem"
+        case .wolfpack: "Wolfpack"
         }
     }
 
-    // Light faces carry dark text; everything on the card derives from these two.
+    private var imageName: String? {
+        switch self {
+        case .ink: nil
+        case .graphite: "wallet-card-1"
+        case .midnight: "wallet-card-2"
+        case .citrus: "wallet-card-3"
+        case .silver: "wallet-card-4"
+        case .piggy: "wallet-card-5"
+        case .bounty: "wallet-card-6"
+        case .wanderer: "wallet-card-7"
+        case .monarch: "wallet-card-8"
+        case .jackpot: "wallet-card-9"
+        case .prospector: "wallet-card-10"
+        case .gem: "wallet-card-11"
+        case .wolfpack: "wallet-card-12"
+        }
+    }
+
     var prefersDarkText: Bool {
         switch self {
-        case .gold, .mist: true
-        default: false
+        case .citrus, .silver, .piggy, .bounty, .wanderer, .monarch, .jackpot, .prospector:
+            true
+        default:
+            false
         }
     }
 
@@ -54,52 +88,18 @@ enum WalletCardStyle: String, CaseIterable, Identifiable, Sendable {
         prefersDarkText ? RecourseColor.ink.opacity(0.12) : .white.opacity(0.1)
     }
 
-    // The soft brand glow only reads on dark faces; on light ones it muddies.
-    var showsGlow: Bool { !prefersDarkText }
+    // The soft brand glow only reads on the flat ink face; art faces carry
+    // themselves.
+    var showsGlow: Bool { self == .ink }
 
     @ViewBuilder
     var face: some View {
-        switch self {
-        case .ink:
+        if let imageName {
+            Image(imageName)
+                .resizable()
+                .scaledToFill()
+        } else {
             RecourseColor.ink
-        case .ledger:
-            LinearGradient(
-                colors: [
-                    Color(red: 0.01, green: 0.22, blue: 0.17),
-                    RecourseColor.ledger,
-                    Color(red: 0.04, green: 0.47, blue: 0.35),
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        case .onyx:
-            Image("card-onyx")
-                .resizable()
-                .scaledToFill()
-        case .gold:
-            Image("card-gold")
-                .resizable()
-                .scaledToFill()
-        case .mist:
-            LinearGradient(
-                colors: [
-                    Color(red: 0.93, green: 0.94, blue: 0.93),
-                    Color(red: 0.85, green: 0.87, blue: 0.86),
-                    Color(red: 0.96, green: 0.96, blue: 0.95),
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        case .ember:
-            LinearGradient(
-                colors: [
-                    Color(red: 0.16, green: 0.09, blue: 0.05),
-                    Color(red: 0.55, green: 0.27, blue: 0.1),
-                    Color(red: 0.79, green: 0.42, blue: 0.14),
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
         }
     }
 
@@ -139,60 +139,65 @@ struct WalletCardStylePicker: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text("Card style")
-                .font(.system(size: 20, weight: .bold))
-                .foregroundStyle(RecourseColor.ink)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                Text("Card style")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(RecourseColor.ink)
 
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 14) {
-                ForEach(WalletCardStyle.allCases) { style in
-                    Button {
-                        selectedRawValue = style.rawValue
-                        UISelectionFeedbackGenerator().selectionChanged()
-                        dismiss()
-                    } label: {
-                        miniCard(style)
+                LazyVGrid(
+                    columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3),
+                    spacing: 14
+                ) {
+                    ForEach(WalletCardStyle.allCases) { style in
+                        Button {
+                            selectedRawValue = style.rawValue
+                            UISelectionFeedbackGenerator().selectionChanged()
+                            dismiss()
+                        } label: {
+                            miniCard(style)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("\(style.displayName) card style")
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("\(style.displayName) card style")
                 }
             }
-
-            Spacer(minLength: 0)
+            .padding(22)
         }
-        .padding(22)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color.white)
     }
 
     private func miniCard(_ style: WalletCardStyle) -> some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 7) {
             ZStack(alignment: .bottomLeading) {
                 style.face
+                    .frame(height: 74)
                 Text("Recourse")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(style.textPrimary)
-                    .padding(10)
+                    .padding(8)
             }
-            .frame(height: 92)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .frame(height: 74)
+            .frame(maxWidth: .infinity)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .stroke(
                         selected == style ? RecourseColor.ledger : style.border,
                         lineWidth: selected == style ? 2 : 1
                     )
             }
 
-            HStack(spacing: 5) {
+            HStack(spacing: 4) {
                 if selected == style {
                     Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 11, weight: .bold))
+                        .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(RecourseColor.ledger)
                 }
                 Text(style.displayName)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(RecourseColor.ink)
+                    .lineLimit(1)
             }
         }
     }

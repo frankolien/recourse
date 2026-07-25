@@ -44,6 +44,9 @@ ops/node_modules
 # Raw screenshot originals; the resized copies live in web/public/app
 web/assets/
 
+# Raw wallet card art originals; the app copies live in Images.xcassets
+/assets/
+
 # OS
 .DS_Store
 

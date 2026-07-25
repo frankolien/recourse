@@ -108,7 +108,7 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showsCardPicker) {
             WalletCardStylePicker(selectedRawValue: $cardStyleRaw)
-                .presentationDetents([.medium])
+                .presentationDetents([.medium, .large])
         }
         .task {
             while !Task.isCancelled {
