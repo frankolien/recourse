@@ -93,10 +93,11 @@ struct HomeView: View {
             }
         }
         .safeAreaInset(edge: .top, spacing: 0) {
+            // No opaque fill: the canvas glow must run uninterrupted behind the
+            // header, otherwise the boundary reads as a seam.
             identityHeader
                 .padding(.horizontal, 20)
                 .frame(height: 72)
-                .background(RecourseColor.night)
         }
         .coordinateSpace(name: "recourse-home-scroll")
         .onPreferenceChange(RecourseScrollOffsetPreferenceKey.self) { newOffset in

@@ -371,7 +371,7 @@ struct CheckoutReviewView: View {
         .padding(.horizontal, 20)
         .padding(.top, 12)
         .padding(.bottom, 8)
-        .background(.ultraThinMaterial)
+        .background(RecourseColor.night)
     }
 
     private var payButtonTitle: String {
@@ -889,7 +889,7 @@ struct PaymentDetailView: View {
         .padding(.horizontal, 20)
         .padding(.top, 12)
         .padding(.bottom, 8)
-        .background(.ultraThinMaterial)
+        .background(RecourseColor.night)
     }
 
     private var statusColor: Color {
@@ -1088,7 +1088,7 @@ struct DisputeFilingView: View {
         .padding(.horizontal, 20)
         .padding(.top, 12)
         .padding(.bottom, 8)
-        .background(.ultraThinMaterial)
+        .background(RecourseColor.night)
     }
 
     private var progressLabel: String {
