@@ -4,6 +4,16 @@ Convention: every session appends one entry above this line's predecessors. Form
 
 ---
 
+## 2026-07-25: Session 40, pre-submission polish: reconcile-only hardened, link previews, HEAD on images
+
+Found: three small landmines before submission. (1) vault-demo.mjs --reconcile-only called only reconcile(), but on live Arc nobody calls escrow.release() for us; the scheduled Aug 3 and Aug 7 settlements would have reverted on a Paid payment. (2) The web app shipped zero OpenGraph or Twitter metadata, so the submission URL unfurled as a bare link on Devpost, X, and Discord. (3) The backend image route 404ed on HEAD (actix web::get() does not match HEAD), which is the first request most preview bots send.
+
+Fixed: reconcile-only now releases first when the payment is still Paid (status 1), guarded by a simulateContract so an early run refuses cleanly instead of burning gas on a WindowOpen revert, checks the advance exists, and no-ops when already reconciled. Verified per R13 on an anvil fork with the etched MockForkUSDC: warped fork settled payment 14 (release then reconcile, outstanding 7.25 to 0.25, share price 1.406626 to 1.408235), a re-run took the nothing-to-do path, payment 7 settled cleanly (outstanding to 0), and an un-warped fork hit the friendly refusal. Web: OG card (1200x630, rendered by a CoreGraphics script from the app icon: deep green ground, icon tile, the thesis line), metadataBase plus title template in the root layout, per-page titles for /verify/[id], /pay, and /vault, robots.txt and sitemap. Backend: HEAD registered on the image route, redeployed to Railway, proven live (HEAD 200 on a real hash; old code could never match HEAD). Verify page already handled unknown ids ("Payment not found on Arc testnet"), no change needed.
+
+Rules earned: none new; R13 re-applied to a changed code path, which is exactly when it pays.
+
+---
+
 ## 2026-07-25: Session 39, the vault goes live: LP deposit, T+0 merchant advance, and a chain-read vault page
 
 Found: the settlement vault was deployed but never exercised, the third actor (LP) had no demo, and the web vault page showed fixture rows. The vault owner is the deployer key (the attestor signer), payment 14 (AirPods, $7, Paid, beneficiary still the merchant) was the natural advance target, and one seeded advance (payment 7, $0.25) was already outstanding with its window open until Aug 3. Arc's USDC at 0x3600.. cannot execute on an anvil fork (transfers revert; the token leans on node-native machinery), which would have blocked the R13 dry run.
