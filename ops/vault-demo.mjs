@@ -51,6 +51,8 @@ const vaultAbi = parseAbi([
 const escrowAbi = parseAbi([
   "function getPayment(uint256) view returns ((address buyer,address merchant,address beneficiary,uint256 policyId,uint128 amount,uint128 shares,uint64 paidAt,uint64 filedAt,uint8 claimType,uint16 evidenceMask,uint8 attType,uint8 attValue,bytes32 evidenceRoot,uint16 verdictBps,uint8 status))",
   "function release(uint256 paymentId)",
+  "error WindowOpen()",
+  "error NotOpen()",
 ]);
 
 const ownerPk = process.env.OWNER_PK;
@@ -132,6 +134,27 @@ if (flag("--anvil")) {
 }
 
 if (flag("--reconcile-only")) {
-  await send("reconcile", { address: vault, abi: vaultAbi, functionName: "reconcile", args: [PAYMENT_ID] });
-  await state("after reconcile");
+  // Live settlement: after the dispute window nobody has called release() yet, so
+  // this path must do it before the vault can reconcile. Status 1 = Paid (release
+  // still needed), 3 = Settled (already released). Anything else means a dispute
+  // is mid-flight and reconciling now would be wrong.
+  if (before.payment.status === 1) {
+    try {
+      await pub.simulateContract({ address: escrow, abi: escrowAbi, functionName: "release", args: [PAYMENT_ID], account: owner });
+    } catch (err) {
+      throw new Error(`release() would revert (dispute window still open?): ${err.shortMessage ?? err.message}`);
+    }
+    await send("release", { address: escrow, abi: escrowAbi, functionName: "release", args: [PAYMENT_ID] });
+  } else if (before.payment.status !== 3) {
+    throw new Error(`payment #${PAYMENT_ID} is in status ${before.payment.status}; resolve the dispute before reconciling`);
+  }
+
+  const adv = await pub.readContract({ address: vault, abi: vaultAbi, functionName: "advances", args: [PAYMENT_ID] });
+  if (!adv[2]) throw new Error(`no advance exists for payment #${PAYMENT_ID}; nothing to reconcile`);
+  if (adv[3]) {
+    console.log(`advance for payment #${PAYMENT_ID} already reconciled; nothing to do`);
+  } else {
+    await send("reconcile", { address: vault, abi: vaultAbi, functionName: "reconcile", args: [PAYMENT_ID] });
+  }
+  await state("after release + reconcile");
 }
