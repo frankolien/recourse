@@ -142,6 +142,13 @@ struct AccountFoundationView: View {
 
     private var sessionSection: some View {
         Section {
+            // Mirror of the merchant workspace's "Switch to buyer": same account,
+            // same wallet, the other side of the counter.
+            Button("Switch to merchant") {
+                storedWorkspaceRole = OnboardingRole.merchant.rawValue
+            }
+            .foregroundStyle(RecourseColor.ledger)
+
             Button("Replay onboarding") {
                 hasCompletedOnboarding = false
                 storedWorkspaceRole = ""
