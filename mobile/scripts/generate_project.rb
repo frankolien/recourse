@@ -98,6 +98,7 @@ app_target.build_configurations.each do |configuration|
     "INFOPLIST_KEY_LSApplicationCategoryType" => "public.app-category.finance",
     "INFOPLIST_KEY_NSCameraUsageDescription" => "Scan protected payment requests and capture dispute evidence.",
     "INFOPLIST_KEY_NSFaceIDUsageDescription" => "Confirm protected payment transactions.",
+    "INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription" => "Save checkout QR cards to your photo library.",
     "INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking" => "YES",
     "INFOPLIST_KEY_NSLocalNetworkUsageDescription" => "Connect to the Recourse development backend on your local network.",
     "INFOPLIST_KEY_UIApplicationSceneManifest_Generation" => "YES",

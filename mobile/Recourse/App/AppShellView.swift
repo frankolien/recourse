@@ -111,6 +111,7 @@ struct MerchantWorkspaceView: View {
     @State private var selectedProductPhoto: PhotosPickerItem?
     @State private var productImageData: Data?
     @State private var isLoadingProductPhoto = false
+    @State private var qrCardSaved = false
     @State private var isCreatingCheckout = false
     @State private var checkoutStatusMessage: String?
     @State private var checkoutPresentation: CheckoutPresentation?
@@ -130,6 +131,9 @@ struct MerchantWorkspaceView: View {
         let manifest: OrderManifest
         let encodedRequest: String
         let image: UIImage
+        // Pre-rendered branded card (QR + order summary) so Save and Share hand the
+        // buyer one self-contained image; the app can pay from an imported screenshot.
+        let shareCard: UIImage
     }
 
     private enum MerchantPage: String, CaseIterable {
@@ -223,7 +227,7 @@ struct MerchantWorkspaceView: View {
                 selectedPolicyID = policies.first?.id
             }
         }
-        .sheet(item: $checkoutPresentation) { presentation in
+        .sheet(item: $checkoutPresentation, onDismiss: resetCheckoutForm) { presentation in
             checkoutQRSheet(presentation)
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
@@ -652,44 +656,148 @@ struct MerchantWorkspaceView: View {
     }
 
     private func checkoutQRSheet(_ presentation: CheckoutPresentation) -> some View {
-        VStack(spacing: 22) {
+        VStack(spacing: 18) {
             VStack(spacing: 6) {
-                Text("Show this to the buyer")
+                Text("Checkout published")
                     .font(.system(size: 24, weight: .bold))
-                Text("They can scan it live or import a screenshot.")
+                Text("Save or share this card. The buyer scans it live or imports the image.")
                     .font(.system(size: 13))
                     .foregroundStyle(RecourseColor.muted)
+                    .multilineTextAlignment(.center)
             }
-            Spacer()
-            Image(uiImage: presentation.image)
-                .interpolation(.none)
+            Spacer(minLength: 0)
+            Image(uiImage: presentation.shareCard)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 270, height: 270)
-                .padding(18)
-                .background(.white, in: RoundedRectangle(cornerRadius: 28))
-                .shadow(color: .black.opacity(0.08), radius: 24, y: 12)
-            VStack(spacing: 6) {
-                Text(presentation.request.amount.formatted)
-                    .font(.system(size: 30, weight: .bold, design: .rounded))
-                Text(presentation.manifest.itemName)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(RecourseColor.ink)
-                    .lineLimit(1)
-                Text("Policy #\(presentation.request.policyID) · \(presentation.manifest.orderReference)")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(RecourseColor.muted)
-                    .lineLimit(1)
-            }
-            Spacer()
-            ShareLink(item: presentation.encodedRequest) {
-                Label("Share checkout", systemImage: "square.and.arrow.up")
+                .frame(maxWidth: 310)
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .shadow(color: .black.opacity(0.10), radius: 24, y: 12)
+            Spacer(minLength: 0)
+            HStack(spacing: 12) {
+                Button {
+                    UIImageWriteToSavedPhotosAlbum(presentation.shareCard, nil, nil, nil)
+                    withAnimation(.snappy) { qrCardSaved = true }
+                } label: {
+                    Label(
+                        qrCardSaved ? "Saved" : "Save image",
+                        systemImage: qrCardSaved ? "checkmark" : "square.and.arrow.down"
+                    )
                     .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(RecourseSecondaryButtonStyle())
+
+                ShareLink(
+                    item: Image(uiImage: presentation.shareCard),
+                    preview: SharePreview(
+                        "\(presentation.manifest.itemName) · \(presentation.request.amount.formatted)",
+                        image: Image(uiImage: presentation.shareCard)
+                    )
+                ) {
+                    Label("Share", systemImage: "square.and.arrow.up")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(RecoursePrimaryButtonStyle())
             }
-            .buttonStyle(RecoursePrimaryButtonStyle())
+            Text("Closing this starts a fresh checkout.")
+                .font(.system(size: 11))
+                .foregroundStyle(RecourseColor.muted)
         }
         .padding(24)
         .background(RecourseColor.surface)
+    }
+
+    // The exported card: brand, QR, and order summary on an always-light canvas so it
+    // stays legible in any chat theme or photo grid it lands in.
+    private struct CheckoutShareCard: View {
+        let qr: UIImage
+        let amountText: String
+        let itemName: String
+        let policyLine: String
+
+        private let ledger = Color(red: 11 / 255, green: 112 / 255, blue: 84 / 255)
+        private let ink = Color(red: 16 / 255, green: 24 / 255, blue: 21 / 255)
+
+        var body: some View {
+            VStack(spacing: 20) {
+                HStack(spacing: 9) {
+                    Image(systemName: "checkmark.shield.fill")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 30, height: 30)
+                        .background(ledger, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                    Text("Recourse")
+                        .font(.system(size: 19, weight: .bold))
+                        .foregroundStyle(ink)
+                    Spacer()
+                    Text("ARC TESTNET")
+                        .font(.system(size: 10, weight: .bold))
+                        .kerning(0.8)
+                        .foregroundStyle(ledger)
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 5)
+                        .background(ledger.opacity(0.1), in: Capsule())
+                }
+                Image(uiImage: qr)
+                    .interpolation(.none)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 252, height: 252)
+                VStack(spacing: 5) {
+                    Text(amountText)
+                        .font(.system(size: 30, weight: .bold, design: .rounded))
+                        .foregroundStyle(ink)
+                    Text(itemName)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(ink)
+                        .lineLimit(1)
+                    Text(policyLine)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(ink.opacity(0.55))
+                        .lineLimit(1)
+                }
+                Rectangle()
+                    .fill(ink.opacity(0.08))
+                    .frame(height: 1)
+                Text("Protected USDC checkout. Scan it live or import this image in the Recourse app.")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(ink.opacity(0.55))
+                    .multilineTextAlignment(.center)
+            }
+            .padding(26)
+            .frame(width: 360)
+            .background(.white)
+        }
+    }
+
+    @MainActor
+    private func renderedShareCard(
+        qr: UIImage,
+        amountText: String,
+        itemName: String,
+        policyLine: String
+    ) -> UIImage {
+        let renderer = ImageRenderer(
+            content: CheckoutShareCard(
+                qr: qr,
+                amountText: amountText,
+                itemName: itemName,
+                policyLine: policyLine
+            )
+        )
+        renderer.scale = 3
+        renderer.isOpaque = true
+        return renderer.uiImage ?? qr
+    }
+
+    private func resetCheckoutForm() {
+        amount = ""
+        itemName = ""
+        itemDescription = ""
+        orderReference = ""
+        selectedProductPhoto = nil
+        productImageData = nil
+        qrCardSaved = false
+        checkoutErrorMessage = nil
     }
 
     // Publishes a protected order: optional image upload, then the manifest whose
@@ -793,11 +901,18 @@ struct MerchantWorkspaceView: View {
                 checkoutErrorMessage = "Recourse could not render this checkout QR. Try again."
                 return
             }
+            qrCardSaved = false
             checkoutPresentation = CheckoutPresentation(
                 request: request,
                 manifest: manifest,
                 encodedRequest: encodedRequest,
-                image: image
+                image: image,
+                shareCard: renderedShareCard(
+                    qr: image,
+                    amountText: amount.formatted,
+                    itemName: name,
+                    policyLine: "Policy #\(selectedPolicyID) · \(resolvedReference)"
+                )
             )
         } catch let error as OrderAPIError {
             switch error {
