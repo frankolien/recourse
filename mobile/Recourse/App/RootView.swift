@@ -4,6 +4,7 @@ struct RootView: View {
     let environment: AppEnvironment
     @AppStorage("recourse.hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("recourse.workspaceRole") private var storedWorkspaceRole = ""
+    @AppStorage("recourse.appearance") private var appearanceRaw = "dark"
 
     private var workspaceDestination: WorkspaceDestination {
         WorkspaceRouting.destination(
@@ -57,10 +58,11 @@ struct RootView: View {
             }
         }
         .recourseKeyboardDismissal()
-        // The app interior is dark; onboarding keeps its white-and-green world.
-        // The scheme also flips system chrome (sheets, keyboards) per branch.
+        // The app interior follows the user's appearance pick (Settings), dark
+        // by default; onboarding always keeps its white-and-green world. The
+        // scheme also flips system chrome (sheets, keyboards) per branch.
         .background(workspaceDestination == .buyerApp ? RecourseColor.night : RecourseColor.canvas)
-        .preferredColorScheme(workspaceDestination == .buyerApp ? .dark : .light)
+        .preferredColorScheme(inAppColorScheme)
         .task {
             await environment.accountSession.restore()
         }
@@ -75,6 +77,11 @@ struct RootView: View {
                 openIncomingCheckout(url)
             }
         }
+    }
+
+    private var inAppColorScheme: ColorScheme {
+        guard workspaceDestination == .buyerApp else { return .light }
+        return appearanceRaw == "light" ? .light : .dark
     }
 
     private func resetOnboarding() {

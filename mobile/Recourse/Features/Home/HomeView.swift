@@ -4,6 +4,7 @@ struct HomeView: View {
     let environment: AppEnvironment
     let onScrollTowardTopChanged: (Bool) -> Void
     let onScanRequested: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
     @State private var previousScrollOffset: CGFloat = 0
     @State private var hidesAttention = false
     @State private var showsReceive = false
@@ -126,16 +127,18 @@ struct HomeView: View {
         }
     }
 
-    // Flat greenish-black ground with a soft brand glow bleeding from the top.
+    // Flat ground; in the dark appearance a soft brand glow bleeds from the top.
     private var homeCanvas: some View {
         ZStack(alignment: .top) {
             RecourseColor.night
-            LinearGradient(
-                colors: [RecourseColor.ledgerDeep.opacity(0.32), .clear],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .frame(height: 320)
+            if colorScheme == .dark {
+                LinearGradient(
+                    colors: [RecourseColor.ledgerDeep.opacity(0.32), .clear],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 320)
+            }
         }
     }
 

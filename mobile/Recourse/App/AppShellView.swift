@@ -383,7 +383,7 @@ struct MerchantWorkspaceView: View {
         }
         .foregroundStyle(.white)
         .padding(20)
-        .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .background(RecourseColor.inkCard, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .stroke(.white.opacity(0.1), lineWidth: 1)

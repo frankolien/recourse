@@ -6,6 +6,7 @@ struct AccountFoundationView: View {
 
     @AppStorage("recourse.hasCompletedOnboarding") private var hasCompletedOnboarding = true
     @AppStorage("recourse.workspaceRole") private var storedWorkspaceRole = OnboardingRole.buyer.rawValue
+    @AppStorage("recourse.appearance") private var appearanceRaw = "dark"
     @State private var showsNameEditor = false
 
     // The account session is the single source of profile truth: names persist through
@@ -24,6 +25,7 @@ struct AccountFoundationView: View {
     var body: some View {
         List {
             identitySection
+            appearanceSection
             securitySection
             generalSection
             supportSection
@@ -79,6 +81,19 @@ struct AccountFoundationView: View {
                 .padding(.vertical, 4)
             }
             .buttonStyle(.plain)
+        }
+    }
+
+    // Applies to the in-app screens only; onboarding stays white and green
+    // regardless of this choice.
+    private var appearanceSection: some View {
+        Section("Appearance") {
+            Picker("Theme", selection: $appearanceRaw) {
+                Text("Dark").tag("dark")
+                Text("Light").tag("light")
+            }
+            .pickerStyle(.segmented)
+            .listRowBackground(Color.clear)
         }
     }
 
