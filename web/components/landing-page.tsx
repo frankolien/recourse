@@ -43,7 +43,7 @@ const stack = [
 
 const features = [
   { icon: <ShieldCheck size={20} />, tone: "green", title: "Clear protection", copy: "Refund policies are locked in before payment and cannot be changed later.", cta: "Learn more", href: "/policies" },
-  { icon: <Scale size={20} />, tone: "sage", title: "Deterministic outcomes", copy: "Disputes resolve based on rules and verified evidence, not human opinion.", cta: "See how it works", href: "/verify/5" },
+  { icon: <Scale size={20} />, tone: "sage", title: "Deterministic outcomes", copy: "Disputes resolve based on rules and verified evidence, not human opinion.", cta: "See how it works", href: "/verify/13" },
   { icon: <Landmark size={20} />, tone: "amber", title: "Instant settlement", copy: "Merchants get paid immediately. We handle the protection behind the scenes.", cta: "For merchants", href: "/vault" },
   { icon: <TrendingUp size={20} />, tone: "sage", title: "Yield while protected", copy: "Escrowed funds earn yield through USYC during the dispute window.", cta: "Explore the vault", href: "/vault" },
 ];
@@ -82,7 +82,7 @@ const audiences = [
     title: "Know your protection before paying",
     copy: "Read the refund policy in plain language, submit evidence when something goes wrong, and verify the result independently.",
     points: ["Policy locked at checkout", "Refund sent to the original buyer", "Public verdict verification"],
-    href: "/verify/5",
+    href: "/verify/13",
     cta: "View a protected payment",
   },
   {
@@ -157,7 +157,7 @@ export function LandingPage() {
           <h1>Buyer protection for <em>USDC payments.</em></h1>
           <p>Escrow USDC under immutable refund rules. Buyers get verifiable recourse, merchants get paid immediately, and disputes resolve from evidence instead of opinion.</p>
           <div className="landing-cta-row">
-            <Link className="landing-cta" href="/verify/5">Try the live demo <ArrowRight size={16} /></Link>
+            <Link className="landing-cta" href="/verify/13">Try the live demo <ArrowRight size={16} /></Link>
             <a className="landing-cta ghost" href="https://github.com/frankolien/recourse" target="_blank" rel="noreferrer">View developer docs</a>
           </div>
           <div className="landing-proof">
@@ -247,7 +247,7 @@ export function LandingPage() {
             <li><Code2 size={15} /> TypeScript recomputes the result in your browser</li>
             <li><Eye size={15} /> Matching hashes prove the outcome is reproducible</li>
           </ul>
-          <Link href="/verify/5">Open the live verifier <ArrowRight size={15} /></Link>
+          <Link href="/verify/13">Open the live verifier <ArrowRight size={15} /></Link>
         </div>
         <div className="landing-proof-demo">
           <div className="proof-demo-top">
@@ -329,7 +329,7 @@ export function LandingPage() {
         </div>
         <div>
           <Link className="landing-cta light" href="/signin">Launch the app <ArrowRight size={16} /></Link>
-          <Link className="landing-cta outline-light" href="/verify/5">Verify payment #5</Link>
+          <Link className="landing-cta outline-light" href="/verify/13">Verify payment #13</Link>
         </div>
       </section>
 
@@ -338,7 +338,8 @@ export function LandingPage() {
         <p>Buyer protection for USDC payments on Arc. Testnet prototype.</p>
         <div className="landing-footer-links">
           <Link href="/signin">Launch App</Link>
-          <Link href="/verify/5">Verifier</Link>
+          <Link href="/verify/13">Verifier</Link>
+          <Link href="/privacy">Privacy</Link>
           <a href="https://github.com/frankolien/recourse" target="_blank" rel="noreferrer">GitHub</a>
         </div>
       </footer>

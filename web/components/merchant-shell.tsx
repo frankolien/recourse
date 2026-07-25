@@ -141,7 +141,7 @@ export function MerchantShell({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
-          <Link className="switch-role" href="/verify/5">
+          <Link className="switch-role" href="/verify/13">
             <ShieldCheck size={18} /> Open public verifier
           </Link>
           <button className="dash-nav-item sign-out" type="button" onClick={handleSignOut}>

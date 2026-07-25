@@ -137,7 +137,7 @@ export function PoliciesPage() {
             </div>
           </div>
 
-          <Link className="page-cta ghost" href="/verify/5"><ArrowUpRight size={15} /> Open this policy in the verifier</Link>
+          <Link className="page-cta ghost" href="/verify/13"><ArrowUpRight size={15} /> Open this policy in the verifier</Link>
         </>
       ) : null}
     </div>

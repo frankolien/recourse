@@ -95,7 +95,7 @@ export function PaymentsPage() {
       <section className="dash-panel">
         <div className="panel-heading">
           <div><h2>Verifiable on Arc testnet</h2><p>These verdicts can be recomputed by anyone, with no backend in the loop</p></div>
-          <Link href="/verify/5">Open verifier</Link>
+          <Link href="/verify/13">Open verifier</Link>
         </div>
         <div className="records-table">
           {onchain.map((item) => (

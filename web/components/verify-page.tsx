@@ -313,9 +313,9 @@ export function VerifyPage({ paymentId }: { paymentId: bigint }) {
             <p>Every result below comes from live Arc state and the public policy engine. No backend decides the outcome.</p>
           </div>
           <div className="payment-switcher">
-            <span>Demo cases</span>
-            <Link className={paymentId === 5n ? "case-link active" : "case-link"} href="/verify/5">#5 Refunded</Link>
-            <Link className={paymentId === 6n ? "case-link active" : "case-link"} href="/verify/6">#6 Denied</Link>
+            <span>Live cases</span>
+            <Link className={paymentId === 13n ? "case-link active" : "case-link"} href="/verify/13">#13 Refunded</Link>
+            <Link className={paymentId === 15n ? "case-link active" : "case-link"} href="/verify/15">#15 Denied</Link>
             <Link className={paymentId === 10n ? "case-link active" : "case-link"} href="/verify/10">#10 Evidence</Link>
           </div>
         </section>

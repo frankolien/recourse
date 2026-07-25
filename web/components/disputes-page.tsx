@@ -99,7 +99,7 @@ export function DisputesPage() {
             <li><span><ShieldCheck size={15} /></span><div><strong>Attestor signs</strong><p>Objective inputs, such as delivery, are attested with an EIP-712 signature.</p></div></li>
             <li><span><LockKeyhole size={15} /></span><div><strong>Escrow settles</strong><p>The refund and merchant split settle atomically from the escrow balance.</p></div></li>
           </ol>
-          <Link className="page-cta ghost" href="/verify/5"><FlaskConical size={15} /> Recompute a verdict</Link>
+          <Link className="page-cta ghost" href="/verify/13"><FlaskConical size={15} /> Recompute a verdict</Link>
         </section>
       </div>
     </div>

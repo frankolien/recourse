@@ -15,7 +15,7 @@ const faqs = [
 ];
 
 const resources = [
-  { title: "How verification works", copy: "Recompute any verdict from live Arc data", href: "/verify/5", icon: <FileCheck2 size={18} />, external: false },
+  { title: "How verification works", copy: "Recompute any verdict from live Arc data", href: "/verify/13", icon: <FileCheck2 size={18} />, external: false },
   { title: "Policy reference", copy: "Read the rules pinned to your payments", href: "/policies", icon: <ShieldCheck size={18} />, external: false },
   { title: "Developer docs", copy: "Integrate Recourse into your app", href: "https://github.com/frankolien/recourse", icon: <Braces size={18} />, external: true },
 ];

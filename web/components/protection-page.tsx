@@ -128,7 +128,7 @@ export function ProtectionPage() {
 
       <div className="panel-note">
         <Info size={16} />
-        <span>Protection is deterministic. When a dispute is filed, the same policy engine runs onchain and in your browser, so the refund outcome can be recomputed by anyone. Try it on the <Link href="/verify/5" style={{ color: "inherit", fontWeight: 600, textDecoration: "underline" }}>public verifier</Link>.</span>
+        <span>Protection is deterministic. When a dispute is filed, the same policy engine runs onchain and in your browser, so the refund outcome can be recomputed by anyone. Try it on the <Link href="/verify/13" style={{ color: "inherit", fontWeight: 600, textDecoration: "underline" }}>public verifier</Link>.</span>
       </div>
     </div>
   );

@@ -44,7 +44,7 @@ const learnCards = [
   { icon: <FileCheck2 size={21} />, title: "How protection works", copy: "Understand policies, escrow and disputes", href: "/policies" },
   { icon: <Store size={21} />, title: "For merchants", copy: "Get paid instantly while buyers stay protected", href: "/vault" },
   { icon: <Code2 size={21} />, title: "For developers", copy: "Integrate Recourse into your app", href: "https://github.com/frankolien/recourse" },
-  { icon: <LockKeyhole size={21} />, title: "Security and audits", copy: "Built on Arc with best in class security", href: "/verify/5" },
+  { icon: <LockKeyhole size={21} />, title: "Security and audits", copy: "Built on Arc with best in class security", href: "/verify/13" },
 ];
 
 interface OrderMeta {
