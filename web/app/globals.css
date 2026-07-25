@@ -6067,3 +6067,8 @@ footer {
 .dash-modal-primary:hover:not(:disabled) {
   background: var(--green-dark);
 }
+
+.merchant-icon.order-photo {
+  object-fit: cover;
+  border: 1px solid var(--line-soft);
+}

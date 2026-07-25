@@ -47,10 +47,15 @@ const learnCards = [
   { icon: <LockKeyhole size={21} />, title: "Security and audits", copy: "Built on Arc with best in class security", href: "/verify/5" },
 ];
 
-// Fetch verified order names for rows that carry an orderRef; the manifest is the
-// same hash-bound document the phone verifies, the web just displays it.
-function useOrderNames(payments: ApiPayment[] | null): Record<number, string> {
-  const [names, setNames] = useState<Record<number, string>>({});
+interface OrderMeta {
+  name: string;
+  imageHash: string | null;
+}
+
+// Fetch verified order names and image hashes for rows that carry an orderRef; the
+// manifest is the same hash-bound document the phone verifies, the web just displays it.
+function useOrderMeta(payments: ApiPayment[] | null): Record<number, OrderMeta> {
+  const [meta, setMeta] = useState<Record<number, OrderMeta>>({});
   useEffect(() => {
     if (!payments) return;
     let alive = true;
@@ -59,20 +64,35 @@ function useOrderNames(payments: ApiPayment[] | null): Record<number, string> {
       targets.map((p) =>
         fetch(`${API_BASE}/api/orders/${p.orderRef}`)
           .then((r) => (r.ok ? r.json() : null))
-          .then((m) => [p.paymentId, m?.itemName as string | undefined] as const)
-          .catch(() => [p.paymentId, undefined] as const),
+          .then((m) => [p.paymentId, m] as const)
+          .catch(() => [p.paymentId, null] as const),
       ),
     ).then((pairs) => {
       if (!alive) return;
-      const next: Record<number, string> = {};
-      for (const [id, name] of pairs) if (name) next[id] = name;
-      setNames(next);
+      const next: Record<number, OrderMeta> = {};
+      for (const [id, manifest] of pairs) {
+        if (manifest?.itemName) {
+          next[id] = { name: manifest.itemName, imageHash: manifest.imageHash ?? null };
+        }
+      }
+      setMeta(next);
     });
     return () => {
       alive = false;
     };
   }, [payments]);
-  return names;
+  return meta;
+}
+
+function OrderArtwork({ meta }: { meta: OrderMeta | undefined }) {
+  if (meta?.imageHash) {
+    return (
+      /* Content-addressed product photo; served via the CDN redirect. */
+      // eslint-disable-next-line @next/next/no-img-element
+      <img className="merchant-icon order-photo" src={`${API_BASE}/api/orders/image/${meta.imageHash}`} alt="" />
+    );
+  }
+  return <span className="merchant-icon cloud"><PackageCheck size={18} /></span>;
 }
 
 function usdcDisplay(balance: bigint | null): { dollars: string; units: string } {
@@ -106,7 +126,7 @@ export function DashboardPage() {
   const policiesLive = useLive(getPolicies);
   const payments = paymentsLive.data;
   const policies = policiesLive.data;
-  const orderNames = useOrderNames(payments);
+  const orderMeta = useOrderMeta(payments);
 
   const [dialog, setDialog] = useState<WalletDialog>("none");
   const [copied, setCopied] = useState(false);
@@ -146,7 +166,7 @@ export function DashboardPage() {
     const source = scoped ? mine : (payments ?? []);
     const events: { key: string; icon: React.ReactNode; title: string; detail: string; at: number; tone: string }[] = [];
     for (const p of source) {
-      const name = orderNames[p.paymentId] ?? `Payment #${p.paymentId}`;
+      const name = orderMeta[p.paymentId]?.name ?? `Payment #${p.paymentId}`;
       events.push({ key: `paid-${p.paymentId}`, icon: <PackageCheck size={15} />, title: `Protected payment: ${name}`, detail: formatUsdc(p.amount), at: p.paidAt, tone: "soft" });
       if (p.filedAt) events.push({ key: `disp-${p.paymentId}`, icon: <ClipboardList size={15} />, title: `Dispute filed on #${p.paymentId}`, detail: name, at: p.filedAt, tone: "orange" });
       if (p.status === 3) {
@@ -155,7 +175,7 @@ export function DashboardPage() {
       }
     }
     return events.sort((a, b) => b.at - a.at).slice(0, 5);
-  }, [scoped, mine, payments, orderNames]);
+  }, [scoped, mine, payments, orderMeta]);
 
   const balanceText = usdcDisplay(balance);
   const now = Math.floor(Date.now() / 1000);
@@ -245,8 +265,8 @@ export function DashboardPage() {
                   return (
                     <Link className="protection-row" href={`/verify/${p.paymentId}`} key={p.paymentId}>
                       <div className="merchant-cell">
-                        <span className="merchant-icon cloud"><PackageCheck size={18} /></span>
-                        <span><strong>{orderNames[p.paymentId] ?? `Payment #${p.paymentId}`}</strong><small>{shortAddr(p.merchant)}</small></span>
+                        <OrderArtwork meta={orderMeta[p.paymentId]} />
+                        <span><strong>{orderMeta[p.paymentId]?.name ?? `Payment #${p.paymentId}`}</strong><small>{shortAddr(p.merchant)}</small></span>
                       </div>
                       <div><strong>${formatUsdc(p.amount).replace(" USDC", "")}</strong><small>{formatUsdc(p.amount)}</small></div>
                       <div><strong>{end ? formatDate(end) : "Pending"}</strong><small>paid {formatDate(p.paidAt)}</small></div>
@@ -273,7 +293,7 @@ export function DashboardPage() {
                   <div className="dispute-order">
                     <span className="dispute-icon"><LockKeyhole size={17} /></span>
                     <div>
-                      <strong>{orderNames[p.paymentId] ?? `Payment #${p.paymentId}`}</strong>
+                      <strong>{orderMeta[p.paymentId]?.name ?? `Payment #${p.paymentId}`}</strong>
                       <small>vs {shortAddr(p.merchant)}</small>
                       <b>Under review</b>
                     </div>
