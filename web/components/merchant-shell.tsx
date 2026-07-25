@@ -22,7 +22,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAccount } from "wagmi";
 import { BrandMark } from "@/components/brand-mark";
-import { ConnectWallet, shortAddress } from "@/components/connect-wallet";
+import { ArcWalletBadge } from "@/components/arc-wallet-badge";
+import { shortAddress } from "@/components/connect-wallet";
 import { useSession } from "@/components/session-provider";
 import { LottiePlayer } from "@/components/lottie-player";
 import pingAnim from "@/lib/lottie/ping.json";
@@ -159,7 +160,7 @@ export function MerchantShell({ children }: { children: React.ReactNode }) {
             <span className="network-select" title={`Chain ${arcTestnet.id}`}>
               <LottiePlayer animationData={pingAnim} className="lottie-ping" /> Arc Testnet
             </span>
-            <ConnectWallet />
+            <ArcWalletBadge accountId={account.accountId} />
             <Link className="notification-button" href="/disputes" aria-label="Notifications">
               <Bell size={17} />
               <span className="notification-dot" />

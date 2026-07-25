@@ -5911,3 +5911,159 @@ footer {
   font-size: 11.5px;
   line-height: 1.55;
 }
+
+/* ---- Provisioned Arc wallet (badge, balance chip, send/receive dialogs) ---- */
+.wallet-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 38px;
+  padding: 0 13px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--white);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.wallet-badge:hover {
+  background: #f2f1ec;
+}
+
+.wallet-address {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  margin-top: 8px;
+  padding: 5px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.panel-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 2px;
+  color: #6f7873;
+  font-size: 13px;
+}
+
+.dash-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(17, 27, 25, 0.45);
+}
+
+.dash-modal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 420px;
+  padding: 26px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--white);
+  box-shadow: 0 30px 80px rgba(17, 27, 25, 0.25);
+}
+
+.dash-modal h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.dash-modal p {
+  margin: 0;
+  color: #5c6862;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.dash-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--white);
+  color: #6f7873;
+  cursor: pointer;
+}
+
+.dash-modal-address {
+  padding: 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 11px;
+  background: var(--paper-bright);
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.dash-modal-field {
+  display: grid;
+  gap: 5px;
+}
+
+.dash-modal-field span {
+  color: #6f7873;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.dash-modal-field input {
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--white);
+  font-size: 14px;
+}
+
+.dash-modal-error {
+  color: var(--red);
+  font-size: 12.5px;
+}
+
+.dash-modal-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 46px;
+  margin-top: 4px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--green);
+  color: #f2f8f4;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dash-modal-primary:disabled {
+  opacity: 0.6;
+}
+
+.dash-modal-primary:hover:not(:disabled) {
+  background: var(--green-dark);
+}
