@@ -275,11 +275,11 @@ struct HomeView: View {
             Text("YOUR PROTECTION")
                 .font(.system(size: 10, weight: .bold))
                 .tracking(1.4)
-                .foregroundStyle(RecourseColor.ledger)
+                .foregroundStyle(RecourseColor.muted)
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(currency(protectedTotal))
                     .font(.system(size: 42, weight: .medium, design: .rounded))
-                    .foregroundStyle(RecourseColor.ledger)
+                    .foregroundStyle(RecourseColor.ink)
                 Text("protected")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(RecourseColor.muted)
@@ -320,7 +320,7 @@ struct HomeView: View {
             Button(action: onScanRequested) {
                 Image(systemName: "qrcode.viewfinder")
                     .font(.system(size: 19, weight: .semibold))
-                    .foregroundStyle(RecourseColor.ledger)
+                    .foregroundStyle(RecourseColor.ink)
                     .frame(width: 50, height: 50)
                     .background(.ultraThinMaterial, in: Circle())
                     .overlay {
@@ -336,7 +336,7 @@ struct HomeView: View {
             } label: {
                 Image(systemName: "paperplane.fill")
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(RecourseColor.ledger)
+                    .foregroundStyle(RecourseColor.ink)
                     .frame(width: 50, height: 50)
                     .background(.ultraThinMaterial, in: Circle())
                     .overlay {
@@ -416,7 +416,7 @@ struct HomeView: View {
                     .foregroundStyle(RecourseColor.ink)
                 Text(timeLeft(for: payment))
                     .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(RecourseColor.ledger)
+                    .foregroundStyle(RecourseColor.muted)
             }
         }
         .padding(.vertical, 11)
@@ -451,9 +451,10 @@ struct HomeView: View {
         HStack(spacing: 13) {
             Image(systemName: payment.state == .refunded ? "arrow.uturn.backward.circle.fill" : "checkmark.seal.fill")
                 .font(.system(size: 17))
-                .foregroundStyle(RecourseColor.ledger)
+                // Green only when money came back; a completed sale is a neutral fact.
+                .foregroundStyle(payment.state == .refunded ? RecourseColor.ledger : RecourseColor.ink)
                 .frame(width: 40, height: 40)
-                .background(Color(red: 0.96, green: 0.97, blue: 0.95), in: Circle())
+                .background(RecourseColor.clay, in: Circle())
             Button {
                 environment.router.push(.payment(payment.id))
             } label: {

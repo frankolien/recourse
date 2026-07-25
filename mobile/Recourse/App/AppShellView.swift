@@ -346,8 +346,10 @@ struct MerchantWorkspaceView: View {
 
     private var salesPulse: some View {
         ZStack(alignment: .topTrailing) {
+            // A whisper of brand color on an otherwise neutral dark card; green is the
+            // accent here, not the wallpaper.
             Circle()
-                .fill(merchantAccent.opacity(0.22))
+                .fill(merchantAccent.opacity(0.1))
                 .frame(width: 170, height: 170)
                 .blur(radius: 46)
                 .offset(x: 54, y: -62)
@@ -381,19 +383,19 @@ struct MerchantWorkspaceView: View {
         }
         .foregroundStyle(.white)
         .padding(20)
-        .background(merchantDark, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .background(RecourseColor.ink, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(merchantAccent.opacity(0.5), lineWidth: 1)
+                .stroke(.white.opacity(0.1), lineWidth: 1)
         }
-        .shadow(color: merchantDark.opacity(0.15), radius: 18, y: 10)
+        .shadow(color: RecourseColor.ink.opacity(0.15), radius: 18, y: 10)
     }
 
     private var walletBalanceStrip: some View {
         HStack(spacing: 11) {
             Image(systemName: "wallet.bifold")
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(merchantAccent)
+                .foregroundStyle(RecourseColor.muted)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Wallet balance")
                     .font(.system(size: 11, weight: .medium))
@@ -415,9 +417,9 @@ struct MerchantWorkspaceView: View {
             Button(action: copyMerchantWalletAddress) {
                 Image(systemName: hasCopiedWalletAddress ? "checkmark" : "doc.on.doc")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(merchantAccent)
+                    .foregroundStyle(hasCopiedWalletAddress ? merchantAccent : RecourseColor.ink)
                     .frame(width: 32, height: 32)
-                    .background(merchantAccent.opacity(0.08), in: Circle())
+                    .background(RecourseColor.clay, in: Circle())
             }
             .buttonStyle(.plain)
             .disabled(merchantAddress == nil)
@@ -1076,9 +1078,9 @@ struct MerchantWorkspaceView: View {
         HStack(spacing: 12) {
             Image(systemName: payment.state.systemImage)
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(RecourseColor.ledger)
+                .foregroundStyle(RecourseColor.ink)
                 .frame(width: 40, height: 40)
-                .background(RecourseColor.softGreen, in: RoundedRectangle(cornerRadius: 12))
+                .background(RecourseColor.clay, in: RoundedRectangle(cornerRadius: 12))
             VStack(alignment: .leading, spacing: 3) {
                 Text(payment.orderReference)
                     .font(.system(size: 14, weight: .semibold))
