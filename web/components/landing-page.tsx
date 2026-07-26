@@ -151,6 +151,8 @@ export function LandingPage() {
         </div>
       </header>
 
+      {/* Hero and stack strip share the first viewport: the strip closes the fold. */}
+      <div className="landing-fold">
       <section className="landing-hero">
         <div className="landing-hero-copy">
           <span className="landing-eyebrow"><LivePulse /> Live on Arc Testnet</span>
@@ -201,6 +203,7 @@ export function LandingPage() {
           </div>
         </div>
       </section>
+      </div>
 
       <section className="landing-features" id="features">
         <div className="landing-section-kicker">Why Recourse</div>

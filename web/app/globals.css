@@ -4140,15 +4140,24 @@ footer {
   background: var(--green-dark);
 }
 
+/* Hero plus stack strip own the whole first viewport (minus the 74px sticky
+   nav) with the strip pinned to the fold's bottom edge, so the first screen
+   ends on a finished line instead of dead space. svh keeps mobile toolbars
+   honest. */
+.landing-fold {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100svh - 74px);
+}
+
 .landing-hero {
   display: grid;
+  flex: 1;
   grid-template-columns: minmax(430px, 0.92fr) minmax(600px, 1.08fr);
   gap: 28px;
   align-items: center;
+  width: 100%;
   max-width: 1440px;
-  /* The hero owns the whole first viewport (minus the 74px sticky nav) so
-     nothing below it peeks above the fold. svh keeps mobile toolbars honest. */
-  min-height: calc(100svh - 74px);
   margin: 0 auto;
   padding: clamp(38px, 4vw, 54px) clamp(22px, 5vw, 56px) 46px;
 }
@@ -5218,8 +5227,11 @@ footer {
     font-size: 12px;
   }
 
-  .landing-hero {
+  .landing-fold {
     min-height: calc(100svh - 66px);
+  }
+
+  .landing-hero {
     padding-top: 34px;
   }
 
