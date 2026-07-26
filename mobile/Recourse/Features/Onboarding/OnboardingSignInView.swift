@@ -357,6 +357,22 @@ struct OnboardingSignInView: View {
             .frame(height: 52)
             .frame(maxWidth: .infinity)
             .clipShape(Capsule())
+            // The system button scales its label with height, landing larger
+            // than every other CTA; this cover redraws Apple's branding at the
+            // app's type scale while taps fall through to the real control.
+            .overlay {
+                HStack(spacing: 9) {
+                    Image(systemName: "apple.logo")
+                        .font(.system(size: 16, weight: .medium))
+                    Text("Continue with Apple")
+                        .font(.system(size: 15, weight: .semibold))
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
+                .background(.black, in: Capsule())
+                .allowsHitTesting(false)
+            }
             .allowsHitTesting(accountSession.isAppleSignInReady)
             .opacity(accountSession.isAppleSignInReady ? 1 : 0.55)
 
