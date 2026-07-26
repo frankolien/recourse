@@ -4146,6 +4146,9 @@ footer {
   gap: 28px;
   align-items: center;
   max-width: 1440px;
+  /* The hero owns the whole first viewport (minus the 74px sticky nav) so
+     nothing below it peeks above the fold. svh keeps mobile toolbars honest. */
+  min-height: calc(100svh - 74px);
   margin: 0 auto;
   padding: clamp(38px, 4vw, 54px) clamp(22px, 5vw, 56px) 46px;
 }
@@ -5216,6 +5219,7 @@ footer {
   }
 
   .landing-hero {
+    min-height: calc(100svh - 66px);
     padding-top: 34px;
   }
 
