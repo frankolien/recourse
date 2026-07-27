@@ -49,7 +49,7 @@ export function SupportPage() {
             <p style={{ margin: "0 0 14px", color: "#5c6663", fontSize: 13, lineHeight: 1.55 }}>
               Stuck on a payment or a dispute? Send the order id and we will look at the onchain record with you.
             </p>
-            <a className="page-cta" href="mailto:support@recourse.demo"><Mail size={15} /> Email support</a>
+            <a className="page-cta" href="mailto:gkenny896@gmail.com"><Mail size={15} /> Email support</a>
           </section>
 
           <section className="dash-panel">
