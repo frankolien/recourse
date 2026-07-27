@@ -5,10 +5,13 @@ struct RootView: View {
     @AppStorage("recourse.hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("recourse.workspaceRole") private var storedWorkspaceRole = ""
     @AppStorage("recourse.appearance") private var appearanceRaw = "dark"
+    // Session restore is local-only and near-instant; the hold keeps the splash
+    // up long enough for its entrance animation to land instead of blinking.
+    @State private var isHoldingSplash = true
 
     private var workspaceDestination: WorkspaceDestination {
         WorkspaceRouting.destination(
-            isRestoring: environment.accountSession.isRestoring,
+            isRestoring: environment.accountSession.isRestoring || isHoldingSplash,
             isAuthenticated: environment.accountSession.isAuthenticated,
             hasCompletedOnboarding: hasCompletedOnboarding,
             storedRole: storedWorkspaceRole
@@ -21,9 +24,8 @@ struct RootView: View {
         Group {
             switch workspaceDestination {
             case .restoring:
-                ProgressView()
-                    .tint(RecourseColor.ledger)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                SplashView()
+                    .transition(.opacity)
             case .buyerApp:
                 NavigationStack(path: $router.path) {
                     AppShellView(environment: environment)
@@ -65,6 +67,12 @@ struct RootView: View {
         .preferredColorScheme(inAppColorScheme)
         .task {
             await environment.accountSession.restore()
+        }
+        .task {
+            try? await Task.sleep(for: .seconds(1.25))
+            withAnimation(.easeInOut(duration: 0.45)) {
+                isHoldingSplash = false
+            }
         }
         // A checkout QR scanned with the Camera app arrives here: as a universal link
         // (https://<web>/pay?request=...) or via the recourse:// scheme from the web

@@ -109,6 +109,9 @@ final class AccountSession {
         pendingChallenge != nil
     }
 
+    /// The in-flight background profile refresh, exposed so tests can await it.
+    private(set) var profileRefreshTask: Task<Void, Never>?
+
     func restore() async {
         guard isRestoring else { return }
         defer { isRestoring = false }
@@ -123,17 +126,33 @@ final class AccountSession {
                 return
             }
 
-            do {
-                let profile = try await api.me(accessToken: storedGrant.accessToken)
-                try await accept(storedGrant.replacingAccount(profile))
-            } catch let error as AccountAPIError where error.isUnauthorized {
-                let refreshed = try await api.refresh(refreshToken: storedGrant.refreshToken)
-                try await accept(refreshed)
-            }
+            // Boot must never wait on the network: trust the cached grant so the
+            // app renders immediately, and let the profile refresh (or a forced
+            // sign-out on a dead token) catch up in the background.
+            try await accept(storedGrant)
+            profileRefreshTask = Task { await refreshProfile(from: storedGrant) }
         } catch {
             grant = nil
             account = nil
             try? await store.clear()
+        }
+    }
+
+    private func refreshProfile(from storedGrant: AccountSessionGrant) async {
+        do {
+            let profile = try await api.me(accessToken: storedGrant.accessToken)
+            try await accept(storedGrant.replacingAccount(profile))
+        } catch let error as AccountAPIError where error.isUnauthorized {
+            do {
+                let refreshed = try await api.refresh(refreshToken: storedGrant.refreshToken)
+                try await accept(refreshed)
+            } catch {
+                grant = nil
+                account = nil
+                try? await store.clear()
+            }
+        } catch {
+            // Offline or a slow backend keeps the cached session usable.
         }
     }
 

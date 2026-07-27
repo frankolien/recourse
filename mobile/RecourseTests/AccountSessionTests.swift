@@ -46,6 +46,8 @@ final class AccountSessionTests: XCTestCase {
         )
 
         await session.restore()
+        // The token rotation happens off the boot path; wait for it before asserting.
+        await session.profileRefreshTask?.value
 
         XCTAssertEqual(session.account, expected)
         let saved = try await sessionStore.load()
