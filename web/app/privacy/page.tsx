@@ -97,6 +97,7 @@ export default function PrivacyPage() {
 
       <footer className="legal-footer">
         <Link href="/">Recourse home</Link>
+        <Link href="/terms">Terms of service</Link>
         <Link href="/verify/13">Public verifier</Link>
       </footer>
     </div>

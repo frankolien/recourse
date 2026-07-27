@@ -10,6 +10,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/litepaper`, priority: 0.8 },
     { url: `${base}/signin`, priority: 0.5 },
     { url: `${base}/privacy`, priority: 0.3 },
+    { url: `${base}/terms`, priority: 0.3 },
     { url: `${base}/support`, priority: 0.3 },
   ];
 }
