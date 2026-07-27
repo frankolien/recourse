@@ -2,19 +2,21 @@
 
 **From Zero Swift to Full Understanding of This Codebase**
 
-Written for a developer who knows JavaScript/Dart but is learning Swift by understanding every line of the Recourse buyer protection app: a native SwiftUI wallet that pays USDC into escrow on Arc, signs evidence with Face ID, and recomputes onchain verdicts on the phone.
+Written for a developer who knows JavaScript/Dart (and now some Rust, from the backend guide) and is learning Swift by understanding every line of the Recourse buyer protection app: a native SwiftUI wallet that pays USDC into escrow on Arc, signs evidence with Face ID, and recomputes onchain verdicts on the phone.
 
----
+Read Part 1 slowly, even if it feels basic. Every later part assumes it. The style follows the Rust backend guide: core language first, one concept at a time, with JavaScript, Dart, and Rust as mirrors, and with real lines from this codebase showing where each concept earns its keep.
+
+----
 
 ## Table of Contents
 
-- [Part 1: Swift Fundamentals You Need](#part-1-swift-fundamentals-you-need)
+- [Part 1: Core Swift, The Language](#part-1-core-swift-the-language)
 - [Part 2: Project Structure](#part-2-project-structure)
-- [Part 3: SwiftUI Deep Dive](#part-3-swiftui-deep-dive)
+- [Part 3: SwiftUI, The UI Framework](#part-3-swiftui-the-ui-framework)
 - [Part 4: Swift Concurrency: async/await, Actors, MainActor](#part-4-swift-concurrency-asyncawait-actors-mainactor)
-- [Part 5: App Architecture: Environment, Routing, Stores](#part-5-app-architecture-environment-routing-stores)
+- [Part 5: The App, Layer by Layer](#part-5-the-app-layer-by-layer)
 - [Part 6: Auth and Security](#part-6-auth-and-security)
-- [Part 7: Talking to Arc: web3swift and the Gateway Layer](#part-7-talking-to-arc-web3swift-and-the-gateway-layer)
+- [Part 7: Talking to Arc: the Chain Layer](#part-7-talking-to-arc-the-chain-layer)
 - [Part 8: Determinism: Manifests, Hashes, Verdicts](#part-8-determinism-manifests-hashes-verdicts)
 - [Part 9: QR Codes, the Camera, and Universal Links](#part-9-qr-codes-the-camera-and-universal-links)
 - [Part 10: The Design System](#part-10-the-design-system)
@@ -32,81 +34,411 @@ Written for a developer who knows JavaScript/Dart but is learning Swift by under
 - [Part 22: Release Engineering](#part-22-release-engineering)
 - [Part 23: The 80 Percent Roadmap](#part-23-the-80-percent-roadmap)
 
----
+----
 
-# Part 1: Swift Fundamentals You Need
+# Part 1: Core Swift, The Language
 
-Swift will feel closer to Dart than Rust does, but it has ideas neither JavaScript nor Dart has: optionals enforced by the compiler, value semantics by default, and protocols as the backbone of every abstraction. These appear on virtually every line of this codebase.
+Before touching a single view or a single blockchain call, you need the language itself. Swift sits somewhere between Dart and Rust: friendlier than Rust (no borrow checker, no lifetimes), stricter than Dart (optionals are enforced, value types are real). If you rushed through this part you would be able to *read* the codebase but not *predict* it. So do not rush it.
 
-## 1.1 Optionals: The End of null Crashes
+## 1.1 Variables and Constants: let and var
 
-In JavaScript, any value can be `null` or `undefined` and you find out at runtime. In Swift, a `String` is always a string. If a value might be absent, its type says so: `String?`.
+In JavaScript you have `let` and `const`. In Swift the equivalents are `var` and `let`, and the meanings are swapped in a way that trips people up for a week:
 
 ```swift
-// From Core/Auth/AccountSession.swift:
+var count = 0          // variable, can be reassigned (like JS `let`)
+let name = "Frank"     // constant, can NEVER be reassigned (like JS `const`)
+
+count = 1              // fine
+// name = "Olien"      // COMPILE ERROR: cannot assign to value: 'name' is a 'let' constant
+```
+
+Compare all four languages:
+
+| Concept | JavaScript | Dart | Rust | Swift |
+|---|---|---|---|---|
+| Reassignable variable | `let x = 0` | `var x = 0` | `let mut x = 0` | `var x = 0` |
+| Constant | `const x = 0` | `final x = 0` | `let x = 0` | `let x = 0` |
+
+Notice that Swift's `let` is Rust's `let`: immutable by default is the culture in both languages. The Swift community treats `var` the way Rust treats `mut`: a small signal that says "watch this one, it changes."
+
+**Where you see this in Recourse:** open almost any file and count. In `Core/Config/AppConfiguration.swift`, every property is `let`:
+
+```swift
+struct AppConfiguration: Sendable {
+    let rpcURL: URL
+    let chainID: UInt64
+    let chainName: String
+    let escrowAddress: EthereumAddress
+    // ...
+}
+```
+
+Configuration never changes after boot, so every field is a constant. The compiler now guarantees that nothing anywhere in the app can quietly rewrite the escrow address. In a money app, that one keyword is a security feature.
+
+## 1.2 Types and Type Inference
+
+Swift is statically typed like Rust and Dart, not dynamically typed like JavaScript. Every value has exactly one type, known at compile time. But you rarely *write* the type, because the compiler infers it:
+
+```swift
+let city = "Lagos"           // inferred as String
+let year = 2026              // inferred as Int
+let price = 5.20             // inferred as Double
+let isLive = true            // inferred as Bool
+
+let chainID: UInt64 = 5042002   // explicit, because we want UInt64, not Int
+```
+
+That last line matters. When the default inference would pick the wrong type, you annotate with `: Type` after the name. `5042002` would infer as `Int`; the chain protocol wants an unsigned 64-bit integer, so the codebase says so explicitly.
+
+The core types you will meet constantly:
+
+| Swift type | What it is | JS equivalent | Rust equivalent |
+|---|---|---|---|
+| `String` | Unicode text | `string` | `String` |
+| `Int` | Platform integer (64-bit on iPhone) | `number` (sort of) | `i64` |
+| `UInt64` | Unsigned 64-bit integer | none (BigInt-ish) | `u64` |
+| `Double` | 64-bit float | `number` | `f64` |
+| `Bool` | true/false | `boolean` | `bool` |
+| `Data` | Raw bytes | `Uint8Array` | `Vec<u8>` |
+| `[String]` | Array of strings | `string[]` | `Vec<String>` |
+| `[String: Int]` | Dictionary | `Record<string, number>` | `HashMap<String, i64>` |
+| `Set<String>` | Unique unordered values | `Set<string>` | `HashSet<String>` |
+
+Two things to burn in early:
+
+**1. Swift never converts numbers implicitly.** In JavaScript, `1 + 1.5` just works. In Swift, adding an `Int` to a `Double` is a compile error; you must convert explicitly with `Double(myInt)` or `UInt64(myInt)`. This feels pedantic until you remember what this app does: it moves money. Silent numeric conversion is exactly the class of bug you want the compiler to refuse.
+
+**2. String interpolation uses `\( )`.**
+
+```swift
+let amount = "5.20"
+let sentence = "You paid \(amount) USDC"   // JS: `You paid ${amount} USDC`
+```
+
+**Where you see this in Recourse:** `Core/Domain/USDCAmount.swift` exists precisely because of point 1. USDC has 6 decimal places, and the app NEVER stores money as `Double` (floats cannot represent 0.1 exactly; add enough of them and cents go missing). Instead, amounts live as integer base units: $5.20 is stored as `5_200_000`. The underscores in number literals are just for readability, like `5_200_000` in Rust. Money as integers, formatting only at the display edge: the same rule the Qent backend follows with kobo.
+
+## 1.3 Functions
+
+The basic shape:
+
+```swift
+func add(a: Int, b: Int) -> Int {
+    return a + b
+}
+
+let sum = add(a: 2, b: 3)    // note: you WRITE the parameter names at the call site
+```
+
+Three Swift-specific things to understand:
+
+**1. Argument labels are part of the function.** Unlike JS or Rust, calling `add(2, 3)` is a compile error; the call must say `add(a: 2, b: 3)`. This reads strangely for arithmetic but beautifully for real APIs:
+
+```swift
+// From Core/Chain: reads like a sentence
+try await gateway.payment(id: 13)
+try await signer.signEIP712(typedData)
+```
+
+If a label would be noise, the author suppresses it with an underscore:
+
+```swift
+func sign(_ transaction: UnsignedTransaction) async throws -> Data
+// call site: signer.sign(tx)   not   signer.sign(transaction: tx)
+```
+
+**2. Single-expression functions can omit `return`.**
+
+```swift
+func double(_ x: Int) -> Int { x * 2 }    // no `return` needed
+```
+
+**3. Default parameter values** work like Dart:
+
+```swift
+init(
+    configuration: AppConfiguration,
+    router: AppRouter = AppRouter(),          // default: make a fresh one
+    accountSession: AccountSession? = nil     // default: nil, filled in later
+) { ... }
+```
+
+This exact snippet is from `App/AppEnvironment.swift` and it is the backbone of how the whole app is tested: production code calls the initializer with no extras and gets real objects; tests pass fakes for any parameter they care about. Hold that thought until Part 5.
+
+## 1.4 Control Flow
+
+`if` needs no parentheses but always needs braces:
+
+```swift
+if balance > 0 {
+    print("funded")
+} else {
+    print("empty")
+}
+```
+
+`for` loops iterate over sequences, like Rust's `for x in`:
+
+```swift
+for payment in payments { ... }
+for i in 0..<5 { ... }       // 0,1,2,3,4  (half-open range)
+for i in 1...5 { ... }       // 1,2,3,4,5  (closed range)
+```
+
+`switch` is Rust's `match` wearing a different jacket. It is EXHAUSTIVE: you must handle every possible case or the code does not compile, and there is no fall-through by default:
+
+```swift
+switch payment.status {
+case .paid:
+    print("in escrow")
+case .disputed:
+    print("window open, claim filed")
+case .settled:
+    print("verdict executed")
+case .none:
+    print("does not exist")
+}
+```
+
+If the enum gains a new case tomorrow, every `switch` over it in the entire app becomes a compile error until each one says what to do. In JavaScript, a forgotten `case` is a silent bug found in production. In Swift (and Rust), it is a red squiggle found in the editor. This is the single feature that makes big refactors in this codebase safe.
+
+You can match several cases at once, bind values, and add conditions:
+
+```swift
+case .ready(let preview), .settled(let preview):   // two cases, same handling
+    show(preview)
+case .awaitingAttestation(let until) where until > now:
+    showCountdown(until)
+```
+
+`guard` is the one control-flow keyword you have not met in any of your languages. We give it its own section (1.6) because the codebase leans on it everywhere.
+
+## 1.5 Optionals: The Concept That Runs the Whole Language
+
+This is the most important section of Part 1. Everything else in Swift is negotiable; optionals are not.
+
+### The problem optionals solve
+
+In JavaScript, any variable can be `null` or `undefined` at any time, and you find out when it explodes at runtime:
+
+```javascript
+const user = findUser(id);      // might be null, nothing warns you
+console.log(user.email);        // TypeError: Cannot read properties of null
+```
+
+Rust solved this with `Option<T>`: a value is either `Some(value)` or `None`, and the compiler forces you to handle both. Swift has exactly the same idea with lighter syntax. A `String` is always, definitely, a string. If a value might be absent, its type says so with a question mark: `String?`.
+
+```swift
+var email: String? = nil        // "String or nothing"; starts as nothing
+email = "gkenny896@gmail.com"   // now it holds a value
+```
+
+Under the hood `String?` literally IS an enum, just like Rust:
+
+```swift
+// What the compiler sees:
+enum Optional<Wrapped> {
+    case none              // Rust: None
+    case some(Wrapped)     // Rust: Some(value)
+}
+```
+
+The crucial rule: **you cannot use an optional as if it were the plain value.** `email.count` does not compile when `email` is `String?`. You must unwrap it first, and Swift gives you five ways, each with its own job.
+
+### Unwrapping tool 1: if let
+
+```swift
+if let email = email {
+    // inside these braces, `email` is a plain String
+    print("email is \(email)")
+} else {
+    // it was nil
+}
+```
+
+Let me break this down piece by piece:
+
+1. `if let email = email` means: "if the optional on the right contains a value, copy that value into a new non-optional constant on the left, and enter the braces."
+2. Shadowing the same name (`email = email`) is idiomatic; since Swift 5.7 you can even shorten it to `if let email`.
+3. If the optional is nil, the whole block is skipped and the `else` runs.
+
+This is Rust's `if let Some(email) = email` with less punctuation, or Dart's `if (email != null)` with actual compiler enforcement.
+
+### Unwrapping tool 2: guard let (the codebase favorite)
+
+`if let` indents your happy path deeper and deeper. `guard let` flips it: state what you need, bail out if you do not have it, and continue at the SAME indent level:
+
+```swift
+// From Core/Auth/AccountSession.swift, the restore function:
+guard let storedGrant = try await store.load() else { return }
+// from this line to the end of the function, storedGrant is non-optional
+```
+
+Read it as: "I require a stored grant. If there is none, we are done here." The `else` block of a `guard` MUST exit (return, throw, continue, or break); the compiler checks that too, so there is no way to sneak past a failed guard.
+
+A chain of guards reads like a checklist, which is why workflows in this codebase are so legible:
+
+```swift
+guard let request = decoder.decode(qrPayload) else { throw ScanError.notACheckout }
+guard request.chainID == configuration.chainID else { throw ScanError.wrongChain }
+guard request.amount.baseUnits > 0 else { throw ScanError.zeroAmount }
+// happy path continues, un-indented, with everything validated
+```
+
+### Unwrapping tool 3: nil-coalescing with ??
+
+Provide a default, exactly like JS `??` or Rust's `unwrap_or`:
+
+```swift
+// From AccountSession.swift, the label shown in the merchant header:
+var accountLabel: String {
+    email ?? displayName ?? "APPLE ACCOUNT"
+}
+```
+
+Piece by piece: try `email`; if nil, try `displayName`; if that is nil too, fall back to the literal. Three fallbacks, one line, impossible to forget a case.
+
+### Unwrapping tool 4: optional chaining with ?.
+
+Reach through an optional; if anything on the way is nil, the whole expression is nil:
+
+```swift
+environment.accountSession.account?.accountLabel
+// if account is nil, the result is nil (type String?), no crash
+```
+
+Same as JS `?.` and Dart `?.`. You will see this constantly in SwiftUI code that renders "whatever we have."
+
+### Unwrapping tool 5: force unwrap with ! (almost never)
+
+```swift
+let url = URL(string: "https://api.frankolien.com")!
+```
+
+The `!` means "I promise this is not nil; crash the app if I am wrong." It is Rust's `.unwrap()`. The codebase allows it in exactly one situation: compile-time constants that cannot fail, like a hard-coded URL that you can see is valid. Force-unwrapping anything that came from the network, the user, or the chain is how apps end up in crash reporters. When in doubt, `guard let`.
+
+### Where optionals live in this codebase
+
+`Core/Auth/AccountSession.swift` models the signed-in account:
+
+```swift
 struct AuthenticatedAccount: Codable, Equatable, Sendable {
     let accountID: Int64
     let providerUserID: String
-    let email: String?          // The backend may not have an email
-    let givenName: String?
+    let email: String?          // backend may not have an email for this account
+    let givenName: String?      // Apple only shares the name on FIRST sign-in
     let familyName: String?
 }
 ```
 
-You cannot use an optional directly. You must unwrap it, and the compiler makes sure you handled the `nil` case:
+Look at which fields are optional and which are not. An account ALWAYS has an ID and a provider ID, so those are plain types. Email and name genuinely may not exist, so the type admits it. This mirrors exactly how the Rust guide mapped `Option<f64>` to NULLABLE database columns: the type system is documenting reality, not being difficult.
+
+And the session itself:
 
 ```swift
-// if let: unwrap for one block
-if let email = account.email {
-    print(email)                // email is a plain String here
-}
-
-// guard let: unwrap or bail out early (the dominant style in this codebase)
-guard let storedGrant = try await store.load() else { return }
-// storedGrant is non-optional from here down
-
-// Nil-coalescing: default value, like JS ?? 
-email ?? displayName ?? "APPLE ACCOUNT"
-
-// Optional chaining, like JS ?.
-environment.accountSession.account?.accountLabel
+private(set) var account: AuthenticatedAccount?
+var isAuthenticated: Bool { account != nil }
 ```
 
-**Where you see this in Recourse:** `AccountSession.swift` has the canonical chain. `accountLabel` is literally `email ?? displayName ?? "APPLE ACCOUNT"`, three fallbacks in one line, and `displayName` itself returns `String?` because a user may have no name at all.
+"Signed in" is not a separate boolean that could drift out of sync; it is DEFINED as "the optional has a value." One source of truth.
 
-`Option<T>` in Rust, `T?` in Dart, `T | undefined` in TypeScript: same idea. The difference from JS is that Swift will not compile if you forget the nil path.
+## 1.6 Structs vs Classes: Value Types vs Reference Types
 
-## 1.2 Value Types vs Reference Types: struct vs class
+This is the deepest difference between Swift and every language you have used except Rust. Get this one right and half the architecture of the app explains itself.
 
-This is the most important architectural decision in Swift, and this codebase is deliberate about it:
-
-| | `struct` (value) | `class` (reference) |
-|---|---|---|
-| Assignment | Copies the value | Copies the pointer |
-| Mutation visible to others? | No | Yes |
-| Identity | None, only equality | Has identity |
-| In this codebase | Data: `OrderManifest`, `PaymentRecord`, `USDCAmount`, every SwiftUI View | Long-lived state machines: `AccountSession`, `AppEnvironment`, `BuyerPaymentStore` |
-
-Rule of thumb used throughout Recourse: **data is a struct, a thing with a lifecycle is a class**. A `PaymentRecord` is just facts, so copying it is safe and cheap. An `AccountSession` owns a keychain store and an in-flight network task; two copies of it would be a bug, so it is a class.
-
-Dart comparison: Dart only has reference types (classes). Swift structs behave like Dart's records or freezed data classes, but they are the default, not the exception.
-
-## 1.3 Enums With Payloads
-
-Swift enums are full algebraic data types, like Rust enums or Dart sealed classes. The codebase uses them everywhere state has distinct shapes:
+### The behavior difference
 
 ```swift
-// From Features/Verdict/Domain/VerdictWorkflow.swift:
-enum VerdictReadiness: Equatable, Sendable {
-    case awaitingAttestation(until: UInt64)   // carries a timestamp
-    case ready(VerdictPreview)                // carries a full preview
-    case settled(VerdictPreview)
-}
+struct PointS { var x: Int }
+class  PointC { var x: Int; init(x: Int) { self.x = x } }
 
-// From App/AppRouter.swift, every screen you can navigate to:
+var s1 = PointS(x: 1)
+var s2 = s1            // COPY: s2 is a brand-new, independent value
+s2.x = 99
+print(s1.x)            // 1   (s1 untouched)
+
+let c1 = PointC(x: 1)
+let c2 = c1            // REFERENCE: c2 points at the SAME object
+c2.x = 99
+print(c1.x)            // 99  (there is only one object)
+```
+
+A picture of what just happened in memory:
+
+```
+ STRUCT (value semantics)             CLASS (reference semantics)
+
+  s1: [ x: 1 ]                          c1 ----+
+                                               +----> [ x: 99 ]  one object
+  s2: [ x: 99 ]   two values            c2 ----+
+```
+
+Dart and JavaScript only have the right-hand column: every object is a reference. Rust has both, but makes you manage references with the borrow checker. Swift has both and copies are automatic and cheap (the compiler copies lazily behind the scenes, a trick called copy-on-write).
+
+### How this codebase decides which to use
+
+The rule, applied with total consistency:
+
+| | Use a `struct` when... | Use a `class` when... |
+|---|---|---|
+| The thing is | data, facts, a snapshot | a living object with a lifecycle |
+| Identity | two equal copies are interchangeable | THIS one matters, copies would be a bug |
+| Examples here | `OrderManifest`, `PaymentRecord`, `USDCAmount`, `ChainHash`, every SwiftUI view | `AccountSession`, `AppEnvironment`, `BuyerPaymentStore`, `AppRouter` |
+
+Think about why `AccountSession` must be a class: it owns a keychain store and an in-flight network task. If you copied it, which copy owns the keychain? Which copy's `isRestoring` is the real one? Reference semantics say: there is one session, everyone points at it.
+
+And why `PaymentRecord` must be a struct: it is a row of facts read from the chain. Hand a copy to three screens; if one screen could mutate the shared object underneath the other two (as would happen with a class), you get the spooky action-at-a-distance bugs that plague JS state management. Value semantics make that impossible: your copy is yours.
+
+One more difference: structs get a free memberwise initializer (`PointS(x: 1)` just works), classes make you write `init` yourself. You can see this in the snippet above.
+
+## 1.7 Enums: States That Cannot Be Wrong
+
+Swift enums are Rust enums: full algebraic data types where each case can carry its own payload. This is much stronger than C-style or Dart enums.
+
+Start simple:
+
+```swift
+enum Theme {
+    case dark
+    case light
+}
+let current: Theme = .dark   // note: type known, so you can write .dark, not Theme.dark
+```
+
+Now the real power, straight from `Features/Verdict/Domain/VerdictWorkflow.swift`:
+
+```swift
+enum VerdictReadiness: Equatable, Sendable {
+    case awaitingAttestation(until: UInt64)   // carries a deadline timestamp
+    case ready(VerdictPreview)                // carries a computed preview
+    case settled(VerdictPreview)              // carries the final one
+}
+```
+
+Let me break down why this is better than the JavaScript way. In JS you would model this as:
+
+```javascript
+{ state: "ready", until: undefined, preview: {...} }   // hope nobody reads `until`
+```
+
+Every field exists in every state, and discipline alone keeps you from reading `until` when the state is `ready`. In the Swift version, `until` PHYSICALLY DOES NOT EXIST unless the case is `.awaitingAttestation`. The compiler will not let you ask for a preview from a case that has none. Illegal states are unrepresentable; an entire category of bugs is deleted at the type level.
+
+Consuming it, with the exhaustive `switch` from 1.4:
+
+```swift
+switch readiness {
+case .awaitingAttestation(let until):
+    showCountdown(endingAt: until)
+case .ready(let preview), .settled(let preview):
+    show(preview)
+}
+```
+
+**The second big example** is navigation. `App/AppRouter.swift` defines every screen you can navigate to as an enum:
+
+```swift
 enum AppRoute: Hashable {
-    case checkout(PaymentRequest)
-    case payment(UInt64)
+    case checkout(PaymentRequest)   // going to checkout REQUIRES a request
+    case payment(UInt64)            // a payment screen REQUIRES a payment id
     case dispute(UInt64)
     case verdict(UInt64)
     case send
@@ -115,60 +447,157 @@ enum AppRoute: Hashable {
 }
 ```
 
-You consume them with `switch`, and like Rust's `match` it is exhaustive: forget a case and the compiler stops you.
+You cannot navigate to a payment screen without a payment ID, because the case will not construct without one. Add a new screen and the compiler walks you to every place that must handle it. Compare that with string-based routing ("/payment/13") where a typo is a blank screen.
+
+Enums can also have raw values (`enum ContractABI: String`), computed properties, and methods. `Core/DesignSystem/WalletCardStyle.swift` is an enum of thirteen card faces where each case knows its background image and whether it wants dark text; adding a fourteenth face is adding one case, and every screen updates itself.
+
+## 1.8 Protocols: The Backbone of This Codebase
+
+A protocol is an interface: a list of requirements with no implementation. Dart's `abstract class`, TypeScript's `interface`, Rust's `trait`. In this codebase, protocols are not a nice-to-have; they are THE architectural tool.
 
 ```swift
-switch readiness {
-case .awaitingAttestation(let until):
-    // show the countdown
-case .ready(let preview), .settled(let preview):
-    // show the verdict
-}
-```
-
-This is why adding a screen to `AppRoute` instantly produces a compile error in `RootView.destination(for:)` until you say what view it maps to. The compiler is the router's test suite.
-
-## 1.4 Protocols: The Backbone of This Codebase
-
-A protocol is an interface, but richer: it can require async methods, have default implementations via extensions, and be composed.
-
-```swift
-// From Core/Chain/ContractGateway.swift, the heart of the chain layer:
+// From Core/Chain/ContractGateway.swift, trimmed:
 protocol ContractReading: Sendable {
     func payment(id: UInt64) async throws -> PaymentRecord
     func vaultState(of owner: EthereumAddress) async throws -> VaultState
-    // ...
 }
 
 protocol ContractWriting: Sendable {
     func pay(request: PaymentRequest) async throws -> ChainHash
-    // ...
 }
 
-// Protocol composition: a gateway is anything that can do both.
+// Protocol composition: a gateway is anything that can do BOTH.
 protocol ContractGateway: ContractReading, ContractWriting {}
 ```
 
-Every feature workflow (`CheckoutWorkflow`, `DisputeWorkflow`, `VerdictWorkflow`, `SendWorkflow`) depends on `any ContractGateway`, never on the concrete `ArcContractGateway`. That single decision is why the entire app is testable without a network: tests hand the workflows a `FakeContractGateway` and the workflows cannot tell the difference.
+Piece by piece:
 
-The `any` keyword marks an **existential**: "some concrete type conforming to this protocol, decided at runtime". You will see `any ContractGateway`, `any BuyerSigner`, `any EvidenceRepository` on properties, because the concrete type is chosen at composition time in `AppEnvironment`.
+1. `protocol ContractReading` declares a capability: "things that can read contract state."
+2. `: Sendable` means anything conforming must also be safe to pass between threads (Part 4 explains Sendable).
+3. The functions have signatures but no bodies. `async throws` says every implementation will be asynchronous and can fail.
+4. `ContractGateway: ContractReading, ContractWriting {}` composes two protocols into one and adds nothing else. Rust readers: this is `trait ContractGateway: ContractReading + ContractWriting {}`.
 
-## 1.5 Error Handling: throws, do/catch, and Typed Errors
-
-Swift errors are thrown, but unlike JavaScript exceptions they are part of the function signature. A function that can fail says `throws`, and the caller must say `try`:
+A type conforms by declaring it and implementing the requirements:
 
 ```swift
-func makeContractGateway() throws -> any ContractGateway
-let gateway = try environment.makeContractGateway()
+actor ArcContractReader: ContractReading {
+    func payment(id: UInt64) async throws -> PaymentRecord { /* real RPC call */ }
+    func vaultState(of owner: EthereumAddress) async throws -> VaultState { /* ... */ }
+}
 ```
 
-Errors are just values conforming to `Error`, and this codebase gives each layer its own error enum so failures are precise:
+### Why the codebase worships this pattern
+
+Every feature workflow depends on the PROTOCOL, never the concrete type:
+
+```swift
+// From Features/Verdict/Domain/VerdictWorkflow.swift:
+struct VerdictWorkflow: Sendable {
+    private let gateway: any ContractGateway      // "some conforming type, whoever you are"
+    private let timeProvider: any UnixTimeProvider
+}
+```
+
+Because the workflow only knows the protocol, tests hand it a `FakeContractGateway` that returns canned data instantly, with no network, no chain, no keys. The workflow cannot tell the difference. Every domain test in `RecourseTests/` exists because of this one design decision. It is the same move the Qent backend makes with its `service` modules, taken further.
+
+Note the `UnixTimeProvider`: even "what time is it now" is behind a protocol, because dispute windows are time math and time math must be testable with a frozen clock.
+
+### any and some
+
+Two keywords appear in front of protocol names and confuse everyone at first:
+
+- `any ContractGateway` is an **existential**: a box holding some conforming value decided at runtime. Slightly slower (a pointer indirection), maximally flexible. Used for stored dependencies, as above.
+- `some View` is an **opaque type**: one specific conforming type, known to the compiler, hidden from you. Fast, and it is how every SwiftUI `body` is declared (Part 3).
+
+Rule of thumb: `any` when the concrete type varies at runtime (dependency injection), `some` when it is fixed but ugly to spell (SwiftUI).
+
+### Extensions: adding behavior to anything
+
+An `extension` adds methods, computed properties, or protocol conformances to a type, even one you do not own:
+
+```swift
+// From AccountSession.swift: a private helper grafted onto a domain type
+private extension AccountSessionGrant {
+    func replacingAccount(_ account: AuthenticatedAccount) -> Self {
+        AccountSessionGrant(accessToken: accessToken,
+                            refreshToken: refreshToken,
+                            account: account)
+    }
+}
+```
+
+The design system uses extensions on SwiftUI's own `View` protocol to grow the app's private vocabulary: `.recourseGlassCapsule()`, `.recourseKeyboardDismissal()`. When you see a modifier you do not recognize in this codebase, it is an extension in `Core/DesignSystem/`.
+
+## 1.9 Closures: Functions as Values
+
+A closure is an anonymous function you can store and pass around: JS arrow functions, Dart lambdas, Rust closures. The syntax compresses in stages, and you need to recognize every stage because SwiftUI uses the shortest one relentlessly.
+
+Watch the same closure shrink:
+
+```swift
+let numbers = [1, 2, 3]
+
+// Stage 1: fully explicit
+let a = numbers.map({ (n: Int) -> Int in return n * 2 })
+
+// Stage 2: types inferred from context
+let b = numbers.map({ n in return n * 2 })
+
+// Stage 3: single expression, `return` dropped
+let c = numbers.map({ n in n * 2 })
+
+// Stage 4: positional shorthand ($0 = first argument)
+let d = numbers.map({ $0 * 2 })
+
+// Stage 5: trailing closure, parentheses gone
+let e = numbers.map { $0 * 2 }
+```
+
+The `in` keyword in stages 1 to 3 separates the parameter list from the body (an odd historical choice; just memorize it). Stage 5 is the **trailing closure** rule: when the last argument to a function is a closure, it can move outside the parentheses. When a function takes SEVERAL closures, they stack with labels:
+
+```swift
+Button {
+    router.push(.earn)          // first closure: what tapping does
+} label: {
+    Text("Earn")                // second closure, labeled: what it looks like
+}
+```
+
+Read that again until it stops looking like magic syntax: `Button` is just a function taking two closures. ALL of SwiftUI is this. The "markup language" you will see in Part 3 is plain Swift closures all the way down.
+
+The collection combinators you will use daily, with the Rust names you already know:
+
+| Swift | What it does | Rust |
+|---|---|---|
+| `map { }` | transform each element | `map` |
+| `compactMap { }` | transform, dropping nils | `filter_map` |
+| `filter { }` | keep matching elements | `filter` |
+| `first(where:)` | first match as an optional | `find` |
+| `contains(where:)` | does any match | `any` |
+| `sorted(by:)` | sorted copy | `sorted_by` |
+| `reduce(0) { }` | fold to one value | `fold` |
+
+A real chain from `AccountSession.swift`, computing a display name from optional parts:
+
+```swift
+[givenName, familyName]                                            // [String?]
+    .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) } // drop nils, trim
+    .filter { !$0.isEmpty }                                        // drop empties
+    .joined(separator: " ")                                        // "Frank Olien"
+```
+
+## 1.10 Error Handling: throws, try, do/catch
+
+Swift errors look like exceptions but behave like Rust results: a function that can fail SAYS SO in its signature, and callers are forced to acknowledge it at the call site.
+
+### Defining errors
+
+Any type can be an error by conforming to `Error`; in practice you use enums, one per layer, so failures are precise:
 
 ```swift
 // From Core/Chain/ArcContractReader.swift:
 enum ContractReadError: Error, Equatable, Sendable {
     case missingABI(String)
-    case invalidABI(String)
     case invalidRPCResponse
     case rpc(code: Int, message: String)
     case malformedResult(method: String)
@@ -176,197 +605,324 @@ enum ContractReadError: Error, Equatable, Sendable {
 }
 ```
 
-Catching looks like this:
+Compare with the Rust guide's approach of matching on `sqlx::Error`: same philosophy, each failure is a named, typed case, not a string.
+
+### Throwing and catching
+
+```swift
+func load(from bundle: Bundle) throws -> String { ... }   // "I can fail"
+
+do {
+    let abi = try loader.load(from: bundle)   // `try` marks the risky call
+    use(abi)
+} catch let error as ContractReadError {
+    // typed catch: only ContractReadError lands here
+    handleChainProblem(error)
+} catch {
+    // everything else; `error` is implicitly in scope
+    print("unexpected: \(error)")
+}
+```
+
+Piece by piece:
+
+1. `throws` in the signature is the contract. Without it, a function CANNOT throw. (JS: any function might throw and nothing warns you.)
+2. `try` at the call site is mandatory. It does nothing at runtime; it exists so a reader can see every line that can fail. Rust's `?` plays the same "visible risk" role.
+3. `do { } catch { }` is the handling block. Catches can pattern-match on type and even add conditions.
+
+The most instructive real catch in the codebase, from `AccountSession.swift`:
 
 ```swift
 do {
     let profile = try await api.me(accessToken: storedGrant.accessToken)
     try await accept(storedGrant.replacingAccount(profile))
 } catch let error as AccountAPIError where error.isUnauthorized {
-    // pattern-matched catch: only unauthorized errors land here
+    // ONLY unauthorized errors land here: the token died, rotate it
     let refreshed = try await api.refresh(refreshToken: storedGrant.refreshToken)
     try await accept(refreshed)
 } catch {
-    // everything else; `error` is implicitly in scope
+    // network down, server hiccup: keep the cached session, do nothing drastic
 }
 ```
 
-That `catch let error as AccountAPIError where ...` line (from `AccountSession.swift`) is Swift's equivalent of Rust's `match` guard: catch by type AND condition.
+The `where error.isUnauthorized` clause is a guard on the catch: 401 means "rotate the token," while a timeout means "leave the user signed in." Collapsing those two into one generic catch (the JS reflex) would sign users out every time the train goes through a tunnel.
 
-Three try flavors:
+### The three flavors of try
 
-| Form | Meaning | Analogy |
-|---|---|---|
-| `try` | Propagate the error to my caller | Rust `?` |
-| `try?` | Convert failure to `nil` | "I do not care why it failed" |
-| `try!` | Crash on failure | `unwrap()`; never used in this app's production paths |
+| Form | On failure | Rust equivalent | When this codebase uses it |
+|---|---|---|---|
+| `try` | propagates to the caller (which must be `throws` or catch it) | `?` | the default, everywhere |
+| `try?` | swallows the error, result becomes nil | `.ok()` | when failure genuinely has no better handling: `try? await store.clear()` |
+| `try!` | crashes | `.unwrap()` | never in production paths |
 
-Note the deliberate `try?` in `restore()`: `try? await store.clear()`. If clearing a dead session fails, there is nothing better to do, so the error is intentionally discarded. `try?` documents that decision in one character.
+`try?` deserves respect rather than suspicion: in `restore()`, if clearing an already-dead session fails, there is nothing smarter to do, and `try?` documents that decision in one character instead of an empty catch block.
 
-## 1.6 Closures and Trailing Closure Syntax
+## 1.11 Generics in Sixty Seconds
 
-Closures are arrow functions with ownership rules lighter than Rust's. The syntax `{ parameters in body }`:
-
-```swift
-let doubled = amounts.map { $0 * 2 }     // $0 is the first argument
-```
-
-SwiftUI is built entirely on **trailing closures**: when the last parameter is a closure, it moves outside the parentheses. This is why SwiftUI looks like a markup language but is plain Swift:
+You have seen generics in every language you know; Swift's look like Rust's:
 
 ```swift
-Button {
-    router.push(.earn)          // first closure: the action
-} label: {
-    Text("Earn")                // second closure: the label view
+func firstAndLast<T>(_ items: [T]) -> (T, T)? {
+    guard let first = items.first, let last = items.last else { return nil }
+    return (first, last)
 }
 ```
 
-One capture rule matters here: closures capture references strongly. In long-lived callbacks you will see `[weak self]` to avoid retain cycles. SwiftUI views are value types so this rarely bites in this codebase, but `GoogleSignInCoordinator` and delegate-style code use it.
-
-## 1.7 Codable: JSON Without a Parser
-
-`Codable` is Swift's serde. Declare conformance and the compiler synthesizes encoding and decoding:
+`<T>` declares a placeholder type; the function works for arrays of anything. Constraints use `where` or `: Protocol`:
 
 ```swift
-// From Core/Auth/AccountSession.swift:
-struct AuthenticatedAccount: Codable, Equatable, Sendable {
+func allEqual<T: Equatable>(_ items: [T]) -> Bool { ... }
+```
+
+This codebase mostly CONSUMES generics (arrays, optionals, `Task<Void, Never>`, `Result<T, Error>`) rather than defining elaborate ones. When you write app code, that is usually the right balance; generics are a library author's power tool.
+
+## 1.12 Properties: Stored, Computed, Observed, Lazy
+
+Swift properties come in flavors, and the codebase uses all of them deliberately.
+
+**Stored** properties hold a value. **Computed** properties run code on every access:
+
+```swift
+// From AccountSession.swift:
+var isAuthenticated: Bool { account != nil }        // computed, no stored bool to drift
+
+// From Core/Chain/ContractGateway.swift, VaultState:
+var sharePrice: Double { ... }                       // derived from totals on demand
+```
+
+The rule of thumb: if it answers a question about current state and takes no arguments, make it a computed property, not a function. `session.isAuthenticated` reads better than `session.isAuthenticated()`.
+
+**private(set)** splits read and write access:
+
+```swift
+private(set) var isRestoring = true
+```
+
+Anyone can READ `isRestoring`; only `AccountSession` itself can WRITE it. This one keyword is the entire "views render state but never mutate it" discipline, enforced by the compiler instead of a style guide.
+
+**Property observers** run when a stored property changes:
+
+```swift
+var cardStyleRaw: String = "ink" {
+    didSet { persistSelection() }    // runs after every assignment
+}
+```
+
+**lazy** delays expensive initialization until first use. You will meet it in bigger codebases more than here; `AppEnvironment` gets the same effect with factory methods (`makeContractGateway()`) that build the heavy web3 stack only when a screen actually needs it, so app boot stays instant.
+
+## 1.13 Memory: ARC, and the One Bug It Cannot Catch
+
+JavaScript and Dart free memory with a garbage collector that runs "sometimes." Rust frees it with ownership rules checked at compile time. Swift uses **ARC, Automatic Reference Counting**: every class object carries a count of how many references point at it; the count hits zero, the object is freed instantly. No GC pauses, no borrow checker. Structs and enums are not even reference-counted; they live and die with their scope.
+
+ARC has exactly one failure mode you must know: the **retain cycle**. If object A strongly references B and B strongly references A, both counts can never reach zero, and both objects leak forever:
+
+```
+   A  ── strong ──▶  B
+   ▲                 │
+   └──── strong ─────┘        neither can ever be freed
+```
+
+The classic real-world version is a closure: closures capture references strongly, so an object storing a closure that captures `self` has built the cycle in one line. The fix is a **capture list** making the capture weak:
+
+```swift
+service.onEvent = { [weak self] event in
+    guard let self else { return }     // weak means self is now optional
+    self.handle(event)
+}
+```
+
+`[weak self]` means: capture self without incrementing its count; if self has been freed, the closure sees nil. The `guard let self` line upgrades it back to a strong reference for the duration of the call, or exits quietly.
+
+Why this codebase almost never needs `[weak self]`: it is mostly structs (no reference counts at all), its closures are short-lived SwiftUI view builders, and its long-lived work uses structured concurrency that ends when views disappear (Part 4). The architecture designed the bug away, which is the best fix. But interviewers ask about retain cycles at every iOS interview ever conducted, so know the diagram.
+
+## 1.14 The Conformance List: Swift's derive Macros
+
+In the Rust guide you learned `#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]`. Swift does the same thing with the list after a type's name, and the compiler synthesizes the implementations:
+
+```swift
+struct PaymentRecord: Equatable, Hashable, Sendable { ... }
+```
+
+The full translation table:
+
+| Swift conformance | What the compiler writes for you | Rust derive | Why this codebase uses it |
+|---|---|---|---|
+| `Equatable` | `==` comparing all fields | `PartialEq` | comparing payment records, test assertions |
+| `Hashable` | hash of all fields | `Hash` | putting `AppRoute` in a `NavigationStack`, dictionary keys |
+| `Codable` | JSON encode AND decode | `Serialize + Deserialize` | keychain persistence, API bodies, order manifests |
+| `Identifiable` | requires an `id` property | none | SwiftUI lists need stable identity per row |
+| `Sendable` | proof it can cross threads | `Send` | every domain type, so actors can hand them out |
+| `CaseIterable` | `.allCases` array on an enum | strum's `EnumIter` | the card face picker iterates all 13 styles |
+| `Error` | throwable | `std::error::Error` | every error enum |
+
+`Codable` is the workhorse and deserves its own example, because you will write it weekly. Given:
+
+```swift
+struct AuthenticatedAccount: Codable {
     let accountID: Int64
     let providerUserID: String
 
     private enum CodingKeys: String, CodingKey {
-        case accountID = "accountId"          // maps Swift name to JSON name
+        case accountID = "accountId"          // Swift name = JSON name
         case providerUserID = "providerUserId"
     }
 }
 ```
 
-`CodingKeys` does what serde's `#[serde(rename)]` does. The session grant is persisted to the keychain as JSON through exactly this machinery:
+you get both directions for free:
 
 ```swift
-let data = try JSONEncoder().encode(grant)     // struct -> Data
-let grant = try JSONDecoder().decode(AccountSessionGrant.self, from: data)
+let data  = try JSONEncoder().encode(account)                      // struct -> bytes
+let back  = try JSONDecoder().decode(AuthenticatedAccount.self, from: data)  // bytes -> struct
 ```
 
-The most important Codable trick in the whole project is in `OrderManifest` (Part 8): encoding with `.sortedKeys` so the JSON bytes are canonical enough to hash.
+`CodingKeys` is serde's `#[serde(rename)]`: the backend speaks camelCase JSON (`accountId`), Swift convention wants `accountID`, and the enum maps between them. If the names already match, you delete the enum entirely and `Codable` alone is enough.
 
-## 1.8 Common Derives: What Those Conformance Lists Mean
+The single most important `Codable` trick in this entire project is in `OrderManifest` (Part 8): encoding with sorted keys so the SAME bytes come out every time, because those bytes get hashed and the hash goes on the blockchain. Serialization stops being plumbing and becomes cryptography. Keep that in mind as a preview.
 
-Swift's equivalent of Rust's `#[derive(...)]` is the conformance list after the type name. The compiler synthesizes the implementations:
+## 1.15 Part 1 Self-Check
 
-| Conformance | What it gives you | Rust/JS analogy |
-|---|---|---|
-| `Equatable` | `==` comparison | `PartialEq` / `===` semantics for values |
-| `Hashable` | Use as dictionary key, in `Set`, in `NavigationStack` paths | `Hash` |
-| `Codable` | JSON encode + decode | `Serialize + Deserialize` |
-| `Identifiable` | `id` property; required by SwiftUI `ForEach` | React `key` |
-| `Sendable` | Safe to pass across concurrency domains | `Send` |
-| `CaseIterable` | `.allCases` array on an enum | enumerating an enum |
-| `Error` | Can be thrown | `std::error::Error` |
+Before moving on, you should be able to answer these from memory. If any feels shaky, re-read that section; Parts 3 to 8 assume all of them.
 
-`Sendable` is the one with no JS analogy. It is a compile-time proof that a value can cross threads safely. Every domain struct in `Core/Domain` is `Sendable` on purpose: it lets actors hand them out freely (Part 4).
+1. Why is `let` used for `AppConfiguration`'s fields, and what bug class does that eliminate?
+2. What is the difference between `String` and `String?`, and name the five ways to unwrap the latter.
+3. A `PaymentRecord` is a struct and `AccountSession` is a class. Swap them: what concretely goes wrong in each direction?
+4. Why can `VerdictReadiness.ready` never have a countdown timestamp attached to it?
+5. What does `any ContractGateway` mean, and why do workflows store that instead of `ArcContractGateway`?
+6. What does `catch let error as AccountAPIError where error.isUnauthorized` catch, and what falls through to the next catch?
+7. Draw the retain cycle diagram and write the capture list that breaks it.
 
-## 1.9 Extensions: Adding Behavior Anywhere
-
-Extensions add methods to existing types, including types you do not own:
-
-```swift
-// From Core/Auth/AccountSession.swift, private helper on a domain type:
-private extension AccountSessionGrant {
-    func replacingAccount(_ account: AuthenticatedAccount) -> Self {
-        AccountSessionGrant(accessToken: accessToken, refreshToken: refreshToken, account: account)
-    }
-}
-```
-
-The design system leans on this: `View` extensions like `.recourseGlassCapsule()` and `.recourseKeyboardDismissal()` are extensions on SwiftUI's `View` protocol, which is how the app grows its own modifier vocabulary.
-
-## 1.10 Access Control and Naming You Will See Constantly
-
-```swift
-private(set) var account: AuthenticatedAccount?
-```
-
-`private(set)` means: anyone can read, only this type can write. `AccountSession` exposes `account`, `isRestoring`, `errorMessage` this way, so views can render state but never mutate it. That is the whole unidirectional data flow story in one keyword.
-
-Other qualifiers: `private` (this type and file scope), `fileprivate` (rare), `internal` (default, module-wide), `public`/`open` (frameworks; unused here since the app is one module).
-
----
+----
 
 # Part 2: Project Structure
 
-## 2.1 The Tree
+## 2.1 The Full Project Tree
+
+Hold this map in your head; every later part references it.
 
 ```
 mobile/
-|-- scripts/generate_project.rb     # Generates Recourse.xcodeproj (Part 12)
-|-- Recourse/
+|
+|-- scripts/generate_project.rb     # Generates Recourse.xcodeproj (see Part 12)
+|
+|-- Recourse/                       # The app target: all production code
+|   |
 |   |-- App/                        # Composition root and app-level chrome
-|   |   |-- RecourseApp.swift       # @main entry point
+|   |   |-- RecourseApp.swift       # @main entry point (the whole file is 12 lines)
 |   |   |-- AppEnvironment.swift    # Dependency container + BuyerPaymentStore
-|   |   |-- RootView.swift          # Workspace routing, splash, deep links
-|   |   |-- SplashView.swift        # Animated boot sequence
-|   |   |-- AppRouter.swift         # AppRoute enum + navigation path
-|   |   |-- AppShellView.swift      # Tab shell (buyer) + merchant counter
+|   |   |-- RootView.swift          # Decides WHICH world renders: splash, onboarding,
+|   |   |                           #   buyer app, or merchant workspace. Deep links too.
+|   |   |-- SplashView.swift        # The animated glyph-to-wordmark boot sequence
+|   |   |-- AppRouter.swift         # AppRoute enum + NavigationPath
+|   |   |-- AppShellView.swift      # Buyer tab shell + merchant counter UI
 |   |
-|   |-- Core/                       # Everything reusable, no feature knowledge
-|   |   |-- API/                    # Backend clients (accounts, evidence, orders)
-|   |   |-- Auth/                   # Session, keychain, signer, Face ID
-|   |   |-- Chain/                  # web3swift gateway to Arc (Part 7)
-|   |   |-- Config/                 # AppConfiguration (addresses, URLs)
-|   |   |-- DesignSystem/           # Colors, typography, cards, glass
-|   |   |-- Domain/                 # PaymentRecord, USDCAmount, ChainHash...
-|   |   |-- Orders/                 # OrderManifest (hash-bound commerce data)
-|   |   |-- QR/                     # PaymentRequest + decoder
+|   |-- Core/                       # Reusable machinery. NEVER imports from Features/.
+|   |   |-- API/                    # Backend HTTP clients (accounts, evidence, orders)
+|   |   |-- Auth/                   # AccountSession, KeychainStore, TestnetLocalSigner,
+|   |   |                           #   Face ID authorizer, Google sign-in coordinator
+|   |   |-- Chain/                  # Everything that talks to Arc (Part 7)
+|   |   |-- Config/                 # AppConfiguration (addresses, URLs, chain id)
+|   |   |-- DesignSystem/           # Colors, typography, card faces, glass styles
+|   |   |-- Domain/                 # Pure data: PaymentRecord, USDCAmount, ChainHash,
+|   |   |                           #   EthereumAddress, BuyerWorkflowError
+|   |   |-- Orders/                 # OrderManifest: hash-bound commerce data (Part 8)
+|   |   |-- QR/                     # PaymentRequest + decoder for scanned checkouts
 |   |
-|   |-- Features/                   # One folder per user-facing capability
-|   |   |-- Checkout/Domain/        # CheckoutWorkflow
-|   |   |-- Disputes/Domain/        # DisputeWorkflow
-|   |   |-- Verdict/Domain/         # VerdictWorkflow (on-phone recompute)
-|   |   |-- Send/                   # SendWorkflow + SendMoneyView
-|   |   |-- Earn/                   # EarnView (settlement vault)
-|   |   |-- Home/, Scan/, Receipts/, Profile/, Onboarding/
+|   |-- Features/                   # One folder per user-facing capability.
+|   |   |-- Checkout/Domain/        #   Each has UI files and often a Domain/ folder
+|   |   |-- Disputes/Domain/        #   holding a Workflow struct with the logic.
+|   |   |-- Verdict/Domain/
+|   |   |-- Send/
+|   |   |-- Earn/
+|   |   |-- Home/  Scan/  Receipts/  Profile/  Onboarding/
 |   |
-|   |-- Generated/Deployment.swift  # Contract addresses, generated from
-|   |                               # deployments/arc-testnet.json. Never hand-edited.
+|   |-- Generated/Deployment.swift  # Contract addresses, GENERATED from the repo's
+|   |                               #   deployments/arc-testnet.json. Never hand-edited.
 |   |-- Resources/
-|   |   |-- ABI/*.abi.json          # Contract ABIs bundled into the app
-|   |   |-- Images.xcassets/        # Asset catalog (icons, cards, launch)
-|   |-- Info.plist                  # Merged plist: URL scheme, launch screen
-|-- RecourseTests/                  # XCTest suite (Part 11)
+|   |   |-- ABI/*.abi.json          # Contract ABIs bundled into the app binary
+|   |   |-- Images.xcassets/        # Asset catalog: icons, card art, launch assets
+|   |-- Info.plist                  # URL scheme, launch screen, encryption declaration
+|
+|-- RecourseTests/                  # XCTest suite: workflows, routing, session, vectors
+|-- SWIFT_GUIDE.md                  # You are here
 ```
 
-Two structural rules keep this sane:
+Two structural laws keep 11,000 lines navigable:
 
-1. **Core never imports Features.** Dependencies point one way: `Features -> Core`. A workflow can use the gateway; the gateway knows nothing about screens.
-2. **Generated code is generated.** `Generated/Deployment.swift` comes from the repo-root `deployments/arc-testnet.json` via codegen. Addresses exist in exactly one place; the app cannot drift from what is actually deployed.
+**Law 1: dependencies point one way.** `Features` may use `Core`; `Core` never knows `Features` exists. A workflow can call the chain gateway; the gateway has no idea screens exist. When you wonder "where should this file go," ask: could two different features use it? Then `Core`. Is it one feature's business? Then that feature's folder.
 
-## 2.2 How Swift Finds Code (No Imports Between Files)
+**Law 2: generated code is generated.** `Generated/Deployment.swift` is produced by codegen from `deployments/arc-testnet.json` at the repo root, the same file the web app and ops scripts read. Contract addresses exist in exactly ONE place. The alternative (an address pasted into Swift, drifting from what is actually deployed) is how testnet demos die on stage.
 
-Coming from JS/Dart, the strangest thing: there are almost no imports of the app's own files. Swift compiles the whole module (target) together, so every file sees every other file's `internal` declarations. `import` is only for frameworks:
+## 2.2 How Swift Finds Code: Modules, Not Files
+
+Coming from JS, Dart, or Rust, the strangest thing about this codebase: **no file imports any other file in the app.** There is no `import "./AccountSession"`, no `use crate::auth::AccountSession;`, nothing.
+
+Swift compiles a whole **module** (here, the app target `Recourse`) as one unit. Every file in the target automatically sees every other file's `internal` (default visibility) declarations. `HomeView.swift` uses `AccountSession` with zero ceremony because they live in the same module.
+
+`import` statements are only for OTHER modules, meaning frameworks and packages:
 
 ```swift
-import SwiftUI          // Apple UI framework
-import Foundation       // Strings, Data, URL, JSON
-import Observation      // @Observable macro
-@preconcurrency import BigInt   // third-party, pre-Sendable-audit
+import SwiftUI              // Apple's UI framework
+import Foundation           // strings, Data, URL, JSON, dates
+import Observation          // the @Observable macro
+import CryptoKit            // hashing, keys
+@preconcurrency import BigInt   // third-party; the prefix is explained in Part 4
 ```
 
-`@preconcurrency import` (seen in `ArcContractReader.swift`) means: this library predates strict concurrency checking, do not flag its types.
+So how do you find where something is defined, without imports as a trail? Command-click the name in Xcode (jump to definition), or Cmd-Shift-O (open quickly by name). Muscle memory for both is worth thirty minutes of practice.
 
-## 2.3 Third-Party Dependencies
+The visibility levels, since there are no file walls by default:
 
-The app uses Swift Package Manager (SPM), Apple's Cargo/npm. Notable packages: `web3swift` + `BigInt` + `Web3Core` for Ethereum-style RPC, ABI encoding, keystores, and EIP-712. Everything else is Apple frameworks: SwiftUI, AVFoundation (camera), LocalAuthentication (Face ID), AuthenticationServices (Sign in with Apple), CryptoKit, Security (keychain).
+| Keyword | Visible to | This codebase uses it for |
+|---|---|---|
+| `private` | this type + same file | helpers, internal state |
+| `private(set)` | read anywhere, write privately | observable state, per 1.12 |
+| `fileprivate` | this file | rare |
+| (nothing) = `internal` | whole module | the default for everything |
+| `public` / `open` | other modules | unused here; matters when you split into packages (Part 21) |
 
----
+## 2.3 Dependencies: SPM Is Your Cargo.toml
 
-# Part 3: SwiftUI Deep Dive
+Swift Package Manager (SPM) is Swift's Cargo/npm, and the dependency list is deliberately tiny:
 
-## 3.1 The Mental Model: UI = f(State)
+| Package | Why it is here |
+|---|---|
+| `web3swift` + `Web3Core` + `BigInt` | Ethereum-style RPC, ABI encoding/decoding, keystores, EIP-712 signing, arbitrary-precision integers |
 
-SwiftUI is React for native. A `View` is a struct with a `body` computed property that describes the UI for the current state. You never mutate the screen; you mutate state and the framework re-renders.
+That is the whole third-party list. Everything else is Apple frameworks: SwiftUI (UI), AVFoundation (camera), LocalAuthentication (Face ID), AuthenticationServices (Sign in with Apple), Security (keychain), CryptoKit (hashing). The Qent backend guide made the same argument about crates: every dependency is code you now maintain but did not write. A wallet holding keys should be paranoid about that list. The dependencies live in the project definition generated by `scripts/generate_project.rb`, and Xcode resolves and pins them (the equivalent of `Cargo.lock` is `Package.resolved`).
+
+----
+
+# Part 3: SwiftUI, The UI Framework
+
+You now know the language. SwiftUI is where it starts looking like an app. Take this part slowly too, because SwiftUI's mental model is genuinely different from "call functions to change the screen," and once it clicks, 40 of this codebase's 60 files become readable in an afternoon.
+
+## 3.1 The Mental Model: The UI Is a Function of State
+
+In UIKit (Apple's older framework) and in raw DOM JavaScript, you mutate the screen imperatively: find the label, set its text, hope you remembered every place that needs updating. SwiftUI, like React and Flutter, flips this:
+
+```
+        state changes
+             |
+             v
+   body is recomputed        (you DESCRIBE the UI for the current state)
+             |
+             v
+   SwiftUI diffs old vs new  (framework's job, not yours)
+             |
+             v
+   screen updates minimally
+```
+
+You never say "update the balance label." You say "the balance text IS the wallet balance," and when the balance changes, the framework re-renders the difference. If you know Flutter, `body` is `build()`. If you know React, `body` is the render function.
+
+## 3.2 Your First View, Dissected
+
+The entire program entry point, from `App/RecourseApp.swift`:
 
 ```swift
-// From App/RecourseApp.swift, the whole program:
+import SwiftUI
+
 @main
 struct RecourseApp: App {
     @State private var environment = AppEnvironment.live()
@@ -380,22 +936,128 @@ struct RecourseApp: App {
 }
 ```
 
-`@main` marks the entry point (like `fn main`). `some Scene` and `some View` are **opaque types**: "a concrete type the compiler knows but I will not name". Every `body` returns `some View`.
+Let me break this down piece by piece:
 
-## 3.2 The State Toolbox
+1. `@main` marks the program's entry point, like `fn main()` in Rust. There is exactly one per app.
+2. `struct RecourseApp: App` conforms to the `App` protocol. Note: a STRUCT. Views and apps are value types in SwiftUI; the framework creates and destroys these cheap descriptions constantly.
+3. `@State private var environment = ...` creates and OWNS the app-wide dependency container. `@State` is explained in the next section; here it means "SwiftUI, keep this alive across re-renders."
+4. `var body: some Scene` is the one requirement of `App`: describe the scene. `some Scene` is the opaque type from 1.8: "a specific concrete type, do not make me spell it."
+5. `WindowGroup { ... }` is the app's window, and the closure inside is trailing-closure syntax from 1.9 holding the root of the view tree.
+6. `.tint(...)` is a **modifier**: a method that wraps the view in a new view with an attribute changed. The app-wide accent color becomes ledger green.
 
-This is the part worth memorizing. Each property wrapper answers one question: **who owns this state?**
+A minimal custom view has the same shape:
 
-| Wrapper | Owner | Used for | Example in Recourse |
-|---|---|---|---|
-| `@State` | This view | Local, ephemeral UI state | `@State private var wordmarkIn = false` in `SplashView` |
-| `@Binding` | A parent view | Two-way access to someone else's `@State` | Sheet visibility flags passed down |
-| `@Observable` class | An object | Shared app state; views auto-track what they read | `AccountSession`, `BuyerPaymentStore`, `AppRouter` |
-| `@Bindable` | An `@Observable` object | Make bindings into an observable | `@Bindable var router = environment.router` in `RootView` |
-| `@AppStorage` | UserDefaults | Small persisted preferences | `@AppStorage("recourse.appearance") private var appearanceRaw = "dark"` |
-| `@Environment` | The view tree | System values | `@Environment(\.colorScheme)` in `HomeView` |
+```swift
+struct BalanceBadge: View {
+    let amount: String              // plain input, passed in by the parent
 
-The modern observation system (`@Observable`, iOS 17+) is what this app uses instead of the older `ObservableObject/@Published`. The magic: a view that reads `accountSession.isRestoring` re-renders when `isRestoring` changes, and ONLY then. No manual subscriptions, no `setState`.
+    var body: some View {
+        Text("\(amount) USDC")
+            .font(.headline)
+            .foregroundStyle(RecourseColor.ledger)
+    }
+}
+```
+
+A view is a struct, its inputs are properties, and `body` describes what it looks like RIGHT NOW. SwiftUI may create and throw away this struct sixty times a second; that is fine, it is just a lightweight description, not the pixels themselves.
+
+## 3.3 Modifier Order Matters
+
+Modifiers wrap; each returns a NEW view around the previous one. Therefore order changes meaning:
+
+```swift
+Text("Pay")
+    .padding()                 // 1: add space around the text
+    .background(Color.green)   // 2: paint behind text AND padding
+
+Text("Pay")
+    .background(Color.green)   // 1: paint behind the text only
+    .padding()                 // 2: add transparent space around the painted box
+```
+
+The first is a green pill; the second is a green sliver with empty margin. When a layout looks "almost right," the first suspect is modifier order.
+
+## 3.4 Layout: Three Stacks and a Spacer
+
+Almost every screen in this app is composed from four primitives:
+
+```swift
+VStack(spacing: 12) { ... }    // vertical    (Flutter: Column)
+HStack(spacing: 8)  { ... }    // horizontal  (Flutter: Row)
+ZStack { ... }                 // depth, back to front (Flutter: Stack)
+Spacer()                       // flexible emptiness that pushes siblings apart
+```
+
+A real composite from `Features/Onboarding/OnboardingWelcomeView.swift`, the "ARC TESTNET" chip:
+
+```swift
+HStack(spacing: 8) {
+    Image("ArcMark")               // 1. the Arc logo from the asset catalog
+        .resizable()               // 2. allow it to scale at all
+        .scaledToFit()             // 3. keep its aspect ratio while scaling
+        .frame(height: 13)         // 4. constrain to 13 points tall
+    Text("ARC TESTNET")
+        .font(.caption.weight(.bold))
+        .tracking(0.8)             // letter-spacing
+}
+.foregroundStyle(.white)           // applies to EVERYTHING inside the HStack
+.padding(.horizontal, 14)
+.frame(height: 36)
+.recourseGlassCapsule()            // custom modifier from the design system
+```
+
+Notice how modifiers on the HStack cascade to children (`foregroundStyle`), while modifiers on `Image` shape just the image. And notice steps 2 to 4 on the image: `resizable` then `scaledToFit` then `frame` is THE incantation for "put this image here at this size, undistorted." You will type it hundreds of times.
+
+`SplashView.swift` shows `ZStack` doing real work: a white background layer, the glyph layer, and the wordmark layer, stacked in depth so the animation can crossfade between them.
+
+One scar this codebase carries, so you do not earn it yourself: safe areas. `ignoresSafeArea(.top)` combined with a fixed `frame(height:)` silently loses the notch inset, and overlays INHERIT safe-area insets, so adding them manually counts them twice. `OnboardingReadyView` fixes this with `height: proxy.size.height + proxy.safeAreaInsets.top`. When a button floats mysteriously mid-screen, safe-area math is the culprit.
+
+## 3.5 State: Who Owns This Value?
+
+Here is the section to read three times. Every state tool in SwiftUI answers one question: **who owns this piece of state?** Choose by ownership and the tools stop being confusing.
+
+### @State: this view owns it
+
+```swift
+struct SplashView: View {
+    @State private var wordmarkIn = false        // owned by SplashView, dies with it
+
+    var body: some View {
+        ZStack { ... }
+            .onAppear {
+                withAnimation(.easeInOut(duration: 0.6).delay(1.0)) {
+                    wordmarkIn = true            // mutating state triggers re-render
+                }
+            }
+    }
+}
+```
+
+Piece by piece: `@State` tells SwiftUI to store this value OUTSIDE the struct (remember, the struct is recreated constantly) and to re-run `body` whenever it changes. Without `@State`, assigning to a property of a struct inside `body` would not even compile. Use it for small, local, throwaway UI state: is a sheet showing, has the animation started, what is in this text field.
+
+React reader: `useState`. Flutter reader: `setState` in a `StatefulWidget`, minus the boilerplate.
+
+### @Binding: a parent owns it, I can edit it
+
+```swift
+struct AmountField: View {
+    @Binding var amount: String                 // NOT mine; a live pipe to the owner's @State
+
+    var body: some View {
+        TextField("0.00", text: $amount)        // edits flow UP to the owner
+    }
+}
+
+// The parent:
+@State private var amount = ""
+AmountField(amount: $amount)                    // $ creates the Binding from the @State
+```
+
+The `$` prefix is the syntax to remember: `amount` is the value, `$amount` is a read-write reference to it. This is how a child edits a parent's state without owning it, and it is how every `TextField`, `Toggle`, and `Picker` works.
+
+### @Observable: a shared object owns it
+
+For state that outlives any one view (the session, the payment list, the router), the owner is a class marked `@Observable`:
 
 ```swift
 // From Core/Auth/AccountSession.swift:
@@ -403,72 +1065,69 @@ The modern observation system (`@Observable`, iOS 17+) is what this app uses ins
 final class AccountSession {
     private(set) var account: AuthenticatedAccount?
     private(set) var isRestoring = true
-    // any view reading these properties re-renders on change
+    private(set) var errorMessage: String?
+    // methods mutate these; views just read them
 }
 ```
 
-Dart comparison: this is Provider/Riverpod's job done by the language. React comparison: `@State` is `useState`, `@Observable` is a store with automatic selectors.
+The magic contract: any view whose `body` READS `session.isRestoring` is automatically subscribed to changes of `isRestoring`, and ONLY of the properties it actually read. No subscriptions to write, no `notifyListeners()`, no selectors. The `@Observable` macro rewrites the class's property accesses to do the tracking.
 
-## 3.3 View Lifecycle: .task, .onAppear, .onChange
+Dart reader: this is Provider/Riverpod's job, absorbed into the language. If you read the Qent Flutter chapter, `@Observable` classes are your `Notifier`s, and reading a property in `body` is `ref.watch`.
+
+`@Bindable` is the small bridge you will see once in `RootView`: it lets you make `$router.path` bindings into an `@Observable` object, the way `$` works for `@State`.
+
+### @AppStorage: UserDefaults owns it
 
 ```swift
 // From App/RootView.swift:
-.task {
-    await environment.accountSession.restore()
-}
-.task {
-    try? await Task.sleep(for: .seconds(2.3))
-    withAnimation(.easeInOut(duration: 0.45)) {
-        isHoldingSplash = false
-    }
-}
+@AppStorage("recourse.hasCompletedOnboarding") private var hasCompletedOnboarding = false
+@AppStorage("recourse.appearance") private var appearanceRaw = "dark"
 ```
 
-`.task` is the async lifecycle hook: it starts when the view appears and is **automatically cancelled** when the view disappears. That cancellation is free structured-concurrency hygiene you would hand-roll in JS with AbortController.
+Reads and writes go straight to UserDefaults (the tiny key-value store iOS gives every app, the same idea as the SharedPreferences the Flutter guide covered), AND the view re-renders on change. One line replaces load-on-launch, save-on-change, and observe-for-updates. Used for exactly what it should be: small preferences. The theme choice and the onboarding flag are strings and bools here; the SESSION is not, because secrets belong in the keychain (Part 6).
 
-`.onAppear` is the synchronous cousin (used in `SplashView` to kick off animations). `.onChange(of:)` observes a value and reacts (used in `AppShellView` to react to policy list changes).
-
-## 3.4 Layout in 60 Seconds
-
-Three primitives compose almost every screen in this app:
+### @Environment: the view tree provides it
 
 ```swift
-VStack(spacing: 12) { ... }    // vertical stack (Column in Flutter)
-HStack(spacing: 8) { ... }     // horizontal stack (Row)
-ZStack { ... }                 // depth stack (Stack); SplashView is one
-Spacer()                       // flexible space that pushes siblings apart
+@Environment(\.colorScheme) private var colorScheme   // light or dark, injected by system
 ```
 
-Modifiers wrap views and order matters: `.padding().background(...)` pads then paints; the reverse paints then pads. A real composite from `OnboardingWelcomeView`:
+Values flow DOWN the tree invisibly; any descendant can ask. `HomeView` uses this to gate its dark-mode-only glow effect.
+
+### The decision table
+
+| You need... | Tool | Who owns it |
+|---|---|---|
+| a toggle, a text field, "is this sheet up" | `@State` | this view |
+| child edits parent's value | `@Binding` | the parent |
+| session, stores, router, anything shared | `@Observable` class | the object |
+| a persisted preference | `@AppStorage` | UserDefaults |
+| system values (theme, locale) | `@Environment` | the framework |
+
+## 3.6 Lists and Identity
+
+Rendering collections:
 
 ```swift
-HStack(spacing: 8) {
-    Image("ArcMark")
-        .resizable()
-        .scaledToFit()
-        .frame(height: 13)
-    Text("ARC TESTNET")
-        .font(.caption.weight(.bold))
-        .tracking(0.8)
+ForEach(payments) { payment in
+    PaymentRow(payment: payment)
 }
-.foregroundStyle(.white)
-.padding(.horizontal, 14)
-.frame(height: 36)
-.recourseGlassCapsule()        // custom modifier from the design system
 ```
 
-One hard-won lesson encoded in `OnboardingReadyView`: `ignoresSafeArea(.top)` combined with a fixed frame height must add the safe area inset back (`proxy.size.height + proxy.safeAreaInsets.top`), and overlays inherit safe-area insets, so do not add them twice. Safe-area math is the number one source of "why is my button floating" bugs.
+For this to work, `payments` elements must be `Identifiable` (have a stable `id`). Identity is how SwiftUI knows WHICH row changed instead of rebuilding all of them, and it is how animations know what moved where. The classic mistake is `ForEach(items, id: \.self)` on unstable data: identity churns, rows rebuild constantly, scrolling stutters. Payment records here use their onchain payment ID, an identity that can never lie.
 
-## 3.5 Navigation
+For long content use `LazyVStack` inside a `ScrollView` (rows built only when scrolled near), which is what the Home screen's receipt sections do.
 
-Navigation is state, not calls. `AppRouter` holds a `NavigationPath`; pushing a screen is appending an enum value:
+## 3.7 Navigation as Data
+
+Navigation in this codebase is not "call a push function and hope." It is state, like everything else:
 
 ```swift
 // RootView owns the stack:
 NavigationStack(path: $router.path) {
     AppShellView(environment: environment)
         .navigationDestination(for: AppRoute.self) { route in
-            destination(for: route)      // switch AppRoute -> view
+            destination(for: route)          // a switch mapping enum -> view
         }
 }
 
@@ -476,67 +1135,176 @@ NavigationStack(path: $router.path) {
 environment.router.push(.verdict(paymentID))
 ```
 
-Because `AppRoute` is `Hashable` data, deep linking is trivial: decoding a checkout QR just pushes `.checkout(request)` onto the same path a user tap would.
+Walk the flow: `router.path` is a list of `AppRoute` values (the enum from 1.7). Pushing appends a value; the `NavigationStack` sees the path change and presents the matching screen; the back button pops the value off. Because navigation is DATA, a deep link (a scanned QR arriving from the Camera app) navigates by appending the same enum value a tap would. One code path, no special cases.
 
-Sheets follow the same philosophy: `.sheet(isPresented: $showsReceive) { ReceiveSheet(...) }`. Boolean state in, sheet out.
+Sheets follow the same philosophy: `.sheet(isPresented: $showsReceive) { ReceiveSheet(...) }`. A boolean goes true, a sheet appears; it goes false (or the user swipes down), it disappears.
 
-## 3.6 Animations and Transitions
-
-Everything animated in this app uses one of two forms:
+## 3.8 View Lifecycle: .task, .onAppear, .onChange
 
 ```swift
-// 1. Explicit: animate the consequences of this state change
-withAnimation(.easeInOut(duration: 0.35)) {
-    hasCompletedOnboarding = true
+// From App/RootView.swift:
+.task {
+    await environment.accountSession.restore()      // async work tied to view lifetime
+}
+.onAppear {
+    startAnimations()                                // synchronous, on appear
+}
+.onChange(of: merchantPolicies) { _, newValue in
+    reactTo(newValue)                                // observe a value, run a side effect
+}
+```
+
+`.task` is the one to appreciate: it starts an async job when the view appears and AUTOMATICALLY CANCELS it when the view disappears. The polling loop in `BuyerPaymentStore` runs inside a `.task`; navigate away and the polling just stops, no cleanup code, no leaked timers. In JS you would be wiring an `AbortController` by hand; here the lifetime management is structural. This connects directly to Part 4.
+
+## 3.9 Animation
+
+Two forms cover this whole codebase:
+
+```swift
+// Form 1: explicit. Animate the consequences of THIS change.
+withAnimation(.easeInOut(duration: 0.45)) {
+    isHoldingSplash = false
 }
 
-// 2. Declarative: this view animates whenever `value` changes
+// Form 2: declarative. This view animates whenever `value` changes.
 .animation(.easeOut(duration: 1.9).repeatForever(autoreverses: false), value: ripples)
 ```
 
-The splash sequence (`SplashView`) is a masterclass in the basics: state flips once (`wordmarkIn = true`), and four properties animate from it simultaneously (glyph opacity and offset, wordmark opacity, and a leading-aligned mask whose width goes 0 to 260 to sweep the word in from the left). `.transition(.opacity)` on container swaps handles the crossfade into the app.
+The splash sequence is the worked example worth reading in full (`App/SplashView.swift`, 40 lines): ONE state flip (`wordmarkIn = true`) drives four simultaneous animated properties: the glyph's opacity and x-offset, the wordmark's opacity, and a leading-aligned mask whose width animates from 0 to 260 so the word sweeps in from the left. State changes; everything derived from it animates. That is the whole SwiftUI animation philosophy in one file.
 
----
+`.transition(.opacity)` handles the other case: views being INSERTED or REMOVED (the splash crossfading into the app) rather than properties changing.
+
+----
 
 # Part 4: Swift Concurrency: async/await, Actors, MainActor
 
-This codebase is a clean showcase of modern Swift concurrency. If you learn this part well, you have learned the hardest and most valuable thing here.
+This is the hardest part of the guide and the most valuable. This codebase is a clean, modern showcase of Swift concurrency, and the concepts here are what senior iOS interviews actually probe.
 
-## 4.1 async/await Basics
+## 4.1 async/await: The Familiar Part
 
-Like JS, but with two differences that matter:
+You know async/await from JS and Dart. Swift's version reads the same:
 
 ```swift
-func address() async throws -> EthereumAddress
-let addr = try await signer.address()
+func payment(id: UInt64) async throws -> PaymentRecord    // async AND can fail
+
+let record = try await gateway.payment(id: 13)
 ```
 
-1. `await` marks a **suspension point**: the thread is freed while waiting; nothing is blocked.
-2. Async functions do not start until awaited from a task context; there is no floating promise problem. If you want fire-and-forget, you say so explicitly with `Task { ... }`.
+Note the keyword order at the call site: `try await`, always in that order, marking that this line can fail AND can suspend.
 
-## 4.2 Actors: Data Races Made Impossible
+Two mental upgrades from the JS model:
 
-An `actor` is a class whose state can only be touched by one caller at a time. The compiler enforces that all external access goes through `await`:
+**1. `await` frees the thread.** While the RPC round-trip is in flight, the thread is not blocked; it goes off and runs other work, and this function resumes later, possibly on a different thread. That is why a phone with six cores can run hundreds of concurrent operations.
+
+**2. There are no floating promises.** In JS, calling an async function starts it whether or not you `await` it, and forgotten promises fail silently. In Swift, async functions only run inside a task context, and unhandled results are compiler warnings. Fire-and-forget must be EXPLICIT (`Task { }`, section 4.4).
+
+Running two things at once uses `async let`:
 
 ```swift
-// From Core/Chain/ArcContractReader.swift:
-actor ArcContractReader: ContractReading {
-    private let erc20: EthereumContract
-    private let escrow: EthereumContract
-    // ...
-    func payment(id: UInt64) async throws -> PaymentRecord { ... }
+async let payment = gateway.payment(id: 13)        // starts immediately
+async let vault = gateway.vaultState(of: owner)    // starts immediately, in parallel
+let (p, v) = try await (payment, vault)            // wait for both
+```
+
+## 4.2 The Problem Actors Solve
+
+Before showing the tool, feel the bug it kills. Imagine a plain class shared by two screens:
+
+```swift
+final class Counter {
+    var value = 0
+    func increment() { value += 1 }     // read, add, write: THREE steps
 }
 ```
 
-Why an actor? `EthereumContract` objects and the RPC transport are not thread-safe, and payments refresh concurrently from several screens. Making the reader an actor means those concurrent calls are automatically serialized. No locks, no queues, no data races, checked at compile time.
+Two threads call `increment()` at the same moment. Both read `0`, both add 1, both write `1`. One increment is lost. That is a **data race**: no crash, no error, just corrupted state that reproduces once a week. In a wallet, replace "counter" with "nonce" and the corrupted state is a stuck transaction.
 
-The same pattern protects secrets: `TestnetLocalSigner` is an actor (a keystore must never be used from two places at once), and `AccountSessionStore` is an actor around the keychain.
+JS avoids this by having one thread. Rust prevents it with the borrow checker and `Mutex`. Swift's answer is the **actor**.
 
-Compare with Rust: an actor is roughly `Arc<Mutex<T>>` where the compiler writes and checks all the locking for you. Compare with JS: it is like each actor having its own single-threaded event loop.
+## 4.3 Actors: A Class With a Front Door
 
-## 4.3 @MainActor: The UI Thread as a Type
+Change one keyword:
 
-UI state must be touched on the main thread. Swift encodes that in the type system:
+```swift
+actor Counter {
+    var value = 0
+    func increment() { value += 1 }
+}
+```
+
+An actor is a reference type (like a class) whose state can only be touched by ONE caller at a time. All outside access goes through `await`, and calls queue up like customers at a single counter:
+
+```
+   caller A ──┐
+   caller B ──┼──▶ [ actor mailbox: one at a time ] ──▶ state
+   caller C ──┘
+```
+
+```swift
+await counter.increment()     // the await is mandatory; you may wait your turn
+```
+
+The compiler ENFORCES this. Touch `counter.value` from outside without `await` and the code does not compile. The data race is not found in review or in production; it is impossible to write.
+
+**Where you see this in Recourse, and why each one is an actor:**
+
+```swift
+// Core/Chain/ArcContractReader.swift
+actor ArcContractReader: ContractReading { ... }
+```
+
+The web3 contract objects and the RPC transport inside are not thread-safe, and payment refreshes fire concurrently from several screens. The actor serializes them automatically. No locks, no queues, no `DispatchQueue.sync` archaeology.
+
+```swift
+// Core/Auth/TestnetLocalSigner.swift
+actor TestnetLocalSigner: BuyerSigner { ... }
+```
+
+A signing keystore must NEVER be used by two operations at once. Actor.
+
+```swift
+// Core/Auth/AccountSession.swift
+actor AccountSessionStore { ... }
+```
+
+The keychain read/write path. Same reasoning.
+
+Rust translation: an actor is roughly `Arc<Mutex<T>>` where the compiler writes the locking, checks you never forgot it, and releases across await points correctly. JS translation: each actor is its own tiny single-threaded event loop.
+
+## 4.4 Task: Structured vs Fire-and-Forget
+
+A `Task` is a unit of async work. The distinction that matters is whether its lifetime is TIED to something.
+
+**Structured** (tied to a view, cancelled automatically):
+
+```swift
+.task {
+    await environment.accountSession.restore()
+}
+```
+
+**Unstructured** (explicitly detached from the current flow):
+
+```swift
+// From AccountSession.restore(), the cold-start fix you watched happen:
+try await accept(storedGrant)                                        // awaited: boot needs this
+profileRefreshTask = Task { await refreshProfile(from: storedGrant) } // NOT awaited: boot must not wait
+```
+
+Read those two lines as a policy decision written in syntax. The keychain read is on the boot path, so it is awaited. The network validation is NOT allowed to block boot (this exact line is why the 15-second frozen splash became instant), so it is wrapped in `Task { }` and runs in the background. And the task is STORED in a property rather than discarded, so tests can `await session.profileRefreshTask?.value` to deterministically wait for the background work before asserting. That one property is the difference between a testable design and a flaky test suite.
+
+Cancellation is cooperative: a cancelled task keeps running until it checks. Long loops in this codebase poll politely:
+
+```swift
+while !Task.isCancelled {
+    await refresh()
+    try? await Task.sleep(for: .seconds(10))     // sleep throws immediately if cancelled
+}
+```
+
+## 4.5 @MainActor: The UI Thread as a Type
+
+iOS law: UI state must be touched on the main thread. Historically this was enforced by crashes. Swift encodes it in the type system with a special global actor:
 
 ```swift
 // From App/AppEnvironment.swift:
@@ -545,63 +1313,131 @@ UI state must be touched on the main thread. Swift encodes that in the type syst
 final class AppEnvironment { ... }
 ```
 
-`AppEnvironment`, `AccountSession`, `BuyerPaymentStore`, and all views are `@MainActor`. If background code tries to set `isRestoring` directly, it does not crash mysteriously like in UIKit days: it fails to compile. Crossing over is explicit: `await MainActor.run { ... }` or calling an actor-isolated method with `await`.
-
-## 4.4 Structured vs Unstructured Tasks
+`@MainActor` on a class means "all of this runs on the main thread." `AppEnvironment`, `AccountSession`, `BuyerPaymentStore`, and every SwiftUI view are main-actor isolated. If background code tries to set `session.isRestoring` directly, that is now a COMPILE error, not a heisenbug. Crossing over is explicit and visible:
 
 ```swift
-// From AccountSession.restore(), the boot-critical pattern:
-try await accept(storedGrant)                              // structured: awaited inline
-profileRefreshTask = Task { await refreshProfile(from: storedGrant) }  // unstructured: runs in background
+let record = try await reader.payment(id: 13)   // hop TO the reader actor (background)
+self.latest = record                             // back ON MainActor automatically after await
 ```
 
-This is the app's cold-start fix in miniature. The keychain read is awaited because boot needs it. The network refresh is wrapped in `Task { }` because boot must NOT wait on the network: the app renders instantly with the cached session, and the refresh catches up. The task is stored in a property so tests can `await session.profileRefreshTask?.value` to make the background work deterministic.
+## 4.6 Sendable: Proof It Can Cross the Border
 
-`.task {}` on views is the third flavor: structured to the view's lifetime, cancelled on disappear.
-
-## 4.5 Sendable: Why Every Domain Type Declares It
-
-`Sendable` marks types safe to send between actors. Value types of Sendable parts get it automatically, but this codebase declares it explicitly on domain types and protocols (`protocol ContractReading: Sendable`) as documentation and enforcement. When you add a mutable class property to a struct and it stops compiling, Sendable just saved you from a race you had not met yet.
-
----
-
-# Part 5: App Architecture: Environment, Routing, Stores
-
-## 5.1 The Composition Root
-
-There is no dependency-injection framework. There is one class that wires everything, with defaults for production and injection seams for tests:
+When a value hops between actors, could it smuggle shared mutable state across the border? `Sendable` is the compile-time proof that it cannot:
 
 ```swift
-// From App/AppEnvironment.swift:
-init(
-    configuration: AppConfiguration,
-    router: AppRouter = AppRouter(),
-    accountSession: AccountSession? = nil,
-    buyerSigner: (any BuyerSigner)? = nil,
-    paymentStore: BuyerPaymentStore? = nil
-) {
-    self.buyerSigner = buyerSigner ?? TestnetLocalSigner()
-    self.paymentStore = paymentStore ?? BuyerPaymentStore(
-        configuration: configuration, signer: self.buyerSigner
-    )
-    self.accountSession = accountSession ?? AccountSession(
-        api: AccountAPIClient(baseURL: configuration.apiURL)
-    )
+struct PaymentRecord: Hashable, Sendable { ... }        // all-value fields: safe, checkable
+protocol ContractReading: Sendable { ... }               // implementations must be safe too
+```
+
+Structs of Sendable parts are automatically Sendable. Classes usually are not (shared mutable state is their whole deal), which is exactly why the domain layer here is all structs: actors can hand them out freely with zero copying anxiety.
+
+One loose end from Part 2: `@preconcurrency import BigInt`. That prefix says "this library predates Sendable checking; do not flag its types." It is the pragmatic bridge for older dependencies, and you will type it in any codebase using pre-2022 libraries.
+
+## 4.7 The Concurrency Map of This App
+
+```
+              MainActor (UI world)                     Background world
+  ┌──────────────────────────────────────┐   ┌────────────────────────────────┐
+  │  SwiftUI views                       │   │  actor ArcContractReader       │
+  │  AppEnvironment   (@MainActor)       │   │  actor ArcContractWriter       │
+  │  AccountSession   (@MainActor)       │◀─▶│  actor TestnetLocalSigner      │
+  │  BuyerPaymentStore(@MainActor)       │   │  actor AccountSessionStore     │
+  │  AppRouter        (@MainActor)       │   │  URLSession network calls      │
+  └──────────────────────────────────────┘   └────────────────────────────────┘
+              every crossing is an explicit `await`, and
+              everything that crosses is Sendable
+```
+
+If you internalize this one diagram, you understand the app's entire threading story, and you can answer the interview question "how do you avoid data races" with something better than "I use DispatchQueue."
+
+----
+
+# Part 5: The App, Layer by Layer
+
+Language: done. UI framework: done. Concurrency: done. Now we walk the actual application the way the Qent guide walked `main.rs`: from the entry point downward, explaining why each layer exists.
+
+## 5.1 Boot: From Tap to First Frame
+
+```
+ user taps the icon
+      |
+      v
+ iOS shows the STATIC launch screen        (Info.plist UILaunchScreen: the bare
+      |                                     green R on white; no code runs yet)
+      v
+ @main RecourseApp                          creates AppEnvironment.live()
+      |                                     (cheap: no network, no ABI parsing)
+      v
+ RootView renders                           first frame! static launch fades out
+      |                                     destination = .restoring -> SplashView
+      |-- .task 1: accountSession.restore() keychain read (milliseconds),
+      |                                     background profile refresh spawned
+      |-- .task 2: sleep 2.3s               minimum splash hold so the
+      |                                     glyph-to-wordmark animation lands
+      v
+ both tasks done -> workspaceDestination recomputes
+      |
+      +--> .onboarding    (no session)      white/green welcome flow
+      +--> .buyerApp      (buyer session)   dark wallet home
+      +--> .merchantWeb   (merchant role)   light merchant workspace
+```
+
+The load-bearing decision, worth repeating from Part 4: NOTHING on this path waits on the network. The app renders from cached state and lets the network catch up. Every app that feels instant does this; every app with a ten-second splash does not.
+
+## 5.2 AppEnvironment: Dependency Injection Without a Framework
+
+There is no DI library. There is one class that wires the object graph, with defaults for production and a seam for every test:
+
+```swift
+// App/AppEnvironment.swift:
+@MainActor
+@Observable
+final class AppEnvironment {
+    let configuration: AppConfiguration
+    let router: AppRouter
+    let accountSession: AccountSession
+    let buyerSigner: any BuyerSigner
+    let paymentStore: BuyerPaymentStore
+
+    init(
+        configuration: AppConfiguration,
+        router: AppRouter = AppRouter(),
+        accountSession: AccountSession? = nil,
+        buyerSigner: (any BuyerSigner)? = nil,
+        paymentStore: BuyerPaymentStore? = nil
+    ) {
+        self.configuration = configuration
+        self.router = router
+        self.buyerSigner = buyerSigner ?? TestnetLocalSigner()
+        self.paymentStore = paymentStore ?? BuyerPaymentStore(
+            configuration: configuration,
+            signer: self.buyerSigner
+        )
+        self.accountSession = accountSession ?? AccountSession(
+            api: AccountAPIClient(baseURL: configuration.apiURL)
+        )
+    }
+
+    static func live() -> AppEnvironment { AppEnvironment(configuration: .live) }
 }
-
-static func live() -> AppEnvironment { AppEnvironment(configuration: .live) }
 ```
 
-Every default parameter is a test seam. Production calls `.live()`; tests call the initializer with fakes. This "pure DI" style scales surprisingly far and is worth copying in every project you build.
+Read the init slowly; it is the whole DI story:
 
-Factories like `makeContractGateway()` build heavier objects on demand instead of at boot, so the app does not parse four ABIs before the first frame.
+1. Every dependency is a parameter with a default of `nil`.
+2. Each `?? ` fallback constructs the REAL implementation.
+3. Production calls `.live()` and thinks about none of this.
+4. A test calls `AppEnvironment(configuration: .test, buyerSigner: FakeSigner())` and substitutes exactly the pieces it cares about.
 
-## 5.2 Workspace Routing: One Function Decides the Whole UI
+Note also which types the properties are: `any BuyerSigner`, not `TestnetLocalSigner`. Protocols at the boundary (1.8) is what makes the substitution possible at all.
 
-`RootView` renders exactly one of four worlds, decided by a pure function:
+Heavier objects (the web3 gateway, the evidence client) are NOT built in init; factory methods like `makeContractGateway()` build them when a screen first needs one. Boot cost stays flat as the app grows.
+
+## 5.3 RootView and the Workspace Decision
+
+The highest-stakes UI decision in the app is "what do you see when it opens." `RootView` reduces it to a pure function plus a switch:
 
 ```swift
-// From App/RootView.swift:
 private var workspaceDestination: WorkspaceDestination {
     WorkspaceRouting.destination(
         isRestoring: environment.accountSession.isRestoring || isHoldingSplash,
@@ -619,57 +1455,91 @@ case .onboarding:   OnboardingFlowView(...)
 }
 ```
 
-Because `WorkspaceRouting.destination` is a static pure function of five booleans and strings, it has direct unit tests (`WorkspaceRoutingTests`). The highest-stakes decision in the app (what do you see when it opens) is trivially testable. Steal this pattern.
+`WorkspaceRouting.destination` is static, takes five plain values, returns an enum, touches nothing. Because it is pure, `WorkspaceRoutingTests` exercises every combination in microseconds. When you build your own apps, steal exactly this: extract the scary decision into a function of plain values, test the function to death, keep the switch dumb.
 
-Two more app-wide policies live here as one-liners: the background color per branch, and `preferredColorScheme` (buyer app follows the user's dark/light choice; onboarding and merchant are pinned light).
+RootView also carries two app-wide policies as single lines: the background color per branch, and `preferredColorScheme` (the buyer app follows the user's dark/light preference from `@AppStorage`; onboarding and merchant are pinned light, which is how the "onboarding stays white and green" rule is enforced structurally rather than by memory).
 
-## 5.3 Stores: Where Server and Chain State Lives
+## 5.4 Stores: Server State In, Rendered Out
 
-`BuyerPaymentStore` (in `AppEnvironment.swift`) is the read model: it polls the backend indexer for the payments belonging to this wallet and exposes them as observable arrays that `HomeView` and `ReceiptsFoundationView` render. Refresh is a `while !Task.isCancelled` loop inside a `.task`, which means polling stops automatically when the screen goes away. Writes never go through the store: they go through workflows to the chain, and the store simply observes the aftermath.
+`BuyerPaymentStore` (in `AppEnvironment.swift`) is the read model for "my payments." Its loop:
 
-## 5.4 Workflows: Feature Logic Without UI
+1. Ask the signer for the wallet address.
+2. Poll the backend indexer for payments belonging to that address.
+3. Decode into domain structs, store them in `@Observable` arrays.
+4. Home and Receipts screens read those arrays; SwiftUI re-renders on change.
 
-Each feature's `Domain/` folder holds a struct that owns one use case end to end, taking protocol dependencies:
+The poll runs in a view's `.task`, so it stops when the screen goes away (4.4). And note the trust model inherited from the protocol: the indexer only ACCELERATES reads; anything that matters is verifiable against the chain itself, which is what the receipt screens do when they recompute verdicts (Part 8).
+
+Writes never pass through the store. Money movement goes through workflows to the chain, and the store simply observes the aftermath at the next poll.
+
+## 5.5 Workflows: One Use Case, One Struct
+
+Each feature's `Domain/` folder holds a struct that owns one use case end to end:
 
 ```swift
-// From Features/Verdict/Domain/VerdictWorkflow.swift:
+// Features/Verdict/Domain/VerdictWorkflow.swift:
 struct VerdictWorkflow: Sendable {
     private let gateway: any ContractGateway
     private let timeProvider: any UnixTimeProvider
+
+    init(gateway: any ContractGateway, timeProvider: any UnixTimeProvider) {
+        self.gateway = gateway
+        self.timeProvider = timeProvider
+    }
 
     func inspect(paymentID: UInt64) async throws -> VerdictReadiness {
         let payment = try await gateway.payment(id: paymentID)
         guard payment.status == .disputed || payment.status == .settled else {
             throw BuyerWorkflowError.paymentNotDisputed
         }
-        // ...
+        let preview = try await gateway.previewVerdict(paymentID: paymentID)
+        // ... decide: awaiting attestation, ready, or settled
     }
 }
 ```
 
-Note `timeProvider`: even "what time is it" is injected (`UnixTimeProvider` protocol with a `SystemUnixTimeProvider` default), because dispute windows are time math and time math must be testable. Views construct workflows, call one method, and render the result. No business logic in views, no UI in workflows.
+Everything from Part 1 is on display in twelve lines: a struct (value semantics, no lifecycle), `any` protocol dependencies (testable), `guard` for preconditions (readable), a typed throw (precise failure), an enum payload return (illegal states unrepresentable). Views construct a workflow, call one method, and render the returned enum. No business logic in views; no UI in workflows; tests need neither a screen nor a network.
 
----
+The same shape repeats: `CheckoutWorkflow` (verify order, approve USDC, pay), `DisputeWorkflow` (file claim with evidence), `SendWorkflow` (plain transfer), each a struct with gateway plus whatever narrow dependencies it needs.
+
+----
 
 # Part 6: Auth and Security
 
 ## 6.1 Two Keys, Two Jobs
 
-The most important conceptual split in the app:
+The most important conceptual split in the app, and the one to internalize before touching any wallet code:
 
-- **Account** = who you are to the backend (Apple/Google sign-in, session tokens). Lives in `AccountSession`, persisted in the keychain.
-- **Wallet** = the device key that signs transactions. Lives in `TestnetLocalSigner`, generated on the device, never leaves it.
+| | Account | Wallet |
+|---|---|---|
+| Answers | "who are you to the backend" | "who signs transactions" |
+| Created by | Apple / Google sign-in | generated on this device, first use |
+| Lives in | `AccountSession` + keychain session grant | `TestnetLocalSigner` + keychain keystore |
+| On a new phone | same account after sign-in | a DIFFERENT wallet |
+| Leaves the device | tokens go to the backend | never, ever |
 
-Same account on a new phone gets a new wallet; a different account on the same phone reuses the device wallet. Money is bound to the device key; identity is bound to the backend session.
+Same device, two accounts: both see the same wallet. Same account, two devices: two different wallets. Identity and money are deliberately decoupled; the demo you saw on the simulator (signed out, empty wallet) versus the physical phone (signed in, funded) is this table in action.
 
-## 6.2 The Keychain Layer
+## 6.2 KeychainStore: Wrapping a C API Once
 
-`KeychainStore` wraps Apple's Security framework C API (`SecItemAdd`, `SecItemCopyMatching`, `SecItemDelete`) into a small async `SecureDataStore` protocol. Values are stored per service + account name and survive app reinstalls. The wrapping pattern to notice: nasty C APIs get one tiny Swift protocol, and everything above depends on the protocol (tests use an in-memory fake: `AccountSessionMemoryStore`).
+The keychain is iOS's encrypted credential store, surviving reinstalls, guarded by the Secure Enclave. Its API is C from another era: `SecItemAdd`, `SecItemCopyMatching`, `SecItemDelete`, driven by `CFDictionary` queries.
+
+`Core/Auth/KeychainStore.swift` wraps that hostility ONCE behind a civilized async protocol:
+
+```swift
+protocol SecureDataStore {
+    func save(_ data: Data, account: String) async throws
+    func load(account: String) async throws -> Data?
+    func delete(account: String) async throws
+}
+```
+
+Everything above depends on the protocol; tests substitute an in-memory dictionary (`AccountSessionMemoryStore`). The pattern to copy into every codebase you ever touch: ugly platform APIs get one small adapter conforming to one small protocol, and the ugliness never spreads.
 
 ## 6.3 The Signer
 
 ```swift
-// From Core/Auth/TestnetLocalSigner.swift:
+// Core/Auth/TestnetLocalSigner.swift:
 actor TestnetLocalSigner: BuyerSigner {
     func address() async throws -> EthereumAddress
     func sign(_ transaction: UnsignedTransaction) async throws -> Data
@@ -678,73 +1548,145 @@ actor TestnetLocalSigner: BuyerSigner {
 }
 ```
 
-First use generates an `EthereumKeystoreV3` (an encrypted Ethereum key file) with a random password; both are stored in the keychain. `signEIP712` is what signs typed structured data: dispute evidence uploads are authorized by an EIP-712 signature proving the caller is the onchain buyer, which is how the backend authenticates uploads without passwords.
+First use generates an `EthereumKeystoreV3` (an encrypted Ethereum key file) with a random password; both are stored in the keychain. Every signature after that is: load keystore, decrypt with the stored password, sign, done, all serialized by the actor so two payments can never race the keystore.
 
-`TransactionAuthorizer` gates money movement behind Face ID via `LocalAuthentication`: the biometric prompt succeeds, then and only then does the signer sign.
+`signEIP712` is the quietly clever one. EIP-712 is Ethereum's standard for signing STRUCTURED data (typed fields, not opaque bytes). The app uses it to authorize evidence uploads: the backend challenges, the phone signs a typed message proving "I am the onchain buyer of payment N," and the backend verifies the signature against the chain. Password-free authentication where the wallet key IS the identity.
 
-## 6.4 Session Restore, the Production Pattern
+`TransactionAuthorizer` adds the human gate: LocalAuthentication (Face ID) must succeed before the signer is even asked. Biometric prompt, then signature, in that order, every time money moves.
 
-`AccountSession.restore()` shows a pattern you will reuse forever: **trust cache, verify async**.
+## 6.4 Session Restore, Step by Step
 
-1. Load the grant from the keychain (fast, local).
-2. Check Apple credential state (revoked means clear and sign out).
-3. Accept the cached grant immediately so the UI renders.
-4. Kick a background task that calls `/me`; on 401 it rotates the refresh token; on a dead token it signs out; on network failure it keeps the cached session.
-
-Boot never waits on a network round trip. The 15-second frozen splash this replaced is the fate of every app that validates sessions synchronously on launch.
-
----
-
-# Part 7: Talking to Arc: web3swift and the Gateway Layer
-
-## 7.1 The Stack
-
-```
-Feature workflow (CheckoutWorkflow, VerdictWorkflow...)
-        |  any ContractGateway
-ArcContractGateway            # composes reader + writer
-   |-- ArcContractReader      # actor: eth_call reads
-   |-- ArcContractWriter      # actor: builds, signs, sends transactions
-        |  any ArcRPCTransport
-ArcRPCTransport               # JSON-RPC over URLSession to the Arc RPC node
-```
-
-Contract addresses come from `AppConfiguration` (which comes from `Generated/Deployment.swift`). ABIs are bundled JSON files loaded through the `ContractABI` enum:
+You watched this function get rebuilt during the session; now read it as a finished pattern, because you will reimplement it in every app you ever ship:
 
 ```swift
-// From Core/Chain/ContractABI.swift (pattern):
+func restore() async {
+    guard isRestoring else { return }              // run once
+    defer { isRestoring = false }                  // ALL exits flip the flag (1: defer!)
+
+    do {
+        guard let storedGrant = try await store.load() else { return }   // 2: cache read
+        let credentialState = try? await credentialChecker.credentialState(
+            for: storedGrant.account.providerUserID
+        )
+        if credentialState == .revoked || credentialState == .notFound {
+            try await store.clear()                // 3: Apple says dead: sign out
+            return
+        }
+        try await accept(storedGrant)              // 4: TRUST CACHE: render signed-in NOW
+        profileRefreshTask = Task {                // 5: VERIFY ASYNC: network catches up
+            await refreshProfile(from: storedGrant)
+        }
+    } catch {
+        grant = nil
+        account = nil
+        try? await store.clear()
+    }
+}
+```
+
+The five numbered beats:
+
+1. `defer` guarantees `isRestoring` flips on EVERY exit path: success, early return, throw. One line, no forgotten branch, splash always ends.
+2. Keychain load: local, milliseconds, allowed on the boot path.
+3. The one early sign-out: Apple explicitly revoked the credential.
+4. The cached grant is accepted immediately. The UI renders the signed-in world.
+5. Validation (`/me`, token rotation on 401, sign-out on dead refresh token) happens in a background task that boot never waits for, stored in a property for tests.
+
+Name the pattern and keep it: **trust cache, verify async.** Synchronous session validation on the boot path is the single most common cause of slow app launches in the wild.
+
+----
+
+# Part 7: Talking to Arc: the Chain Layer
+
+## 7.1 The Stack, Top to Bottom
+
+```
+  Feature workflow            "pay this request" / "read payment 13"
+        |            depends on: any ContractGateway
+        v
+  ArcContractGateway          thin composer: routes reads and writes
+        |                     
+        +-- actor ArcContractReader     eth_call reads, ABI decode -> domain structs
+        +-- actor ArcContractWriter     build tx, Face ID sign, send, poll receipt
+        |            depends on: any ArcRPCTransport
+        v
+  ArcRPCTransport             JSON-RPC 2.0 over URLSession
+        |
+        v
+  Arc testnet RPC node        chain id 5042002
+```
+
+Addresses come from `AppConfiguration` (which comes from `Generated/Deployment.swift`, which comes from the deploy artifacts: one source of truth, Part 2). ABIs are JSON files bundled in `Resources/ABI/`, loaded through an enum so a missing file is a named error, not a crash:
+
+```swift
 enum ContractABI: String {
     case erc20 = "ERC20.abi"
     case escrow = "RecourseEscrow.abi"
     case policyRegistry = "PolicyRegistry.abi"
     case settlementVault = "SettlementVault.abi"
-    func load(from bundle: Bundle) throws -> String { ... }
 }
 ```
 
-A read is: encode the method call with the ABI, `eth_call` it through the transport, decode the result, map it into a domain struct (`PaymentRecord`, `VaultState`). Every decode failure has a named error case (`malformedResult(method:)`, `unknownPaymentStatus(UInt8)`) instead of a crash.
+## 7.2 Anatomy of a Read
 
-A write is: build an `UnsignedTransaction` (nonce, gas, calldata), have the signer sign it (behind Face ID), `eth_sendRawTransaction`, then poll for the receipt and return a `ChainReceipt` whose `Outcome` enum the UI renders as staged progress ("approve, then deposit" in `EarnView`'s `VaultActionSheet`).
+What actually happens when the home screen shows your USDC balance:
 
-## 7.2 Money Is Not a Double
+1. The store asks the reader: `balance(of: address)`.
+2. The reader looks up `balanceOf` in the ERC-20 ABI and encodes the call data (function selector + padded address, the EVM's binary calling convention; web3swift does the byte-packing).
+3. The transport POSTs a JSON-RPC `eth_call` to the node.
+4. The node executes the view function and returns hex-encoded bytes.
+5. The reader decodes through the ABI, range-checks, and wraps the result in a domain type (`USDCAmount`).
 
-```swift
-// Core/Domain/USDCAmount.swift (concept):
-// USDC has 6 decimals. All math happens in integer base units.
+Every step that can fail has a named case in `ContractReadError` (1.10): `missingABI`, `rpc(code:message:)`, `malformedResult(method:)`, `unknownPaymentStatus`. When a read breaks, the error TELLS you which layer lied. Compare with the alternative you see in most hobby wallet code: `try! result as! BigUInt` and a crash log.
+
+## 7.3 Anatomy of a Write
+
+A payment is a small state machine, and `EarnView`'s deposit sheet shows it to the user honestly:
+
+```
+ build UnsignedTransaction (nonce, gas, calldata)
+      |
+      v
+ Face ID prompt  ──denied──▶ stop, nothing signed
+      |
+      v
+ signer.sign(tx)             (actor-serialized, key never leaves device)
+      |
+      v
+ eth_sendRawTransaction  ──▶ tx hash immediately
+      |
+      v
+ poll receipt until mined ──▶ ChainReceipt with an Outcome enum
 ```
 
-`USDCAmount` stores base units (`5_200_000` = $5.20) and formats for display only at the edge. The one rule: never put money in a `Double`. `BigInt`/`BigUInt` handle chain-sized numbers; `UInt64` handles payment IDs and timestamps.
+For the vault deposit, TWO writes chain: `approve` (let the vault pull USDC) then `deposit`, each with its own receipt await, each surfaced as a stage string in the UI ("Approving...", "Depositing..."). Users forgive slow chains; they do not forgive silent ones.
 
----
+## 7.4 Money Is Integers. Always.
+
+Worth its own heading because it is the most transferable rule in the whole guide. `USDCAmount` stores base units (`5_200_000` = $5.20, six decimals), arithmetic happens on integers, and formatting to "5.20" happens only at the display edge. `BigUInt` handles chain-scale numbers; `UInt64` handles IDs and timestamps. `Double` appears exactly nowhere near value. The Qent backend does the same with kobo; Part 20 does the same with lamports. Three ecosystems, one rule: **floats never touch money.**
+
+----
 
 # Part 8: Determinism: Manifests, Hashes, Verdicts
 
-This is the soul of the product, and the Swift code mirrors the Solidity and TypeScript engines byte for byte.
+This part is the soul of the product, and it is where "serialization" stops being plumbing and becomes cryptography. Read it after Part 1's Codable section.
 
-## 8.1 The Order Manifest: JSON Bytes as Identity
+## 8.1 The Idea in One Sentence
+
+If two parties can both compute a hash of the same bytes, neither has to trust the other's copy of the data: they compare hashes.
+
+## 8.2 The Order Manifest, Worked Example
+
+When a merchant creates a product, the app builds an exact JSON document:
+
+```json
+{"amountBaseUnits":"5200000","description":"Fresh catch","imageHash":"0x9c1a...","title":"Fish"}
+```
+
+and hashes those EXACT bytes with keccak256 (Ethereum's standard hash). That 32-byte hash IS the `orderRef` the escrow contract stores when the buyer pays. Now look at the encoding code and spot the detail that makes it work:
 
 ```swift
-// From Core/Orders/OrderManifest.swift:
+// Core/Orders/OrderManifest.swift:
 func encodedForPublishing() throws -> (bytes: Data, orderReference: ChainHash) {
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
@@ -753,213 +1695,249 @@ func encodedForPublishing() throws -> (bytes: Data, orderReference: ChainHash) {
 }
 ```
 
-The keccak256 of the exact JSON bytes IS the `bytes32 orderRef` stored by the escrow. When the phone fetches an order, it rehashes the received bytes and refuses to display anything whose hash does not match:
+`.sortedKeys` is the entire trick. JSON key order is normally arbitrary; `{"a":1,"b":2}` and `{"b":2,"a":1}` mean the same thing but hash DIFFERENTLY. Sorting keys makes the encoding canonical: same manifest, same bytes, same hash, in Swift, in TypeScript on the web, and in Rust on the backend. A shared golden fixture (one manifest whose hash all three languages assert in their test suites) pins them together forever; if any implementation drifts by a single byte, a test goes red in that language.
+
+## 8.3 Verification on the Phone
+
+When the buyer's phone fetches an order to display, it does not trust the backend:
 
 ```swift
 guard bytes.keccak256Hash.value.lowercased() == orderReference.value.lowercased() else {
-    // tampered or corrupted order: reject before the user ever sees it
+    // hash mismatch: tampered or corrupted; refuse to even display it
 }
 ```
 
-The backend is therefore just a byte courier. It cannot alter a price without breaking a hash the phone independently checks. A cross-language golden fixture (one manifest whose hash is asserted in Rust, Swift, and TypeScript) pins all three implementations to identical bytes.
+Walk the consequence chain: the backend stores and serves the manifest bytes, but the HASH the phone compares against came from the chain. If the backend altered a price, the recomputed hash would not match the onchain `orderRef`, and the phone rejects the order before the user ever sees it. The backend is thereby demoted from "trusted authority" to "byte courier." This is the deepest design idea in the codebase: **make the server unable to lie, instead of promising it will not.**
 
-## 8.2 The Verdict: Recomputed, Not Trusted
+## 8.4 The Verdict, Recomputed
 
-`VerdictWorkflow` reads the payment, the policy, and the attestation from chain, and computes the verdict with the same first-match-wins rule evaluation as the Solidity engine, then compares hashes. The receipt screen's "Two engines, one result" is literal: one hash computed onchain, one recomputed on your phone, shown matching. Golden vectors in the test suite assert the Swift engine agrees with the canonical vectors that forge and vitest also assert.
+The same philosophy applies to dispute outcomes. The verdict is a pure function (policy, claim, evidence, attestation, timing) implemented three times: Solidity (canonical, moves the funds), TypeScript (the public verifier in your browser), and Swift (right here, on the phone). `VerdictWorkflow` reads the inputs from the chain, recomputes the verdict locally, and the receipt screen shows both hashes side by side: the one the chain computed and the one your phone computed, matching. Fourteen shared golden vectors are asserted by forge, vitest, and XCTest in the same commit whenever the engine changes.
 
-The discipline to copy: **any logic that exists in two languages gets a shared fixture file and tests in both languages against it.**
+The pitch of the whole product is literal in the code: do not trust the verdict, recompute it.
 
----
+----
 
 # Part 9: QR Codes, the Camera, and Universal Links
 
-## 9.1 Three Doors into the Same Checkout
+## 9.1 Three Doors, One Checkout
 
-A checkout can arrive three ways, and all of them decode to the same `PaymentRequest`:
+A checkout can reach the app three ways, and all three funnel into the SAME decoder and the SAME route:
 
-1. In-app scanner (`ScannerFoundationView`, AVFoundation camera).
-2. iPhone Camera app scanning a universal link `https://<web>/pay?request=...`, which opens the app via `onContinueUserActivity`.
-3. The `recourse://` custom scheme, the fallback the web /pay page uses, arriving via `onOpenURL`.
+```
+ 1. In-app scanner            AVFoundation camera reads the QR string
+ 2. iPhone Camera app         QR encodes https://<web>/pay?request=...
+                              iOS recognizes the universal link, opens the app,
+                              delivers it via onContinueUserActivity
+ 3. recourse:// scheme        the web /pay page's fallback if the app
+                              did not intercept; arrives via onOpenURL
+        |
+        v
+   PaymentRequestDecoder      validate chain id, addresses, amount
+        |
+        v
+   router.push(.checkout(request))
+```
 
 ```swift
-// From App/RootView.swift:
+// App/RootView.swift, both doors wired in two modifiers:
 .onOpenURL { url in openIncomingCheckout(url) }
 .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
     if let url = activity.webpageURL { openIncomingCheckout(url) }
 }
 ```
 
-`PaymentRequestDecoder` validates chain ID, addresses, and amounts before anything is shown; a QR that does not verify is rejected with a human error, not rendered. A checkout QR is a price tag, not a ticket: every scan that pays creates an independent escrowed payment.
+Because navigation is data (3.7), the deep-link path IS the tap path: decode, push the enum, done. The decoder rejects wrong-chain and malformed payloads with human-readable errors before anything renders; a QR is untrusted input exactly like a network response.
+
+One product subtlety encoded here: a checkout QR is a PRICE TAG, not a ticket. Every scan that completes payment creates an independent escrowed payment with its own protection window. Two buyers scanning the same product QR is the normal case, not a conflict.
 
 ## 9.2 Generating QR Codes
 
-`ReceiveSheet` renders the wallet address as a QR with CoreImage's `CIFilter.qrCodeGenerator`, scaled with nearest-neighbor interpolation so it stays sharp, on a white tile in both themes because scanners want contrast, not aesthetics.
+The receive screen renders the wallet address as a QR with CoreImage:
 
----
+```swift
+let filter = CIFilter.qrCodeGenerator()
+filter.message = Data(address.utf8)
+// scale up with nearest-neighbor so squares stay crisp, not blurry
+```
+
+And one deliberate design-system exception: the QR tile stays WHITE even in dark mode, because scanners want contrast, not aesthetics.
+
+----
 
 # Part 10: The Design System
 
-## 10.1 Adaptive Color Tokens
+## 10.1 Two Laws, Enforced by Structure
 
-The design system encodes the project's two visual laws: onboarding is white and green forever, and the in-app dark theme is flat black with no container-on-container nesting.
+The project has two visual laws, and both are enforced by code rather than memory:
+
+1. **Onboarding is white and green, forever.** Onboarding screens use the static light palette (`ink`, `canvas`, `ledger`), and RootView pins their color scheme to light. No system dark mode, no user toggle, can touch them.
+2. **In-app dark is flat black.** Content sits directly on the `night` background: no cards floating on cards, no gray containers. Chips and dividers exist; boxes-in-boxes do not.
+
+## 10.2 Adaptive Tokens: One Name, Two Colors
 
 ```swift
-// From Core/DesignSystem/RecourseColor.swift:
-static let night     = adaptive(light: (1.0, 1.0, 1.0),   dark: (0.027, 0.035, 0.03))
+// Core/DesignSystem/RecourseColor.swift:
+static let night     = adaptive(light: (1.0, 1.0, 1.0),    dark: (0.027, 0.035, 0.03))
 static let nightText = adaptive(light: (0.07, 0.09, 0.08), dark: (0.93, 0.95, 0.93))
 
-private static func adaptive(light: (Double, Double, Double), dark: (Double, Double, Double)) -> Color {
+private static func adaptive(light: (Double, Double, Double),
+                             dark: (Double, Double, Double)) -> Color {
     Color(UIColor { trait in
         trait.userInterfaceStyle == .dark ? UIColor(...) : UIColor(...)
     })
 }
 ```
 
-`night*` tokens resolve per color scheme automatically, so one sweep of the codebase (`ink -> nightText`, `canvas -> night`) made the whole buyer app theme-aware. The static palette (`ink`, `canvas`, `ledger`) stays fixed for onboarding. The user's choice is one `@AppStorage` string, applied at a single point in `RootView` via `preferredColorScheme`. Theme systems fail when color decisions are scattered; this one works because every color goes through `RecourseColor`.
+Piece by piece: `UIColor { trait in ... }` is a UIKit color that RESOLVES ITSELF differently per appearance, wrapped in a SwiftUI `Color`. A view says `RecourseColor.nightText` once and is correct in both themes with zero conditional code. The entire dark theme migration of this app was a mechanical sweep (`ink` to `nightText`, `canvas` to `night`) precisely because every color already flowed through this one file. Theme systems die when hex values scatter through views; this one lives because the palette has a single home.
 
-## 10.2 The Card Faces
+The user's dark/light choice is one `@AppStorage` string applied at ONE point (`preferredColorScheme` in RootView). Setting, application, and tokens: three small pieces, cleanly separated.
 
-`WalletCardStyle` is a `CaseIterable` enum of thirteen faces. Each case knows its background image and, crucially, `prefersDarkText`, from which text, chip, and border colors derive. Adding a card face is adding one enum case; every screen rendering cards updates itself. When variation is finite and knowable, an enum beats a configuration object.
+## 10.3 The Card Faces: an Enum as a Design System
 
-## 10.3 Asset Catalog Tricks Used Here
+`WalletCardStyle` is a `CaseIterable` enum of thirteen faces. Each case knows its background image name and one derived fact, `prefersDarkText`, from which text, chip, and border colors all follow. The picker grid is `ForEach(WalletCardStyle.allCases)`; the persisted selection is the enum's raw value in `@AppStorage`. Adding face fourteen is: add a case, drop the art in the asset catalog. Every screen updates itself. When variation is finite and knowable, an enum IS the design system.
 
-- **Appearance variants**: `ArcMark.imageset` has a light SVG (navy) and a dark SVG (white); `Image("ArcMark")` picks per theme with zero code. Forcing one variant is `.environment(\.colorScheme, .dark)` (done on the onboarding chip, which sits on photo glass).
-- **Vector preservation**: `"preserves-vector-representation": true` keeps SVGs crisp at any size.
-- **Launch screen**: no storyboard; `Info.plist` declares `UILaunchScreen` with an image + background color from the catalog. iOS caches a rendered snapshot of it, which is why launch-screen changes sometimes need a reinstall or reboot to appear.
+## 10.4 Asset Catalog Tricks Used Here
 
----
+- **Appearance variants:** `ArcMark.imageset` contains a navy SVG (for light) and a white SVG (for dark); `Image("ArcMark")` picks automatically. Forcing one variant is `.environment(\.colorScheme, .dark)`, used on the onboarding chip that sits on photo glass.
+- **Vector data:** `"preserves-vector-representation": true` keeps SVGs sharp at any render size.
+- **The launch screen** is not code: `Info.plist` declares `UILaunchScreen` with an image and background color from the catalog. iOS caches a rendered snapshot aggressively, which is why launch-screen changes sometimes need a delete-and-reinstall (or reboot) to appear, as you saw firsthand.
+
+----
 
 # Part 11: Testing
 
-## 11.1 The Shape of the Suite
+## 11.1 XCTest Anatomy
 
-`RecourseTests/` tests domain logic, not pixels: workflows, routing, session, engine vectors, manifest hashing. The enabler is that every dependency is a protocol, so `DomainTestDoubles.swift` provides fakes:
+XCTest is Apple's built-in framework. A test class extends `XCTestCase`; every method starting with `test` is a test:
 
 ```swift
-// Pattern from RecourseTests/DomainTestDoubles.swift:
-final class FakeContractGateway: ContractGateway {
-    var vault = VaultState(totalAssets: 11_251_250, totalShares: 7_998_750, ...)
-    // records calls, returns canned values
+import XCTest
+@testable import Recourse        // import the app module, including internal symbols
+
+final class USDCAmountTests: XCTestCase {
+    func testFormatsBaseUnits() {
+        let amount = USDCAmount(baseUnits: 5_200_000)
+        XCTAssertEqual(amount.formatted, "5.20")
+    }
 }
 ```
 
-## 11.2 Async Tests
+`@testable import` is the one piece of magic: it lets the test target see the app's `internal` declarations without making everything `public`.
 
-XCTest supports async directly, and `@MainActor` on the test class matches the isolation of the code under test:
+The assertion vocabulary:
+
+| Assertion | Checks |
+|---|---|
+| `XCTAssertEqual(a, b)` | `a == b` (needs Equatable, from 1.14) |
+| `XCTAssertTrue(x)` / `XCTAssertFalse(x)` | booleans |
+| `XCTAssertNil(x)` / `XCTAssertNotNil(x)` | optionals |
+| `XCTAssertThrowsError(try f())` | the call throws |
+| `XCTUnwrap(x)` | unwraps an optional or fails the test cleanly |
+
+## 11.2 Async Tests and Actor Isolation
+
+Tests can be `async` and can be `@MainActor`, matching the code under test:
 
 ```swift
 // From RecourseTests/AccountSessionTests.swift:
 @MainActor
 final class AccountSessionTests: XCTestCase {
     func testRestoresAnAuthorizedBackendSession() async throws {
+        let sessionStore = AccountSessionStore(secureStore: AccountSessionMemoryStore())
+        try await sessionStore.save(grant(account: expected))
+
         let session = AccountSession(
             store: sessionStore,
             credentialChecker: FixedAppleCredentialChecker(state: .authorized),
-            api: api
+            api: AccountAPIMock(profile: expected, refreshedGrant: storedGrant)
         )
+
         await session.restore()
-        XCTAssertTrue(session.isAuthenticated)
+
+        XCTAssertEqual(session.account, expected)
+        XCTAssertFalse(session.isRestoring)
     }
 }
 ```
 
-When `restore()` gained a background refresh task, the test for token rotation gained one line: `await session.profileRefreshTask?.value`. Exposing in-flight tasks as properties is the standard trick for making fire-and-forget work deterministic in tests.
+Read the arrange step and count the fakes: an in-memory keychain, a fixed Apple credential checker, a canned API. Every one exists because the real dependency hides behind a protocol (1.8, 6.2). No network, no keychain entitlements, no Apple servers: the test runs in milliseconds and cannot flake.
 
-## 11.3 Running Tests
+And the detail you watched get built: when `restore()` gained a background refresh task, the token-rotation test gained ONE line before its assertions:
+
+```swift
+await session.profileRefreshTask?.value    // wait for the background work, deterministically
+```
+
+Exposing in-flight tasks as properties is the standard trick for testing fire-and-forget work. File it away; you will need it within a month of writing production Swift.
+
+## 11.3 What This Suite Chooses to Test
+
+Look at what `RecourseTests/` covers and, just as instructively, what it skips:
+
+- **Workflows** (checkout, dispute, verdict, send) against `FakeContractGateway`: the business rules.
+- **WorkspaceRouting**: every combination of the five boot inputs (5.3).
+- **AccountSession**: restore, rotation, revocation.
+- **Golden vectors**: the Swift verdict engine against the same fixtures forge and vitest assert.
+- **Manifest hashing**: the cross-language fixture (8.2).
+
+No pixel tests, no scrolling simulators. The suite tests DECISIONS, not appearances, which is why 58 tests run in seconds and why they caught real regressions during this project instead of breaking on every UI tweak.
+
+Run it yourself:
 
 ```bash
 xcodebuild -project Recourse.xcodeproj -scheme Recourse \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' test
 ```
 
-Golden vectors deserve a highlight: the same 14 verdict fixtures asserted by forge (Solidity) and vitest (TypeScript) are asserted here in Swift. Cross-language behavior is pinned by shared data, not by hope.
-
----
+----
 
 # Part 12: Xcode, the Generated Project, and Shipping
 
 ## 12.1 Why the .xcodeproj Is Generated
 
-`Recourse.xcodeproj` is produced by `scripts/generate_project.rb` (using the `xcodeproj` gem). The pbxproj file format is a merge-conflict machine; generating it from a script makes the project reproducible and reviewable. Build settings live in Ruby, including `INFOPLIST_KEY_*` entries that merge with `Info.plist`.
+`Recourse.xcodeproj` is not hand-maintained; `scripts/generate_project.rb` produces it (using the `xcodeproj` Ruby gem). The pbxproj format inside is a merge-conflict machine that has ruined more pair-programming afternoons than any other file format in iOS history. Generating it makes the project reproducible, reviewable (build settings live in readable Ruby), and conflict-free.
 
-The workflow after adding or removing a Swift file:
+The one workflow rule this imposes: **after adding, deleting, or renaming a Swift file, regenerate:**
 
 ```bash
 cd mobile && ruby scripts/generate_project.rb && open Recourse.xcodeproj
 ```
 
-## 12.2 Info.plist Things You Will Touch
+If Xcode was open during regeneration, close and reopen the project. Half the "my new file does not compile" confusion is a stale open project.
 
-- `CFBundleURLTypes`: registers the `recourse://` scheme.
-- `UILaunchScreen`: the splash's static first frame.
-- `ITSAppUsesNonExemptEncryption = false`: the export-compliance declaration that stops App Store Connect asking per build.
-- Usage descriptions (camera, Face ID) live as `INFOPLIST_KEY_*` build settings in the generator script.
+## 12.2 Info.plist: the Five Entries That Matter Here
 
-## 12.3 Command-Line Builds
+| Key | What it does |
+|---|---|
+| `CFBundleURLTypes` | registers the `recourse://` scheme (Part 9, door 3) |
+| `UILaunchScreen` | the static splash: LaunchMark image + LaunchBackground color |
+| `ITSAppUsesNonExemptEncryption = false` | export-compliance declaration; stops App Store Connect asking on every build |
+| camera / Face ID usage strings | the permission-prompt texts, set as `INFOPLIST_KEY_*` in the generator |
+| associated domains (entitlement) | lets `https://<web>/pay` links open the app (door 2) |
+
+## 12.3 Command-Line Builds and the Simulator
+
+The commands used throughout this very project, worth keeping on a card:
 
 ```bash
-# Build for a specific simulator (id from `xcrun simctl list devices`)
-xcodebuild -project Recourse.xcodeproj -scheme Recourse \
-  -destination 'id=<SIMULATOR-UDID>' build
+# list simulators and their UDIDs
+xcrun simctl list devices
 
-# Install + launch + screenshot on the simulator
+# build for a specific simulator
+xcodebuild -project Recourse.xcodeproj -scheme Recourse \
+  -destination 'id=<UDID>' build
+
+# install, launch, screenshot
 xcrun simctl install <UDID> path/to/Recourse.app
-xcrun simctl launch <UDID> com.recourse.buyer
-xcrun simctl io <UDID> screenshot shot.png
+xcrun simctl launch  <UDID> com.recourse.buyer
+xcrun simctl io      <UDID> screenshot shot.png
 ```
 
-If a build fails with inexplicable database errors, suspect DerivedData (Xcode's build cache): pass a fresh `-derivedDataPath` or delete the cache.
+Two field-tested debugging facts: DerivedData (Xcode's build cache) occasionally corrupts, and the fix is pointing `-derivedDataPath` somewhere fresh; and the launch-screen snapshot cache survives reinstalls until iOS feels like refreshing it (12.2 of your memory, 10.4 of this guide).
 
 ## 12.4 Shipping Checklist
 
-Archive (Product > Archive) requires: a bundle ID matching App Store Connect, the encryption declaration, and no `#Preview` referencing DEBUG-only helpers (previews compile in Release too; wrap them in `#if DEBUG`). TestFlight is the low-ceremony distribution path while the app is testnet-only.
-
----
-
-# Part 13: Common Patterns Reference
-
-A cheat sheet of idioms this codebase uses that you will use in every Swift project.
-
-## 13.1 guard: The Early Exit
-
-```swift
-guard payment.status == .disputed || payment.status == .settled else {
-    throw BuyerWorkflowError.paymentNotDisputed
-}
-```
-
-`guard` flips the if: state your requirement, handle failure in the else, and continue at the same indent level. Chains of guards read like a checklist and keep the happy path unindented.
-
-## 13.2 defer: Cleanup That Cannot Be Forgotten
-
-```swift
-// From AccountSession.restore():
-guard isRestoring else { return }
-defer { isRestoring = false }     // runs on EVERY exit path from this function
-```
-
-Every return, throw, or fall-through flips `isRestoring` exactly once. This is Go's defer / Rust's Drop for a single scope.
-
-## 13.3 Collection Transforms
-
-```swift
-[givenName, familyName]
-    .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }  // drop nils
-    .filter { !$0.isEmpty }
-    .joined(separator: " ")
-```
-
-`map`, `compactMap` (map + drop nils), `filter`, `first(where:)`, `contains(where:)`, `sorted(by:)`. These replace nearly every for-loop.
-
-## 13.4 Computed Properties Over Functions
-
-```swift
-var isAuthenticated: Bool { account != nil }
-```
-
-If it takes no arguments and answers a question about current state, make it a computed property. SwiftUI bodies are full of these (`workspaceDestination`, `heroSubtitle`, `sharePrice`).
-
-## 13.5 #if DEBUG and Previews
+Archive (Product > Archive) requires: a bundle ID matching App Store Connect, the encryption declaration above, and, the one that bit this project, **no `#Preview` referencing DEBUG-only helpers.** Previews compile in Release too; wrap them:
 
 ```swift
 #if DEBUG
@@ -967,18 +1945,90 @@ If it takes no arguments and answers a question about current state, make it a c
 #endif
 ```
 
-Previews render the view in Xcode's canvas with fake dependencies. The `#if DEBUG` guard matters: previews compile in all configurations, so referencing DEBUG-only helpers without the guard breaks Release archives (this repo learned that the expensive way).
+TestFlight is the low-ceremony distribution path while the app is testnet-only, and Apple's guideline 3.1.5 (crypto features and organizational accounts) belongs in your review notes before a reviewer discovers it themselves.
 
-## 13.6 Things You Will Meet Next (Not Yet in This Codebase)
+----
 
-- **AsyncSequence / AsyncStream**: for-await over event streams; the natural upgrade from the polling loops in `BuyerPaymentStore`.
-- **TaskGroup**: structured fan-out (`withThrowingTaskGroup`) when you need N parallel chain reads with automatic cancellation.
-- **Swift 6 strict concurrency**: turns every remaining data-race warning into an error; this codebase's actor + Sendable discipline is the preparation.
-- **Macros**: `@Observable` is one; you can write your own for boilerplate.
-- **SwiftData**: Apple's persistence layer, if the app ever needs an offline cache beyond the keychain.
-- **widgets and App Intents**: the natural next surface for "protection status at a glance".
+# Part 13: Common Patterns Reference
 
-## 13.7 The Five Ideas Worth Stealing From This App
+The cheat sheet to keep open while writing Swift. Everything here appears in this codebase.
+
+## 13.1 guard: the Early Exit
+
+```swift
+guard payment.status == .disputed || payment.status == .settled else {
+    throw BuyerWorkflowError.paymentNotDisputed
+}
+```
+
+State the requirement, exit on failure, continue unindented. Chains of guards read as checklists.
+
+## 13.2 defer: Cleanup That Cannot Be Forgotten
+
+```swift
+guard isRestoring else { return }
+defer { isRestoring = false }        // runs on EVERY exit: return, throw, fall-through
+```
+
+## 13.3 The Optional Toolbox, One Screen
+
+```swift
+if let x = maybe { ... }                 // unwrap for a block
+guard let x = maybe else { return }      // unwrap or bail
+let x = maybe ?? fallback                // default
+let y = maybe?.property                  // chain, result optional
+let z = definitely!                      // crash if nil; constants only
+```
+
+## 13.4 Collection Transforms Instead of Loops
+
+```swift
+let names = accounts.compactMap { $0.email }.filter { !$0.isEmpty }.sorted()
+let total = amounts.reduce(0) { $0 + $1.baseUnits }
+let match = payments.first(where: { $0.id == target })
+```
+
+## 13.5 Computed Properties Over Functions
+
+```swift
+var isAuthenticated: Bool { account != nil }     // question about state: property
+func refresh() async { ... }                     // does work: function
+```
+
+## 13.6 How to Add a New Screen (this codebase's recipe)
+
+1. Add a case to `AppRoute` (with payload if the screen needs input).
+2. The compiler now errors in `RootView.destination(for:)`: map the case to your view.
+3. Create `Features/<Name>/<Name>View.swift`; if there is logic, `Features/<Name>/Domain/<Name>Workflow.swift` taking `any ContractGateway` or whatever protocols it needs.
+4. Navigate with `environment.router.push(.yourCase(...))`.
+5. `ruby scripts/generate_project.rb`, reopen Xcode, build.
+6. Test the workflow with the fakes in `DomainTestDoubles.swift`.
+
+## 13.7 Common Compile Errors, Decoded
+
+| Error | What it means | Fix |
+|---|---|---|
+| "Value of optional type 'X?' must be unwrapped" | you used an optional as a plain value | `if let` / `guard let` / `??` (1.5) |
+| "Cannot assign to property: 'self' is immutable" | mutating a struct's property from a non-mutating context, often inside a View | in views: route it through `@State`; in structs: mark the method `mutating` |
+| "Cannot assign to value: 'x' is a 'let' constant" | assigning to a constant | make it `var`, or reconsider: should it change? |
+| "Expression is 'async' but is not marked with 'await'" | calling async code without await | add `try await`, and make the caller `async` |
+| "Sending 'x' risks causing data races" | a non-Sendable value crossing actors | make the type a struct / conform to `Sendable` (4.6) |
+| "Call to main actor-isolated property in a synchronous nonisolated context" | background code touching UI state | hop with `await MainActor.run { }` or mark the caller `@MainActor` |
+| "Type 'X' does not conform to protocol 'View'" | `body` is missing or returns inconsistent types | check `body`; wrap branches in `Group` if needed |
+| "Generic parameter 'T' could not be inferred" | usually a closure's type is ambiguous | annotate one type explicitly and rebuild |
+
+## 13.8 Exercises Against This Codebase
+
+Do these in order; each is a rung.
+
+1. **Read a file cold.** Open `Features/Send/Domain/SendWorkflow.swift`. For every line, name the Part 1 concept it uses. If you hit one you cannot name, that section gets a re-read.
+2. **Add a computed property.** Give `VaultState` a `utilization: Double` (outstanding over totalAssets, guarding division by zero). Write the two-line test first.
+3. **Add a card face.** Follow 10.3: new `WalletCardStyle` case, asset, and watch the picker grow a cell with no other edits.
+4. **Break the router on purpose.** Add `case history` to `AppRoute` and follow the compile errors until the app builds with a placeholder screen. Count how many places the compiler walked you to; that is exhaustiveness working for you.
+5. **Write a fake.** Build `FailingRPCTransport: ArcRPCTransport` that always throws `.rpc(code: -32000, message: "out of gas")`, hand it to `ArcContractReader` in a test, and assert the workflow surfaces a readable error, not a crash.
+6. **Trace a deep link.** Start at `.onOpenURL` in RootView and follow a `/pay` URL all the way to the checkout screen, writing down every type it passes through. This exercise builds the codebase map faster than any amount of reading.
+
+## 13.9 The Five Ideas Worth Stealing From This App
 
 1. Protocols at every boundary, fakes in tests (`ContractGateway`, `BuyerSigner`, `SecureDataStore`).
 2. Pure functions for high-stakes decisions (`WorkspaceRouting.destination`).
@@ -986,8 +2036,7 @@ Previews render the view in Xcode's canvas with fake dependencies. The `#if DEBU
 4. Trust cache, verify async: never block first render on a network call.
 5. One source of truth per fact: colors through `RecourseColor`, addresses through `Generated/Deployment.swift`, money in integer base units.
 
----
-
+----
 # Part 14: UIKit and Interop (What Big Apps Are Really Made Of)
 
 Recourse is pure SwiftUI. TikTok, Instagram, and Snapchat are not: they are UIKit apps with SwiftUI islands, because their feeds and cameras predate SwiftUI and demand frame-level control. To work on an app used by billions you must be bilingual.
