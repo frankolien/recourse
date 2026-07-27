@@ -9,6 +9,7 @@ final class AppEnvironment {
     let accountSession: AccountSession
     let buyerSigner: any BuyerSigner
     let paymentStore: BuyerPaymentStore
+    let addressBook = AddressBookStore()
 
     init(
         configuration: AppConfiguration,

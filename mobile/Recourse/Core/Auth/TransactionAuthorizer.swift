@@ -13,12 +13,25 @@ enum TransactionAuthorizationError: Error, Equatable, Sendable {
 
 actor DeviceOwnerTransactionAuthorizer: TransactionAuthorizing {
     private let reason: String
+    private let defaults: UserDefaults
 
-    init(reason: String = "Confirm this protected payment transaction.") {
+    init(
+        reason: String = "Confirm this protected payment transaction.",
+        defaults: UserDefaults = .standard
+    ) {
         self.reason = reason
+        self.defaults = defaults
     }
 
     func authorizeTransaction() async throws {
+        // Buyer preference, on unless explicitly turned off in Settings. Skipping the
+        // biometric gate only skips the local confirmation; escrow protection and the
+        // on-chain signature are unaffected.
+        if defaults.object(forKey: BuyerSettingKey.confirmPaymentsWithBiometrics) != nil,
+           !defaults.bool(forKey: BuyerSettingKey.confirmPaymentsWithBiometrics) {
+            return
+        }
+
         let context = LAContext()
         context.localizedCancelTitle = "Cancel"
 

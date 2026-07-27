@@ -9,6 +9,8 @@ struct CheckoutReviewView: View {
     @State private var progress: CheckoutProgress?
     @State private var errorMessage: String?
     @State private var orderReview: OrderReview = .verifying
+    @AppStorage(BuyerSettingKey.paymentLimitBaseUnits) private var limitBaseUnits = 0
+    @AppStorage(BuyerSettingKey.confirmPaymentsWithBiometrics) private var confirmWithBiometrics = true
 
     // The buyer's view of the scanned order. A v2 QR carries the manifest hash, so the
     // app fetches the document, rehashes it, and cross-checks every economic field;
@@ -68,9 +70,13 @@ struct CheckoutReviewView: View {
 
     private var canPay: Bool {
         switch orderReview {
-        case .legacy, .verified: true
+        case .legacy, .verified: !exceedsLimit
         case .verifying, .blocked: false
         }
+    }
+
+    private var exceedsLimit: Bool {
+        PaymentLimit.exceeded(amount: request.amount, limitBaseUnits: limitBaseUnits)
     }
 
     private func loadOrder() async {
@@ -344,13 +350,22 @@ struct CheckoutReviewView: View {
 
     private var checkoutActionBar: some View {
         VStack(spacing: 9) {
+            if exceedsLimit {
+                Label(
+                    "Above your \(PaymentLimit.formatted(baseUnits: limitBaseUnits)) per-payment limit. Change it in Settings.",
+                    systemImage: "gauge.with.dots.needle.100percent"
+                )
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(RecourseColor.ledger)
+            }
+
             Button {
                 submitPayment()
             } label: {
                 HStack(spacing: 10) {
                     if isPaying { ProgressView().tint(.white) }
                     Text(payButtonTitle)
-                    if !isPaying, canPay {
+                    if !isPaying, canPay, confirmWithBiometrics {
                         Image(systemName: "faceid")
                     }
                 }
@@ -364,9 +379,13 @@ struct CheckoutReviewView: View {
             .disabled(isPaying || !canPay)
             .opacity(canPay || isPaying ? 1 : 0.5)
 
-            Text("Face ID confirms this protected Arc payment")
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(RecourseColor.nightMuted)
+            Text(
+                confirmWithBiometrics
+                    ? "Face ID confirms this protected Arc payment"
+                    : "Face ID confirmation is off. Turn it on in Settings."
+            )
+            .font(.system(size: 10, weight: .medium))
+            .foregroundStyle(RecourseColor.nightMuted)
         }
         .padding(.horizontal, 20)
         .padding(.top, 12)

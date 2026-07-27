@@ -115,6 +115,13 @@ struct HomeView: View {
         .task {
             while !Task.isCancelled {
                 await environment.paymentStore.refreshBuyer()
+                // Reminders track the refreshed list so settled payments drop
+                // theirs and new protected payments gain one, no screen visit needed.
+                await DisputeReminderScheduler.sync(
+                    payments: environment.paymentStore.payments,
+                    enabled: UserDefaults.standard.object(forKey: BuyerSettingKey.disputeDeadlineReminders) == nil
+                        || UserDefaults.standard.bool(forKey: BuyerSettingKey.disputeDeadlineReminders)
+                )
                 try? await Task.sleep(for: .seconds(10))
             }
         }

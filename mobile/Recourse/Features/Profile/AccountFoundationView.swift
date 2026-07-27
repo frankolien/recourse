@@ -2,16 +2,19 @@ import SwiftUI
 import UIKit
 
 struct AccountFoundationView: View {
-    let configuration: AppConfiguration
-    let accountSession: AccountSession
-    var signer: (any BuyerSigner)?
+    let environment: AppEnvironment
 
     @AppStorage("recourse.hasCompletedOnboarding") private var hasCompletedOnboarding = true
     @AppStorage("recourse.workspaceRole") private var storedWorkspaceRole = OnboardingRole.buyer.rawValue
     @AppStorage("recourse.appearance") private var appearanceRaw = "dark"
+    @AppStorage(BuyerSettingKey.paymentLimitBaseUnits) private var limitBaseUnits = 0
     @State private var showsNameEditor = false
     @State private var walletAddress: EthereumAddress?
     @State private var copiedAddress = false
+    @Environment(\.openURL) private var openURL
+
+    private var configuration: AppConfiguration { environment.configuration }
+    private var accountSession: AccountSession { environment.accountSession }
 
     // The account session is the single source of profile truth: names persist through
     // PUT /api/me/profile and come back on GET /api/me, so nothing profile-shaped lives
@@ -49,7 +52,7 @@ struct AccountFoundationView: View {
             )
         }
         .task {
-            walletAddress = try? await signer?.address()
+            walletAddress = try? await environment.buyerSigner.address()
         }
     }
 
@@ -106,9 +109,26 @@ struct AccountFoundationView: View {
 
     private var securitySection: some View {
         Section("Security") {
-            settingsRow("Passkeys & recovery", "person.badge.key.fill")
+            NavigationLink {
+                SignInRecoveryView(
+                    accountSession: accountSession,
+                    signer: environment.buyerSigner
+                )
+            } label: {
+                settingsRowLabel("Sign-in & recovery", "person.badge.key.fill")
+            }
             deviceKeyRow
-            settingsRow("Payment limits", "gauge.with.dots.needle.67percent")
+            NavigationLink {
+                PaymentLimitsView()
+            } label: {
+                HStack {
+                    settingsRowLabel("Payment limits", "gauge.with.dots.needle.67percent")
+                    Spacer()
+                    Text(limitBaseUnits > 0 ? PaymentLimit.formatted(baseUnits: limitBaseUnits) : "None")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(RecourseColor.nightMuted)
+                }
+            }
         }
     }
 
@@ -152,16 +172,46 @@ struct AccountFoundationView: View {
                 settingsRowLabel("Personal details", "person.crop.circle.fill")
             }
             .buttonStyle(.plain)
-            settingsRow("Notifications", "bell.fill")
-            settingsRow("Payment preferences", "creditcard.fill")
-            settingsRow("Address book", "person.crop.rectangle.stack.fill")
+            NavigationLink {
+                NotificationsSettingsView(paymentStore: environment.paymentStore)
+            } label: {
+                settingsRowLabel("Notifications", "bell.fill")
+            }
+            NavigationLink {
+                PaymentPreferencesView()
+            } label: {
+                settingsRowLabel("Payment preferences", "creditcard.fill")
+            }
+            NavigationLink {
+                AddressBookView(store: environment.addressBook)
+            } label: {
+                HStack {
+                    settingsRowLabel("Address book", "person.crop.rectangle.stack.fill")
+                    Spacer()
+                    if !environment.addressBook.recipients.isEmpty {
+                        Text("\(environment.addressBook.recipients.count)")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(RecourseColor.nightMuted)
+                    }
+                }
+            }
         }
     }
 
     private var supportSection: some View {
         Section("Support") {
-            settingsRow("Contact support", "message.fill")
-            settingsRow("Share feedback", "star.bubble.fill")
+            Button {
+                openMail(subject: "Recourse support")
+            } label: {
+                settingsRow("Contact support", "message.fill")
+            }
+            .buttonStyle(.plain)
+            Button {
+                openMail(subject: "Recourse feedback")
+            } label: {
+                settingsRow("Share feedback", "star.bubble.fill")
+            }
+            .buttonStyle(.plain)
         }
     }
 
@@ -174,8 +224,25 @@ struct AccountFoundationView: View {
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(RecourseColor.nightMuted)
             }
-            settingsRow("Privacy", "hand.raised.fill")
-            settingsRow("Terms", "doc.text.fill")
+            HStack {
+                settingsRowLabel("Version", "app.badge.checkmark")
+                Spacer()
+                Text(appVersion)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(RecourseColor.nightMuted)
+            }
+            Button {
+                openURL(AppConfiguration.webAppURL.appending(path: "privacy"))
+            } label: {
+                settingsRow("Privacy", "hand.raised.fill")
+            }
+            .buttonStyle(.plain)
+            Button {
+                openURL(AppConfiguration.webAppURL.appending(path: "terms"))
+            } label: {
+                settingsRow("Terms", "doc.text.fill")
+            }
+            .buttonStyle(.plain)
         }
     }
 
@@ -204,6 +271,31 @@ struct AccountFoundationView: View {
         }
     }
 
+    private var appVersion: String {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? "1.0"
+        let build = info?["CFBundleVersion"] as? String ?? "1"
+        return "\(version) (\(build))"
+    }
+
+    // Mail first because replies need a reply-to address; the web support page
+    // is the fallback for phones with no mail account configured.
+    private func openMail(subject: String) {
+        var components = URLComponents()
+        components.scheme = "mailto"
+        components.path = AppConfiguration.supportEmail
+        components.queryItems = [
+            URLQueryItem(name: "subject", value: subject),
+            URLQueryItem(name: "body", value: "\n\nRecourse \(appVersion), iOS \(UIDevice.current.systemVersion)")
+        ]
+        guard let url = components.url else { return }
+        openURL(url) { accepted in
+            if !accepted {
+                openURL(AppConfiguration.webAppURL.appending(path: "support"))
+            }
+        }
+    }
+
     private func settingsRow(_ title: String, _ systemImage: String) -> some View {
         HStack {
             settingsRowLabel(title, systemImage)
@@ -212,6 +304,7 @@ struct AccountFoundationView: View {
                 .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(Color.secondary.opacity(0.55))
         }
+        .contentShape(Rectangle())
     }
 
     private func settingsRowLabel(_ title: String, _ systemImage: String) -> some View {
@@ -320,10 +413,7 @@ private struct EditProfileNameView: View {
 #if DEBUG
 #Preview("Settings") {
     NavigationStack {
-        AccountFoundationView(
-            configuration: .live,
-            accountSession: .preview()
-        )
+        AccountFoundationView(environment: .preview())
     }
     .tint(RecourseColor.ledger)
 }

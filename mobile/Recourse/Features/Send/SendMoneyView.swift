@@ -14,6 +14,10 @@ struct SendMoneyView: View {
     @State private var progress: SendProgress?
     @State private var errorMessage: String?
     @State private var sent: SendResult?
+    @State private var showsAddressBook = false
+    @State private var showsSaveRecipient = false
+    @AppStorage(BuyerSettingKey.paymentLimitBaseUnits) private var limitBaseUnits = 0
+    @AppStorage(BuyerSettingKey.confirmPaymentsWithBiometrics) private var confirmWithBiometrics = true
 
     var body: some View {
         ScrollView {
@@ -43,6 +47,17 @@ struct SendMoneyView: View {
                 sent = nil
                 environment.router.reset()
             }
+        }
+        .sheet(isPresented: $showsAddressBook) {
+            SavedRecipientPicker(store: environment.addressBook) { picked in
+                recipientText = picked.address
+            }
+        }
+        .sheet(isPresented: $showsSaveRecipient) {
+            RecipientEditorView(
+                store: environment.addressBook,
+                prefilledAddress: recipient?.value ?? ""
+            )
         }
         .task {
             await environment.paymentStore.refreshBuyer()
@@ -81,6 +96,17 @@ struct SendMoneyView: View {
                     .font(.system(size: 13, weight: .medium, design: .monospaced))
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+                if !environment.addressBook.recipients.isEmpty {
+                    Button {
+                        showsAddressBook = true
+                    } label: {
+                        Image(systemName: "person.crop.rectangle.stack.fill")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(RecourseColor.ledger)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Choose a saved address")
+                }
                 Button {
                     if let pasted = UIPasteboard.general.string {
                         recipientText = pasted.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -100,6 +126,22 @@ struct SendMoneyView: View {
                 Text("That is not a valid wallet address.")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(RecourseColor.ledger)
+            }
+            if let recipient {
+                if let saved = environment.addressBook.recipient(for: recipient.value) {
+                    Label("Sending to \(saved.label)", systemImage: "person.crop.circle.badge.checkmark")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(RecourseColor.ledger)
+                } else {
+                    Button {
+                        showsSaveRecipient = true
+                    } label: {
+                        Label("Save to address book", systemImage: "plus.circle")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(RecourseColor.ledger)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         }
     }
@@ -131,20 +173,34 @@ struct SendMoneyView: View {
         try? USDCAmount(decimalString: amountText)
     }
 
+    private var exceedsLimit: Bool {
+        guard let amount else { return false }
+        return PaymentLimit.exceeded(amount: amount, limitBaseUnits: limitBaseUnits)
+    }
+
     private var canSend: Bool {
-        guard let amount, amount.baseUnits > 0, recipient != nil else { return false }
+        guard let amount, amount.baseUnits > 0, recipient != nil, !exceedsLimit else { return false }
         return !isSending
     }
 
     private var sendActionBar: some View {
         VStack(spacing: 9) {
+            if exceedsLimit {
+                Label(
+                    "Above your \(PaymentLimit.formatted(baseUnits: limitBaseUnits)) per-payment limit. Change it in Settings.",
+                    systemImage: "gauge.with.dots.needle.100percent"
+                )
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(RecourseColor.ledger)
+            }
+
             Button {
                 submit()
             } label: {
                 HStack(spacing: 10) {
                     if isSending { ProgressView().tint(.white) }
                     Text(isSending ? progressLabel : "Send \(amount?.formatted ?? "USDC")")
-                    if !isSending, canSend {
+                    if !isSending, canSend, confirmWithBiometrics {
                         Image(systemName: "faceid")
                     }
                 }
@@ -158,9 +214,13 @@ struct SendMoneyView: View {
             .disabled(!canSend)
             .opacity(canSend || isSending ? 1 : 0.5)
 
-            Text("Face ID confirms this transfer on Arc Testnet")
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(RecourseColor.nightMuted)
+            Text(
+                confirmWithBiometrics
+                    ? "Face ID confirms this transfer on Arc Testnet"
+                    : "Face ID confirmation is off. Turn it on in Settings."
+            )
+            .font(.system(size: 10, weight: .medium))
+            .foregroundStyle(RecourseColor.nightMuted)
         }
         .padding(.horizontal, 20)
         .padding(.top, 12)
@@ -179,7 +239,7 @@ struct SendMoneyView: View {
     }
 
     private func submit() {
-        guard !isSending, let recipient, let amount else { return }
+        guard !isSending, canSend, let recipient, let amount else { return }
         isSending = true
         errorMessage = nil
         progress = .validating
@@ -228,6 +288,48 @@ struct SendMoneyView: View {
 
 extension SendResult: Identifiable {
     var id: String { transactionHash.value }
+}
+
+/// Pick-a-recipient sheet backed by the device address book.
+private struct SavedRecipientPicker: View {
+    let store: AddressBookStore
+    let onPick: (SavedRecipient) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List(store.recipients) { recipient in
+                Button {
+                    onPick(recipient)
+                    dismiss()
+                } label: {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(recipient.label)
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(RecourseColor.nightText)
+                        Text(recipient.address)
+                            .font(.system(size: 11, weight: .medium, design: .monospaced))
+                            .foregroundStyle(RecourseColor.nightMuted)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                    .padding(.vertical, 2)
+                }
+                .buttonStyle(.plain)
+            }
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
+            .background(RecourseColor.night)
+            .navigationTitle("Saved addresses")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
 }
 
 private struct SendSuccessView: View {

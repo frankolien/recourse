@@ -67,6 +67,10 @@ struct AppConfiguration: Sendable {
             ?? "https://recourse-arc.vercel.app"
     )!
 
+    // Same inbox the web support page publishes; the settings screen builds
+    // mailto links from it.
+    static let supportEmail = "gkenny896@gmail.com"
+
     // Google iOS OAuth client id: a public identifier (it ships in every Google-enabled
     // app bundle), overridable for a different Google project. The backend accepts this
     // audience via GOOGLE_IOS_CLIENT_ID.

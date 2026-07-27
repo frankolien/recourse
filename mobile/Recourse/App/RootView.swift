@@ -135,11 +135,7 @@ struct RootView: View {
         case .earn:
             EarnView(environment: environment)
         case .account:
-            AccountFoundationView(
-                configuration: environment.configuration,
-                accountSession: environment.accountSession,
-                signer: environment.buyerSigner
-            )
+            AccountFoundationView(environment: environment)
         case .support:
             SupportView()
         }
