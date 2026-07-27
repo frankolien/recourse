@@ -207,9 +207,10 @@ struct MerchantWorkspaceView: View {
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Circle()
-                        .fill(merchantAccent)
-                        .frame(width: 10, height: 10)
+                    Image("ArcMark")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 16)
                         .accessibilityLabel("Arc Testnet")
                 }
             }

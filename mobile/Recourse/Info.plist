@@ -9,6 +9,15 @@
 	     declaring it here stops App Store Connect asking per build. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!-- Branded splash: paper background with the Recourse mark, matching the
+	     white-and-green onboarding the app opens into. -->
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
+		<key>UIImageName</key>
+		<string>LaunchMark</string>
+	</dict>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

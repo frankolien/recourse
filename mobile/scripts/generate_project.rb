@@ -103,7 +103,8 @@ app_target.build_configurations.each do |configuration|
     "INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking" => "YES",
     "INFOPLIST_KEY_NSLocalNetworkUsageDescription" => "Connect to the Recourse development backend on your local network.",
     "INFOPLIST_KEY_UIApplicationSceneManifest_Generation" => "YES",
-    "INFOPLIST_KEY_UILaunchScreen_Generation" => "YES",
+    # Launch screen comes from the UILaunchScreen dict in Info.plist (branded
+    # splash); generating one here too would collide with it.
     "MARKETING_VERSION" => "0.1.0",
     "PRODUCT_BUNDLE_IDENTIFIER" => "com.recourse.buyer",
     "PRODUCT_NAME" => "$(TARGET_NAME)",

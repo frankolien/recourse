@@ -5,7 +5,6 @@ struct OnboardingWelcomeView: View {
     let onSignIn: () -> Void
 
     @State private var hasAppeared = false
-    @State private var pulse = false
 
     var body: some View {
         GeometryReader { proxy in
@@ -29,9 +28,6 @@ struct OnboardingWelcomeView: View {
         .onAppear {
             withAnimation(.easeOut(duration: 0.8)) {
                 hasAppeared = true
-            }
-            withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
-                pulse = true
             }
         }
     }
@@ -60,10 +56,13 @@ struct OnboardingWelcomeView: View {
                 Spacer()
 
                 HStack(spacing: 8) {
-                    Circle()
-                        .fill(RecourseColor.ledger)
-                        .frame(width: 8, height: 6)
-                        .scaleEffect(pulse ? 1.25 : 0.85)
+                    Image("ArcMark")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 13)
+                        // The chip sits on photo glass with white text, so force
+                        // the on-dark (white) Arc mark even though onboarding is light.
+                        .environment(\.colorScheme, .dark)
                     Text("ARC TESTNET")
                         .font(.caption.weight(.bold))
                         .tracking(0.8)

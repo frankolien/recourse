@@ -178,7 +178,10 @@ struct HomeView: View {
                     .lineLimit(2)
                     .minimumScaleFactor(0.78)
                 HStack(spacing: 5) {
-                    Circle().fill(RecourseColor.ledger).frame(width: 7, height: 7)
+                    Image("ArcMark")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 10)
                     Text("Protected on Arc Testnet")
                         .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(RecourseColor.nightMuted)
