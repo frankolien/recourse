@@ -3,8 +3,6 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
-  Coins,
-  CircleDollarSign,
   Code2,
   Eye,
   FileText,
@@ -35,9 +33,9 @@ const navLinks = [
 ];
 
 const stack = [
-  { label: "Arc Testnet", icon: <Orbit size={17} /> },
-  { label: "USDC", icon: <CircleDollarSign size={17} /> },
-  { label: "USYC adapter", icon: <Coins size={17} /> },
+  { label: "Arc Testnet", icon: <Image src="/brand/arc-mark.svg" alt="Arc" width={17} height={18} /> },
+  { label: "USDC", icon: <Image src="/brand/usdc.svg" alt="USDC" width={18} height={18} /> },
+  { label: "Circle USYC", icon: <Image src="/brand/circle-mark.png" alt="Circle" width={18} height={18} /> },
   { label: "Deterministic engine", icon: <Scale size={17} /> },
 ];
 
@@ -146,7 +144,7 @@ export function LandingPage() {
           )}
         </nav>
         <div className="landing-nav-actions">
-          <span className="landing-chip"><LivePulse /> Arc Testnet</span>
+          <span className="landing-chip"><Image src="/brand/arc-mark.svg" alt="Arc" width={13} height={14} /> Arc Testnet</span>
           <Link className="landing-launch" href="/signin">Launch App</Link>
         </div>
       </header>
@@ -155,7 +153,7 @@ export function LandingPage() {
       <div className="landing-fold">
       <section className="landing-hero">
         <div className="landing-hero-copy">
-          <span className="landing-eyebrow"><LivePulse /> Live on Arc Testnet</span>
+          <span className="landing-eyebrow"><Image src="/brand/arc-mark.svg" alt="Arc" width={13} height={14} /> Live on Arc Testnet</span>
           <h1>Buyer protection for <em>USDC payments.</em></h1>
           <p>Escrow USDC under immutable refund rules. Buyers get verifiable recourse, merchants get paid immediately, and disputes resolve from evidence instead of opinion.</p>
           <div className="landing-cta-row">

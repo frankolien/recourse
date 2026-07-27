@@ -4454,6 +4454,17 @@ footer {
   color: #6b746f;
 }
 
+.landing-stack-item img {
+  height: 18px;
+  width: auto;
+}
+
+.landing-chip img,
+.landing-eyebrow img {
+  height: 14px;
+  width: auto;
+}
+
 /* ---- Features ---- */
 .landing-features {
   max-width: 1320px;
