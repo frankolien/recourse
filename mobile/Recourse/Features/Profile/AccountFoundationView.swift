@@ -11,6 +11,7 @@ struct AccountFoundationView: View {
     @State private var showsNameEditor = false
     @State private var walletAddress: EthereumAddress?
     @State private var copiedAddress = false
+    @State private var presentedWebPage: WebPageLink?
     @Environment(\.openURL) private var openURL
 
     private var configuration: AppConfiguration { environment.configuration }
@@ -50,6 +51,10 @@ struct AccountFoundationView: View {
                 familyName: accountSession.account?.familyName ?? "",
                 accountSession: accountSession
             )
+        }
+        .sheet(item: $presentedWebPage) { page in
+            SafariWebView(url: page.url)
+                .ignoresSafeArea()
         }
         .task {
             walletAddress = try? await environment.buyerSigner.address()
@@ -232,13 +237,13 @@ struct AccountFoundationView: View {
                     .foregroundStyle(RecourseColor.nightMuted)
             }
             Button {
-                openURL(AppConfiguration.webAppURL.appending(path: "privacy"))
+                presentedWebPage = WebPageLink(url: AppConfiguration.webAppURL.appending(path: "privacy"))
             } label: {
                 settingsRow("Privacy", "hand.raised.fill")
             }
             .buttonStyle(.plain)
             Button {
-                openURL(AppConfiguration.webAppURL.appending(path: "terms"))
+                presentedWebPage = WebPageLink(url: AppConfiguration.webAppURL.appending(path: "terms"))
             } label: {
                 settingsRow("Terms", "doc.text.fill")
             }
@@ -291,7 +296,7 @@ struct AccountFoundationView: View {
         guard let url = components.url else { return }
         openURL(url) { accepted in
             if !accepted {
-                openURL(AppConfiguration.webAppURL.appending(path: "support"))
+                presentedWebPage = WebPageLink(url: AppConfiguration.webAppURL.appending(path: "support"))
             }
         }
     }
