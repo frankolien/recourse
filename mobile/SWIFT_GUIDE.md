@@ -21,6 +21,16 @@ Written for a developer who knows JavaScript/Dart but is learning Swift by under
 - [Part 11: Testing](#part-11-testing)
 - [Part 12: Xcode, the Generated Project, and Shipping](#part-12-xcode-the-generated-project-and-shipping)
 - [Part 13: Common Patterns Reference](#part-13-common-patterns-reference)
+- [Part 14: UIKit and Interop (What Big Apps Are Really Made Of)](#part-14-uikit-and-interop-what-big-apps-are-really-made-of)
+- [Part 15: Networking at Scale](#part-15-networking-at-scale)
+- [Part 16: Media: Camera, Video, and the TikTok Feed](#part-16-media-camera-video-and-the-tiktok-feed)
+- [Part 17: Persistence and Offline](#part-17-persistence-and-offline)
+- [Part 18: Performance for a Billion Users](#part-18-performance-for-a-billion-users)
+- [Part 19: Push, Background Work, and System Surfaces](#part-19-push-background-work-and-system-surfaces)
+- [Part 20: Swift for Blockchain Beyond EVM: Solana and Jupiter](#part-20-swift-for-blockchain-beyond-evm-solana-and-jupiter)
+- [Part 21: Architecture at Scale](#part-21-architecture-at-scale)
+- [Part 22: Release Engineering](#part-22-release-engineering)
+- [Part 23: The 80 Percent Roadmap](#part-23-the-80-percent-roadmap)
 
 ---
 
@@ -975,6 +985,423 @@ Previews render the view in Xcode's canvas with fake dependencies. The `#if DEBU
 3. Actors around anything not thread-safe (RPC, keystore, keychain).
 4. Trust cache, verify async: never block first render on a network call.
 5. One source of truth per fact: colors through `RecourseColor`, addresses through `Generated/Deployment.swift`, money in integer base units.
+
+---
+
+# Part 14: UIKit and Interop (What Big Apps Are Really Made Of)
+
+Recourse is pure SwiftUI. TikTok, Instagram, and Snapchat are not: they are UIKit apps with SwiftUI islands, because their feeds and cameras predate SwiftUI and demand frame-level control. To work on an app used by billions you must be bilingual.
+
+## 14.1 The Two Bridges
+
+```swift
+// SwiftUI inside UIKit: how legacy apps adopt SwiftUI screen by screen
+let vc = UIHostingController(rootView: SettingsView())
+navigationController.pushViewController(vc, animated: true)
+
+// UIKit inside SwiftUI: how SwiftUI apps get UIKit power
+struct CameraPreview: UIViewRepresentable {
+    let session: AVCaptureSession
+
+    func makeUIView(context: Context) -> PreviewView {
+        let view = PreviewView()
+        view.videoPreviewLayer.session = session
+        return view
+    }
+    func updateUIView(_ view: PreviewView, context: Context) {}
+}
+```
+
+`UIViewRepresentable` (and `UIViewControllerRepresentable` for whole screens like image pickers) is the escape hatch you will use for cameras, maps, rich text, and anything SwiftUI does not expose yet. Recourse already crosses this bridge quietly: `RecourseColor.adaptive` wraps a trait-reading `UIColor`, and the scanner sits on AVFoundation.
+
+## 14.2 UIKit Essentials You Must Recognize
+
+- **UIViewController lifecycle**: `viewDidLoad`, `viewWillAppear`, `viewDidLayoutSubviews`, `deinit`. Interview staple, debugging staple.
+- **UICollectionView + compositional layout + diffable data source**: the engine of every infinite feed on the App Store. SwiftUI's `LazyVStack` is fine to millions of users; at TikTok scale teams still reach for `UICollectionView` because it gives cell prefetching, precise reuse, and per-cell display callbacks (start video when 60 percent visible, stop when scrolled off).
+- **CALayer and Core Animation**: every view is backed by a layer; animations you see are layer properties interpolated off the main thread. `CADisplayLink` gives you a per-frame callback (scrubbers, waveform meters).
+- **Auto Layout**: constraint math (`NSLayoutConstraint`, anchors). You will read it more than write it.
+
+The rule of thumb in hybrid codebases: **new leaf screens in SwiftUI, high-performance containers in UIKit**, bridged both directions.
+
+---
+
+# Part 15: Networking at Scale
+
+`URLSession` is the entire networking story; libraries like Alamofire are conveniences on top, and big shops mostly use raw URLSession behind their own protocol layer (exactly like `ArcRPCTransport` and `AccountAPIClient` here).
+
+## 15.1 URLSession Beyond the Basics
+
+```swift
+// A tuned session, not the shared default:
+var config = URLSessionConfiguration.default
+config.waitsForConnectivity = true               // queue instead of fail when offline
+config.timeoutIntervalForRequest = 15
+config.requestCachePolicy = .useProtocolCachePolicy
+config.urlCache = URLCache(memoryCapacity: 50_000_000, diskCapacity: 500_000_000)
+let session = URLSession(configuration: config)
+
+let (data, response) = try await session.data(for: request)
+```
+
+Know the three session types: `.default`, `.ephemeral` (no disk traces; good for wallets), and **background sessions** (`URLSessionConfiguration.background`), which keep uploads and downloads running after your app is suspended. TikTok uploads your video through a background session.
+
+## 15.2 Retry With Backoff (The Snippet Every Backend Client Needs)
+
+```swift
+func withRetry<T>(attempts: Int = 3, _ op: () async throws -> T) async throws -> T {
+    var delay: Double = 0.5
+    for attempt in 1...attempts {
+        do { return try await op() }
+        catch where attempt < attempts {
+            try await Task.sleep(for: .seconds(delay + .random(in: 0...0.3)))
+            delay *= 2                            // exponential backoff + jitter
+        }
+    }
+    fatalError("unreachable")
+}
+```
+
+Retry only idempotent operations. A payment POST is not one; a balance read is.
+
+## 15.3 Streaming and Real Time
+
+```swift
+// WebSockets, first party:
+let ws = URLSession.shared.webSocketTask(with: url)
+ws.resume()
+let message = try await ws.receive()
+
+// Server-sent bytes (chat streams, live counters):
+for try await line in url.lines { handle(line) }
+```
+
+At scale you will also meet **Protocol Buffers and gRPC** (`swift-protobuf`, `grpc-swift`): binary schemas replacing JSON for chat, feeds, and telemetry. Codable skills transfer directly; the schema just lives in `.proto` files.
+
+## 15.4 The Image Pipeline
+
+Feeds die by image decoding, not downloading. The professional move is downsampling with ImageIO so a 12 MP photo becomes a cell-sized bitmap without ever inflating fully in memory:
+
+```swift
+func downsampled(at url: URL, to size: CGSize, scale: CGFloat) -> UIImage? {
+    let opts = [kCGImageSourceShouldCache: false] as CFDictionary
+    guard let src = CGImageSourceCreateWithURL(url as CFURL, opts) else { return nil }
+    let thumbOpts = [
+        kCGImageSourceCreateThumbnailFromImageAlways: true,
+        kCGImageSourceThumbnailMaxPixelSize: max(size.width, size.height) * scale,
+        kCGImageSourceCreateThumbnailWithTransform: true
+    ] as CFDictionary
+    return CGImageSourceCreateThumbnailAtIndex(src, 0, thumbOpts).map(UIImage.init)
+}
+```
+
+Libraries doing this for you: Nuke, Kingfisher, SDWebImage. Learn one, but understand the trick above; it is an interview favorite and the reason feed memory graphs stay flat.
+
+---
+
+# Part 16: Media: Camera, Video, and the TikTok Feed
+
+This is the Snapchat/TikTok engineering core. It is all AVFoundation.
+
+## 16.1 The Capture Pipeline
+
+```
+AVCaptureDevice (camera/mic hardware)
+   -> AVCaptureDeviceInput
+      -> AVCaptureSession                  # the hub; start/stop on a background queue
+         -> AVCaptureVideoPreviewLayer     # what the user sees
+         -> AVCaptureVideoDataOutput       # raw frames (CMSampleBuffer) for filters/ML
+         -> AVCapturePhotoOutput           # stills
+         -> AVCaptureMovieFileOutput       # simple video recording
+```
+
+```swift
+let session = AVCaptureSession()
+session.sessionPreset = .high
+let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back)!
+session.addInput(try AVCaptureDeviceInput(device: device))
+
+let output = AVCaptureVideoDataOutput()
+output.setSampleBufferDelegate(self, queue: videoQueue)   // frames arrive here
+session.addOutput(output)
+session.startRunning()   // never on the main thread
+```
+
+Snapchat lenses and TikTok filters are that delegate callback feeding each `CMSampleBuffer` through **Core Image** or **Metal** shaders and rendering the result. The vocabulary to learn next: `CVPixelBuffer`, `CIFilter`, `MTKView`, and Vision (face landmarks) for AR-ish effects.
+
+## 16.2 Playback: Why TikTok Feels Instant
+
+```swift
+let player = AVQueuePlayer()
+let item = AVPlayerItem(url: hlsURL)          // HLS: .m3u8 adaptive streams
+item.preferredForwardBufferDuration = 2       // buffer just enough
+player.replaceCurrentItem(with: item)
+player.play()
+```
+
+The feed pattern behind every short-video app:
+
+1. Videos ship as **HLS** (adaptive bitrate; the server offers multiple qualities, the player switches seamlessly).
+2. A small pool of `AVPlayer` instances is **reused**, never one per cell.
+3. The next two or three items are **preloaded** (create the `AVPlayerItem`, let it buffer, do not play).
+4. Cell visibility callbacks decide play/pause; audio session category is configured once (`AVAudioSession.sharedInstance().setCategory(.playback)`).
+
+## 16.3 Editing and Export
+
+`AVMutableComposition` stitches clips, `AVVideoComposition` applies transforms and filters per frame, `AVAssetExportSession` renders the final MP4. Add `PHPickerViewController` (modern photo picker, no permission prompt needed) and `PhotoKit` for library writes, and you can build the whole "record, trim, filter, post" loop.
+
+---
+
+# Part 17: Persistence and Offline
+
+Recourse persists almost nothing locally on purpose (chain and backend are the truth). Consumer apps at scale are the opposite: the feed must open instantly from disk on a subway.
+
+## 17.1 The Ladder
+
+| Layer | Use for | In Recourse |
+|---|---|---|
+| `UserDefaults` / `@AppStorage` | Tiny preferences | theme, card face, onboarding flags |
+| Keychain | Secrets | session grant, wallet keystore |
+| Files (`FileManager`, caches dir) | Blobs, media | evidence images before upload |
+| `URLCache` / `NSCache` | Transparent HTTP and object caching | image thumbnails |
+| SQLite via **GRDB**, or **SwiftData/Core Data** | Structured, queryable, observable data | not needed yet |
+
+## 17.2 SwiftData in Ten Lines
+
+```swift
+@Model
+final class CachedPost {
+    @Attribute(.unique) var id: String
+    var author: String
+    var likedAt: Date?
+    init(id: String, author: String) { self.id = id; self.author = author }
+}
+
+let container = try ModelContainer(for: CachedPost.self)
+let context = ModelContext(container)
+context.insert(CachedPost(id: "1", author: "dapper"))
+try context.save()
+let liked = try context.fetch(FetchDescriptor<CachedPost>(predicate: #Predicate { $0.likedAt != nil }))
+```
+
+Core Data is the older engine underneath the same ideas (managed objects, contexts, migrations); big codebases still run on it, so recognize `NSManagedObject` when you see it. Teams that want SQL control (Jupiter-style token lists, DEX caches) often pick GRDB instead.
+
+## 17.3 Offline-First in One Paragraph
+
+The pattern: render from the local store always; fetch, diff, and write back on a schedule or push; queue user mutations in a persistent outbox and replay them with retry when connectivity returns; resolve conflicts server-side with versions or timestamps. That is nine tenths of "the app works on the subway", and it is architecture, not any specific database.
+
+---
+
+# Part 18: Performance for a Billion Users
+
+At billion-user scale, performance is a feature team. The vocabulary:
+
+## 18.1 Launch Time
+
+Launch = **pre-main** (dyld loading your binary and frameworks) + **main to first frame**. You already lived this: Recourse's boot was slow because session restore blocked first render; the fix (render cached state, verify async) is the universal one. Other levers: fewer dynamic frameworks (static linking), lazy singletons, defer everything not needed for the first frame. Apple's target: interactive in under 400 ms.
+
+## 18.2 The Instruments You Will Actually Use
+
+| Instrument | Question it answers |
+|---|---|
+| Time Profiler | Where is CPU going? Whose stack is hot? |
+| Allocations / Leaks | What is using memory? What never deallocates? |
+| Hangs | What blocked the main thread more than 250 ms? |
+| Core Animation / Animation Hitches | Why did scrolling drop frames? |
+| Network | What requests fired, when, how big? |
+| os_signpost | Your own custom spans on the timeline |
+
+```swift
+import OSLog
+let log = OSLog(subsystem: "app.recourse", category: "checkout")
+os_signpost(.begin, log: log, name: "verify-manifest")
+// ... work ...
+os_signpost(.end, log: log, name: "verify-manifest")
+```
+
+In production you cannot attach Instruments, so **MetricKit** delivers daily payloads of real-user launch times, hang rates, memory, and crash diagnostics. Big apps graph these per release and block rollouts on regressions.
+
+## 18.3 Scroll Performance Rules
+
+1. Stable identity in `ForEach` (`Identifiable` with real ids; never `id: \.self` on unstable data).
+2. `LazyVStack`/`List` for long content; plain `VStack` builds everything eagerly.
+3. Decode and downsample images off the main thread (Part 15.4); cells should receive ready bitmaps.
+4. Cheap `body`: no sorting, no formatting, no hashing inside `body`; precompute in the store.
+5. Measure, do not guess: one Animation Hitches run tells you more than a week of intuition.
+
+## 18.4 Memory
+
+ARC (automatic reference counting) frees objects when the last strong reference dies; there is no GC pause, but there are **retain cycles**: two objects strongly holding each other live forever. The classic is a closure capturing `self` that `self` stores. Break it with `[weak self]`. Instruments' Memory Graph shows cycles visually. Value types and actors (this codebase's diet) mostly design the problem away.
+
+---
+
+# Part 19: Push, Background Work, and System Surfaces
+
+## 19.1 Push Notifications (APNs)
+
+The flow: app requests permission, iOS hands you a device token, you ship it to your backend, your backend posts to Apple's APNs with that token, iOS displays the notification. Two special powers matter at scale:
+
+- **Silent pushes** (`content-available: 1`) wake your app in the background for a few seconds to prefetch, so the app is fresh when opened.
+- **Notification Service Extensions**: a tiny separate process that can rewrite a push before display. This is how Snapchat decrypts end-to-end content and how apps attach media to pushes.
+
+## 19.2 Background Execution
+
+iOS suspends apps aggressively. Sanctioned lanes:
+
+```swift
+// Periodic refresh, scheduled and budgeted by the system:
+BGTaskScheduler.shared.register(forTaskWithIdentifier: "app.recourse.refresh", using: nil) { task in
+    Task {
+        await store.refresh()
+        task.setTaskCompleted(success: true)
+    }
+}
+```
+
+Plus background URLSessions (Part 15.1) for transfers, and push-triggered wakeups. There is no "run a thread forever"; design around wakeups and budgets.
+
+## 19.3 Surfaces Beyond the App
+
+- **Widgets** (WidgetKit): timeline-based mini views; a natural "protection status" surface.
+- **Live Activities**: lock-screen live state (a dispute countdown would be perfect).
+- **App Intents / Shortcuts / Siri**: expose actions to the system.
+- **Share and Action Extensions**: appear in other apps' share sheets.
+
+Each runs in its own process with its own (tiny) memory budget; they share code with the app through local SPM packages (Part 21).
+
+---
+
+# Part 20: Swift for Blockchain Beyond EVM: Solana and Jupiter
+
+Recourse taught you the EVM shape: secp256k1 keys, ABI encoding, nonces, `eth_call`. Solana (Jupiter's world) is a different machine. Here is the translation table:
+
+| Concept | EVM (this app) | Solana |
+|---|---|---|
+| Signature curve | secp256k1 | **ed25519** |
+| Derivation path | m/44'/60'/... | m/44'/501'/... |
+| State model | Contract storage | **Accounts** owned by programs; you pass every account a tx touches |
+| Transaction | to + calldata + nonce | Message of **instructions** + **recent blockhash** (expires in about a minute) |
+| Token balance | ERC-20 `balanceOf(you)` | An **Associated Token Account** per (wallet, mint) |
+| Fees | Gas auction | Flat lamports + **priority fee** via compute budget instruction |
+| Read API | `eth_call` | JSON-RPC `getAccountInfo`, `getBalance` + **WebSocket subscriptions** |
+
+## 20.1 ed25519 Signing Is in Apple's CryptoKit
+
+You do not even need a crypto library for the core operation:
+
+```swift
+import CryptoKit
+
+let key = Curve25519.Signing.PrivateKey()                  // a Solana-compatible keypair
+let publicKey = key.publicKey.rawRepresentation            // 32 bytes = the address bytes
+let signature = try key.signature(for: message)            // 64-byte ed25519 signature
+```
+
+Base58-encode the public key and you have a Solana address. Libraries like **SolanaSwift** add the rest: transaction message building, SPL token helpers, RPC clients, and BIP-39 mnemonic derivation.
+
+## 20.2 A Jupiter Swap From Swift, Conceptually
+
+```swift
+// 1. Quote: GET https://quote-api.jup.ag/v6/quote?inputMint=...&outputMint=...&amount=...
+// 2. Swap:  POST /v6/swap with the quote + your pubkey -> returns a serialized transaction
+// 3. Deserialize, sign with your ed25519 key, send via RPC sendTransaction
+// 4. Poll getSignatureStatuses until confirmed (or resubmit with a fresh blockhash)
+```
+
+Notice what carries over from Recourse verbatim: the actor-guarded signer, the transport protocol, typed RPC errors, receipt polling, integer-only amounts (lamports and token decimals instead of USDC's 6), and simulate-before-send (`simulateTransaction` is Solana's version of the `simulateContract` guard used in this repo's ops scripts).
+
+## 20.3 Wallet Engineering Realities
+
+- **Secure Enclave only speaks P-256.** Neither secp256k1 nor ed25519 keys can live inside it. Real wallets store raw keys in the **keychain with an access-control flag requiring biometrics** (what this app does), or split the key with **MPC** (Coinbase-style), or use **passkey-backed** custody. Know all three; interviews at wallet companies ask.
+- **Deep-link wallet flows**: on iOS, dapp-to-wallet communication is universal links + callback URLs (Solana's Mobile Wallet Adapter standard is Android-first; iOS wallets embed the dapp browser instead).
+- **Never let money touch Double, ever, on any chain.** Lamports are UInt64; token amounts are integer + decimals, exactly like `USDCAmount`.
+
+---
+
+# Part 21: Architecture at Scale
+
+A billion-user app is hundreds of engineers in one repo. The survival tools:
+
+## 21.1 Modularization With Local SPM Packages
+
+The app becomes a thin shell importing feature packages:
+
+```swift
+// Packages/DesignSystem/Package.swift
+let package = Package(
+    name: "DesignSystem",
+    products: [.library(name: "DesignSystem", targets: ["DesignSystem"])],
+    targets: [.target(name: "DesignSystem"), .testTarget(name: "DesignSystemTests", dependencies: ["DesignSystem"])]
+)
+```
+
+Benefits: enforced boundaries (a package physically cannot import what it does not declare), parallel builds, per-team ownership, and extensions/widgets reusing the same modules. Recourse's `Core/` vs `Features/` split is this idea one step before it becomes packages.
+
+## 21.2 Feature Flags and Experiments
+
+Every big app wraps new code in flags fetched from a remote config service, rolled out by percentage, and measured as A/B experiments before 100 percent launch. The Swift shape is an injected protocol (`FeatureFlags`) with a remote-backed live implementation and a dictionary-backed test one; the exact pattern `AppEnvironment` already uses for everything else.
+
+## 21.3 Patterns You Will Meet
+
+- **MVVM**: view model objects own screen state; this codebase's stores + workflows are a close cousin.
+- **TCA (The Composable Architecture)**: Redux-like reducers and effects; popular in serious SwiftUI shops; its testability obsession will feel familiar after Part 11.
+- **Coordinator pattern**: navigation extracted into objects; `AppRouter` is a lightweight one.
+
+## 21.4 The Table Stakes Trio
+
+- **Localization**: String Catalogs (`.xcstrings`); never concatenate translated fragments; test with pseudolocalization and right-to-left.
+- **Accessibility**: VoiceOver labels (`.accessibilityLabel`, already on the Arc toolbar mark here), Dynamic Type (prefer `.font(.body)` over fixed sizes on text-heavy screens), contrast, hit targets of at least 44 points.
+- **Privacy**: purpose strings, App Privacy questionnaire, and privacy manifests (`PrivacyInfo.xcprivacy`) declaring required-reason API usage; third-party SDKs must ship their own.
+
+---
+
+# Part 22: Release Engineering
+
+## 22.1 Code Signing, Demystified
+
+Three artifacts: a **certificate** (proves you), a **provisioning profile** (binds certificate + app ID + devices/distribution), and **entitlements** (capabilities baked into the binary: push, associated domains for universal links, keychain groups). Ninety percent of signing pain is a mismatch among the three. `xcodebuild -allowProvisioningUpdates` and Xcode's automatic signing handle the common path.
+
+## 22.2 CI/CD
+
+```bash
+# The archive pipeline in two commands:
+xcodebuild -project Recourse.xcodeproj -scheme Recourse \
+  -configuration Release -archivePath build/Recourse.xcarchive archive
+xcodebuild -exportArchive -archivePath build/Recourse.xcarchive \
+  -exportOptionsPlist ExportOptions.plist -exportPath build/
+```
+
+**fastlane** wraps this (plus screenshots, TestFlight upload, dSYM upload) into lanes run by GitHub Actions or Xcode Cloud on every merge. Big apps cut a release branch weekly ("release train"), ship to TestFlight, then use **phased release** (1, 2, 5, 10... percent over seven days) with the ability to halt on a crash spike.
+
+## 22.3 Observability in Production
+
+- **Crashes**: upload dSYMs so stack traces symbolicate; watch crash-free-user rate per release (Crashlytics, Sentry, or Apple's organizer).
+- **Metrics**: MetricKit dashboards (Part 18) for launch, hangs, memory.
+- **App size**: app thinning ships per-device slices; asset catalogs enable it; teams budget size like memory.
+- **Crypto app review notes**: Apple's guideline 3.1.5 requires crypto exchange/wallet features to come from appropriately registered organizations; testnet-only demos should say so loudly in review notes, exactly as this project's App Store submission does.
+
+---
+
+# Part 23: The 80 Percent Roadmap
+
+How the parts map to the jobs you named:
+
+| Target | Must be fluent in | This guide's parts |
+|---|---|---|
+| Any senior iOS role | Fundamentals, SwiftUI, concurrency, testing, UIKit interop, performance | 1-5, 11, 14, 18 |
+| TikTok / Snapchat (media + feed) | Capture pipeline, HLS playback, image pipeline, UICollectionView, hitch hunting, push | 14, 15, 16, 18, 19 |
+| Jupiter / wallet engineering | Key management, signing, RPC transports, integer money, simulation, deep links | 6, 7, 8, 20 |
+| Billion-user infrastructure | Modularization, flags/experiments, offline, release trains, observability, a11y/l10n | 17, 19, 21, 22 |
+
+A sane learning order from where you stand now:
+
+1. **Concurrency until it is reflexive** (Part 4). Every hard bug and every senior interview lands here.
+2. **Build one UIKit thing**: an infinite `UICollectionView` feed with diffable data source and image downsampling. This single project covers Parts 14, 15, and 18.
+3. **Build one media thing**: camera preview with a Core Image filter, record, export, play back with a reused AVPlayer. That is the TikTok take-home.
+4. **Port the signer**: write an ed25519 `SolanaSigner` actor conforming to a protocol like `BuyerSigner`, do a devnet transfer, then a Jupiter devnet quote. You will be shocked how much of `Core/Chain` you can copy.
+5. **Instrument something real**: profile this very app's cold start and scroll with Instruments; find one hitch; fix it.
+6. Then flags, packages, and fastlane the day a project needs a second contributor.
+
+The remaining 20 percent (Metal shaders, on-device ML with Core ML, ARKit, watchOS, custom allocator-level tuning) is specialist territory; you hire for it or grow into it. Everything above is the load-bearing 80.
 
 ---
 
