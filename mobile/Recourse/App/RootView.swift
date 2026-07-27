@@ -69,7 +69,8 @@ struct RootView: View {
             await environment.accountSession.restore()
         }
         .task {
-            try? await Task.sleep(for: .seconds(1.25))
+            // Glyph beat, wordmark sweep, then a moment to read it.
+            try? await Task.sleep(for: .seconds(2.3))
             withAnimation(.easeInOut(duration: 0.45)) {
                 isHoldingSplash = false
             }
