@@ -5,8 +5,9 @@
 	<!-- Merged into the generated Info.plist (INFOPLIST_FILE + GENERATE_INFOPLIST_FILE).
 	     The recourse:// scheme is the fallback path from the web /pay page when the
 	     universal link did not open the app directly. -->
-	<!-- Only Apple OS TLS and digital signatures are used, both export-exempt;
-	     declaring it here stops App Store Connect asking per build. -->
+	<!-- Non-Apple crypto (web3swift's secp256k1 and Keccak) exists solely to sign
+	     payment transactions, which is exempt under EAR Category 5 Part 2 as limited
+	     to money transactions; declaring it stops App Store Connect asking per build. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<!-- Branded splash: paper background with the Recourse mark, matching the
