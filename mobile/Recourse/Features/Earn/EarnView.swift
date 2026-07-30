@@ -10,6 +10,7 @@ struct EarnView: View {
     @State private var vaultState: VaultState?
     @State private var loadError: String?
     @State private var activeSheet: VaultSheet?
+    @State private var showsCardPicker = false
     @AppStorage(WalletCardStyle.defaultsKey) private var cardStyleRaw = WalletCardStyle.ink.rawValue
 
     private var cardStyle: WalletCardStyle {
@@ -56,6 +57,10 @@ struct EarnView: View {
             }
             .presentationDetents([.medium])
         }
+        .sheet(isPresented: $showsCardPicker) {
+            WalletCardStylePicker(selectedRawValue: $cardStyleRaw)
+                .presentationDetents([.medium, .large])
+        }
     }
 
     private func load() async {
@@ -88,6 +93,17 @@ struct EarnView: View {
                         .font(.system(size: 10, weight: .bold))
                         .tracking(1.35)
                         .foregroundStyle(cardStyle.textSecondary)
+                    Button {
+                        showsCardPicker = true
+                    } label: {
+                        Image(systemName: "paintbrush.fill")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(cardStyle.textSecondary)
+                            .frame(width: 26, height: 26)
+                            .background(cardStyle.chipFill, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Change card style")
                 }
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {

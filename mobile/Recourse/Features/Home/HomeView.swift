@@ -8,13 +8,7 @@ struct HomeView: View {
     @State private var previousScrollOffset: CGFloat = 0
     @State private var hidesAttention = false
     @State private var showsReceive = false
-    @State private var showsCardPicker = false
     @State private var earnVaultState: VaultState?
-    @AppStorage(WalletCardStyle.defaultsKey) private var cardStyleRaw = WalletCardStyle.ink.rawValue
-
-    private var cardStyle: WalletCardStyle {
-        WalletCardStyle.stored(rawValue: cardStyleRaw)
-    }
 
     init(
         environment: AppEnvironment,
@@ -106,10 +100,6 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showsReceive) {
             ReceiveSheet(environment: environment)
-                .presentationDetents([.medium, .large])
-        }
-        .sheet(isPresented: $showsCardPicker) {
-            WalletCardStylePicker(selectedRawValue: $cardStyleRaw)
                 .presentationDetents([.medium, .large])
         }
         .task {
@@ -301,58 +291,27 @@ struct HomeView: View {
         .modifier(HomeFloatingSurface(cornerRadius: 21))
     }
 
-    // One composed wallet card carrying the number, the live balance, and every
-    // action. The face is the user's pick; text derives from the style so light
-    // faces read as well as dark ones.
+    // The balance floats directly on the canvas, bank style: no card, no box,
+    // just the number. The honesty markers (USDC, Arc Testnet) ride in the
+    // caption so the big figure can read as plain dollars.
     private var protectionHero: some View {
-        ZStack(alignment: .topTrailing) {
-            if cardStyle.showsGlow {
-                Circle()
-                    .fill(RecourseColor.ledger.opacity(0.1))
-                    .frame(width: 170, height: 170)
-                    .blur(radius: 46)
-                    .offset(x: 54, y: -62)
-            }
-
-            VStack(alignment: .leading, spacing: 18) {
-                HStack(spacing: 10) {
-                    Label("Balance", systemImage: "checkmark.shield.fill")
-                        .font(.system(size: 12, weight: .bold))
-                    Spacer()
-                    Text("ARC TESTNET")
-                        .font(.system(size: 10, weight: .bold))
-                        .tracking(1.35)
-                        .foregroundStyle(cardStyle.textSecondary)
-                    Button {
-                        showsCardPicker = true
-                    } label: {
-                        Image(systemName: "paintbrush.fill")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(cardStyle.textSecondary)
-                            .frame(width: 26, height: 26)
-                            .background(cardStyle.chipFill, in: Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Change card style")
-                }
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(balanceHeadline)
-                            .font(.system(size: 38, weight: .semibold, design: .rounded))
-                            .minimumScaleFactor(0.72)
-                        Text("USDC")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(cardStyle.textSecondary)
-                    }
-                    Text(heroSubtitle)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(cardStyle.textSecondary)
-                }
-                heroActions
-            }
+        VStack(spacing: 8) {
+            Text("USDC · Arc Testnet")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(RecourseColor.nightMuted)
+            Text(balanceHeadline)
+                .font(.system(size: 52, weight: .semibold, design: .rounded))
+                .foregroundStyle(RecourseColor.nightText)
+                .minimumScaleFactor(0.6)
+                .lineLimit(1)
+            Text(heroSubtitle)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(RecourseColor.nightMuted)
+            heroActions
+                .padding(.top, 12)
         }
-        .foregroundStyle(cardStyle.textPrimary)
-        .modifier(WalletCardSurface(style: cardStyle))
+        .frame(maxWidth: .infinity)
+        .padding(.top, 16)
     }
 
     private var balanceHeadline: String {
