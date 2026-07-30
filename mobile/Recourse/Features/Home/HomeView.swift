@@ -300,7 +300,9 @@ struct HomeView: View {
     private var protectionHero: some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            withAnimation(.smooth(duration: 0.4)) {
+            // Slow on purpose: the number should dissolve like a slide fading
+            // over, not snap like a checkbox.
+            withAnimation(.smooth(duration: 0.75)) {
                 hidesBalance.toggle()
             }
         } label: {
