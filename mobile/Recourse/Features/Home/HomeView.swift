@@ -83,7 +83,7 @@ struct HomeView: View {
                     }
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 12)
+                .padding(.top, 8)
                 .padding(.bottom, 164)
             }
             .scrollIndicators(.hidden)
@@ -332,7 +332,6 @@ struct HomeView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(hidesBalance ? "Show balance" : "Hide balance")
-        .padding(.top, 20)
         .padding(.bottom, 2)
     }
 
