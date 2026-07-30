@@ -13,6 +13,19 @@ struct ReceiveSheet: View {
     @State private var copied = false
 
     var body: some View {
+        ScrollView {
+            sheetContent
+        }
+        .scrollIndicators(.hidden)
+        .background(RecourseColor.night)
+        .task {
+            address = try? await environment.buyerSigner.address().value
+        }
+    }
+
+    // Scrollable so the medium detent clips nothing, with explicit headroom so
+    // the title clears the sheet's drag indicator instead of colliding with it.
+    private var sheetContent: some View {
         VStack(spacing: 20) {
             Text("Add money")
                 .font(.system(size: 20, weight: .bold))
@@ -70,12 +83,9 @@ struct ReceiveSheet: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 30)
         }
-        .padding(.vertical, 26)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(RecourseColor.night)
-        .task {
-            address = try? await environment.buyerSigner.address().value
-        }
+        .padding(.top, 40)
+        .padding(.bottom, 26)
+        .frame(maxWidth: .infinity)
     }
 
     private func qrImage(for content: String) -> UIImage? {
