@@ -9,6 +9,7 @@ struct HomeView: View {
     @State private var hidesAttention = false
     @State private var showsReceive = false
     @State private var earnVaultState: VaultState?
+    @AppStorage("recourse.hidesBalance") private var hidesBalance = false
 
     init(
         environment: AppEnvironment,
@@ -293,20 +294,49 @@ struct HomeView: View {
 
     // Bank-app hierarchy: the balance owns the screen and the protection line
     // sits where other money apps put the daily delta, in the brand green when
-    // money is actually protected. The network truth stays in the header chip,
-    // so the figure itself can read as plain dollars.
+    // money is actually protected. Tapping the block toggles balance privacy,
+    // and the number swaps through a blur so hiding feels like a shutter, not
+    // a flicker; the choice persists because glancing in public is a habit.
     private var protectionHero: some View {
-        VStack(spacing: 7) {
-            Text(balanceHeadline)
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            withAnimation(.smooth(duration: 0.4)) {
+                hidesBalance.toggle()
+            }
+        } label: {
+            VStack(spacing: 7) {
+                HStack(spacing: 5) {
+                    Text("USDC · Arc Testnet")
+                    Image(systemName: hidesBalance ? "eye.slash.fill" : "eye.fill")
+                        .font(.system(size: 10, weight: .semibold))
+                }
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(RecourseColor.nightMuted)
+
+                ZStack {
+                    if hidesBalance {
+                        Text("$••••")
+                            .transition(.blurReplace)
+                    } else {
+                        Text(balanceHeadline)
+                            .transition(.blurReplace)
+                    }
+                }
                 .font(.system(size: 56, weight: .semibold, design: .rounded))
                 .foregroundStyle(RecourseColor.nightText)
                 .minimumScaleFactor(0.55)
                 .lineLimit(1)
-            Text(heroSubtitle)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(activePayments.isEmpty ? RecourseColor.nightMuted : RecourseColor.ledger)
+
+                Text(heroSubtitle)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(activePayments.isEmpty ? RecourseColor.nightMuted : RecourseColor.ledger)
+                    .contentTransition(.opacity)
+            }
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
         }
-        .frame(maxWidth: .infinity)
+        .buttonStyle(.plain)
+        .accessibilityLabel(hidesBalance ? "Show balance" : "Hide balance")
         .padding(.top, 20)
         .padding(.bottom, 2)
     }
@@ -320,7 +350,9 @@ struct HomeView: View {
         if activePayments.isEmpty {
             return "Nothing protected yet"
         }
-        return "\(currency(protectedTotal)) protected · \(activePayments.count) active"
+        // Privacy covers every amount on the hero, not just the headline.
+        let amount = hidesBalance ? "$••••" : currency(protectedTotal)
+        return "\(amount) protected · \(activePayments.count) active"
     }
 
     // Banking verbs in soft square tiles, one row, with Pay carrying the
