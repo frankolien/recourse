@@ -291,27 +291,24 @@ struct HomeView: View {
         .modifier(HomeFloatingSurface(cornerRadius: 21))
     }
 
-    // The balance floats directly on the canvas, bank style: no card, no box,
-    // just the number. The honesty markers (USDC, Arc Testnet) ride in the
-    // caption so the big figure can read as plain dollars.
+    // Bank-app hierarchy: the balance owns the screen and the protection line
+    // sits where other money apps put the daily delta, in the brand green when
+    // money is actually protected. The network truth stays in the header chip,
+    // so the figure itself can read as plain dollars.
     private var protectionHero: some View {
-        VStack(spacing: 8) {
-            Text("USDC · Arc Testnet")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(RecourseColor.nightMuted)
+        VStack(spacing: 7) {
             Text(balanceHeadline)
-                .font(.system(size: 52, weight: .semibold, design: .rounded))
+                .font(.system(size: 56, weight: .semibold, design: .rounded))
                 .foregroundStyle(RecourseColor.nightText)
-                .minimumScaleFactor(0.6)
+                .minimumScaleFactor(0.55)
                 .lineLimit(1)
             Text(heroSubtitle)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(RecourseColor.nightMuted)
-            heroActions
-                .padding(.top, 12)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(activePayments.isEmpty ? RecourseColor.nightMuted : RecourseColor.ledger)
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 16)
+        .padding(.top, 20)
+        .padding(.bottom, 2)
     }
 
     private var balanceHeadline: String {
@@ -321,27 +318,16 @@ struct HomeView: View {
 
     private var heroSubtitle: String {
         if activePayments.isEmpty {
-            return "Nothing protected yet · scan a checkout to start"
+            return "Nothing protected yet"
         }
         return "\(currency(protectedTotal)) protected · \(activePayments.count) active"
     }
 
-    private var heroActions: some View {
-        Button(action: onScanRequested) {
-            Label("Pay with protection", systemImage: "qrcode.viewfinder")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: 46)
-                .background(RecourseColor.ledger, in: Capsule())
-        }
-        .buttonStyle(.plain)
-    }
-
-    // Banking verbs, not wallet verbs: the app should read like a money app
-    // with protection built in, with the chain kept out of the lobby.
+    // Banking verbs in soft square tiles, one row, with Pay carrying the
+    // accent the way top money apps color their hero verb. The old hero
+    // capsule is gone; Scan in the tab bar remains the second path to pay.
     private var actionGrid: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 12) {
             actionTile("plus", "Add money") {
                 showsReceive = true
             }
@@ -351,30 +337,34 @@ struct HomeView: View {
             actionTile("chart.line.uptrend.xyaxis", "Earn") {
                 environment.router.push(.earn)
             }
-            actionTile("checkmark.seal.fill", "Verify") {
-                if let paymentID = settledPayments.first?.id ?? allPayments.first?.id {
-                    environment.router.push(.verdict(paymentID))
-                }
-            }
+            actionTile("qrcode.viewfinder", "Pay", accent: true, action: onScanRequested)
         }
     }
 
-    private func actionTile(_ systemImage: String, _ title: String, action: @escaping () -> Void) -> some View {
+    private func actionTile(
+        _ systemImage: String,
+        _ title: String,
+        accent: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
-            VStack(spacing: 7) {
+            VStack(spacing: 8) {
                 Image(systemName: systemImage)
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(RecourseColor.nightText)
-                    .frame(width: 46, height: 46)
-                    .background(RecourseColor.nightChip, in: Circle())
+                    .font(.system(size: 19, weight: .semibold))
+                    .foregroundStyle(accent ? .white : RecourseColor.nightText)
+                    .frame(width: 58, height: 58)
+                    .background(
+                        accent ? RecourseColor.ledger : RecourseColor.nightChip,
+                        in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    )
                 Text(title)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(RecourseColor.nightText)
             }
             .frame(maxWidth: .infinity)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(title)
+        .accessibilityLabel(accent ? "Pay with protection" : title)
     }
 
     private var earnPreview: some View {
