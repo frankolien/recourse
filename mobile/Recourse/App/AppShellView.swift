@@ -5,13 +5,13 @@ import UIKit
 
 private enum AppTab: Hashable, CaseIterable {
     case home
-    case scan
+    case earn
     case receipts
 
     var label: String {
         switch self {
         case .home: "Home"
-        case .scan: "Scan"
+        case .earn: "Earn"
         case .receipts: "Receipts"
         }
     }
@@ -19,7 +19,7 @@ private enum AppTab: Hashable, CaseIterable {
     var icon: String {
         switch self {
         case .home: "house.fill"
-        case .scan: "qrcode.viewfinder"
+        case .earn: "chart.line.uptrend.xyaxis"
         case .receipts: "wallet.bifold.fill"
         }
     }
@@ -28,7 +28,6 @@ private enum AppTab: Hashable, CaseIterable {
 struct AppShellView: View {
     let environment: AppEnvironment
     @State private var selection: AppTab = .home
-    @State private var lastContentTab: AppTab = .home
     @State private var showsScanner = false
     @State private var keepsTabBarExpanded = false
 
@@ -47,17 +46,20 @@ struct AppShellView: View {
             HomeView(
                 environment: environment,
                 onScrollTowardTopChanged: updateTabBarExpansion,
-                onScanRequested: { showsScanner = true }
+                onScanRequested: { showsScanner = true },
+                onEarnRequested: { selection = .earn }
             )
                 .tag(AppTab.home)
                 .tabItem {
                     Label(AppTab.home.label, systemImage: AppTab.home.icon)
                 }
 
-            Color.clear
-                .tag(AppTab.scan)
+            // The vault earns a first-class tab; paying stays one tap away on
+            // the home hero tile, so scanning no longer needs a fake tab slot.
+            EarnView(environment: environment)
+                .tag(AppTab.earn)
                 .tabItem {
-                    Label(AppTab.scan.label, systemImage: AppTab.scan.icon)
+                    Label(AppTab.earn.label, systemImage: AppTab.earn.icon)
                 }
 
             ReceiptsFoundationView(
@@ -70,14 +72,6 @@ struct AppShellView: View {
                 }
         }
         .tint(RecourseColor.ledgerDeep)
-        .onChange(of: selection) { _, newValue in
-            if newValue == .scan {
-                selection = lastContentTab
-                showsScanner = true
-            } else {
-                lastContentTab = newValue
-            }
-        }
         .fullScreenCover(isPresented: $showsScanner) {
             ScannerFoundationView(configuration: environment.configuration) { request in
                 showsScanner = false

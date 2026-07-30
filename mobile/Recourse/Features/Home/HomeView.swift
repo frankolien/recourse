@@ -4,6 +4,7 @@ struct HomeView: View {
     let environment: AppEnvironment
     let onScrollTowardTopChanged: (Bool) -> Void
     let onScanRequested: () -> Void
+    let onEarnRequested: () -> Void
     @Environment(\.colorScheme) private var colorScheme
     @State private var previousScrollOffset: CGFloat = 0
     @State private var hidesAttention = false
@@ -14,11 +15,13 @@ struct HomeView: View {
     init(
         environment: AppEnvironment,
         onScrollTowardTopChanged: @escaping (Bool) -> Void = { _ in },
-        onScanRequested: @escaping () -> Void = {}
+        onScanRequested: @escaping () -> Void = {},
+        onEarnRequested: @escaping () -> Void = {}
     ) {
         self.environment = environment
         self.onScrollTowardTopChanged = onScrollTowardTopChanged
         self.onScanRequested = onScanRequested
+        self.onEarnRequested = onEarnRequested
     }
 
     // Profile names live on the account session (persisted via the backend profile
@@ -189,16 +192,6 @@ struct HomeView: View {
             Spacer()
 
             Button {
-                if let paymentID = settledPayments.first?.id ?? allPayments.first?.id {
-                    environment.router.push(.verdict(paymentID))
-                }
-            } label: {
-                headerAction(title: "Verify", systemImage: "checkmark.seal.fill")
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Verify a payment")
-
-            Button {
                 environment.router.push(.support)
             } label: {
                 ZStack(alignment: .topTrailing) {
@@ -358,8 +351,9 @@ struct HomeView: View {
     }
 
     // Banking verbs in soft square tiles, one row, with Pay carrying the
-    // accent the way top money apps color their hero verb. The old hero
-    // capsule is gone; Scan in the tab bar remains the second path to pay.
+    // accent the way top money apps color their hero verb. Pay is the only
+    // scan entry in the app, so no icon appears twice on this screen; Earn
+    // lives in the tab bar now and Verify takes its tile back.
     private var actionGrid: some View {
         HStack(spacing: 12) {
             actionTile("plus", "Add money") {
@@ -368,8 +362,10 @@ struct HomeView: View {
             actionTile("paperplane.fill", "Send") {
                 environment.router.push(.send)
             }
-            actionTile("chart.line.uptrend.xyaxis", "Earn") {
-                environment.router.push(.earn)
+            actionTile("checkmark.seal.fill", "Verify") {
+                if let paymentID = settledPayments.first?.id ?? allPayments.first?.id {
+                    environment.router.push(.verdict(paymentID))
+                }
             }
             actionTile("qrcode.viewfinder", "Pay", accent: true, action: onScanRequested)
         }
@@ -403,7 +399,7 @@ struct HomeView: View {
 
     private var earnPreview: some View {
         Button {
-            environment.router.push(.earn)
+            onEarnRequested()
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: "chart.line.uptrend.xyaxis")
