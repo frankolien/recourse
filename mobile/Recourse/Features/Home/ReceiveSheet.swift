@@ -2,8 +2,9 @@ import CoreImage.CIFilterBuiltins
 import SwiftUI
 import UIKit
 
-// The wallet's receiving side: this device's Arc address as a scannable QR.
-// The QR carries the raw address so any wallet's scanner can read it.
+// "Add money" in banking terms, an address QR in chain terms: the sheet keeps
+// the friendly verb up top and the raw address below, so any wallet's scanner
+// can still read it while the app never asks the user to think in 0x strings.
 struct ReceiveSheet: View {
     let environment: AppEnvironment
 
@@ -13,9 +14,15 @@ struct ReceiveSheet: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            Text("Receive USDC")
+            Text("Add money")
                 .font(.system(size: 20, weight: .bold))
                 .foregroundStyle(RecourseColor.nightText)
+
+            Text("Send USDC to this address and it lands in your balance.")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(RecourseColor.nightMuted)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 30)
 
             if let address {
                 if let qr = qrImage(for: address) {
@@ -57,7 +64,7 @@ struct ReceiveSheet: View {
                     .frame(height: 190)
             }
 
-            Text("Arc Testnet only. USDC sent here lands in this device's wallet.")
+            Text("Arc Testnet only. Money added here follows this device.")
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(RecourseColor.nightMuted)
                 .multilineTextAlignment(.center)

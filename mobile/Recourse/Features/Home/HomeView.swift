@@ -316,7 +316,7 @@ struct HomeView: View {
 
             VStack(alignment: .leading, spacing: 18) {
                 HStack(spacing: 10) {
-                    Label("Your wallet", systemImage: "checkmark.shield.fill")
+                    Label("Balance", systemImage: "checkmark.shield.fill")
                         .font(.system(size: 12, weight: .bold))
                     Spacer()
                     Text("ARC TESTNET")
@@ -379,15 +379,15 @@ struct HomeView: View {
         .buttonStyle(.plain)
     }
 
-    // The wallet's feature row: every capability gets equal billing, so the app
-    // reads as a wallet with protection built in, not a single-purpose screen.
+    // Banking verbs, not wallet verbs: the app should read like a money app
+    // with protection built in, with the chain kept out of the lobby.
     private var actionGrid: some View {
         HStack(spacing: 10) {
+            actionTile("plus", "Add money") {
+                showsReceive = true
+            }
             actionTile("paperplane.fill", "Send") {
                 environment.router.push(.send)
-            }
-            actionTile("arrow.down.left", "Receive") {
-                showsReceive = true
             }
             actionTile("chart.line.uptrend.xyaxis", "Earn") {
                 environment.router.push(.earn)
