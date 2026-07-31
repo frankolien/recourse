@@ -106,6 +106,7 @@ struct MerchantWorkspaceView: View {
     @State private var productImageData: Data?
     @State private var isLoadingProductPhoto = false
     @State private var qrCardSaved = false
+    @State private var embedCopied = false
     @State private var isCreatingCheckout = false
     @State private var checkoutStatusMessage: String?
     @State private var checkoutPresentation: CheckoutPresentation?
@@ -695,6 +696,24 @@ struct MerchantWorkspaceView: View {
                 }
                 .buttonStyle(RecoursePrimaryButtonStyle())
             }
+
+            // The same checkout as website material: a paste-ready anchor tag
+            // wrapping the hosted Pay with Recourse button, so any page that
+            // can hold HTML can take protected payments.
+            Button {
+                UIPasteboard.general.string = embedSnippet(presentation)
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                withAnimation(.snappy) { embedCopied = true }
+            } label: {
+                Label(
+                    embedCopied ? "Embed code copied" : "Copy embed code for your website",
+                    systemImage: embedCopied ? "checkmark" : "chevron.left.forwardslash.chevron.right"
+                )
+                .font(.system(size: 12, weight: .semibold))
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(RecourseColor.ledger)
+
             Text("Closing this starts a fresh checkout.")
                 .font(.system(size: 11))
                 .foregroundStyle(RecourseColor.nightMuted)
@@ -794,6 +813,7 @@ struct MerchantWorkspaceView: View {
         selectedProductPhoto = nil
         productImageData = nil
         qrCardSaved = false
+        embedCopied = false
         checkoutErrorMessage = nil
     }
 
@@ -900,6 +920,7 @@ struct MerchantWorkspaceView: View {
             }
             let encodedRequest = checkoutLink(payload)
             qrCardSaved = false
+            embedCopied = false
             checkoutPresentation = CheckoutPresentation(
                 request: request,
                 manifest: manifest,
@@ -1055,6 +1076,15 @@ struct MerchantWorkspaceView: View {
     // the app directly (or the web fallback without it). base64url is URL-safe as-is.
     private func checkoutLink(_ payload: String) -> String {
         "\(AppConfiguration.webAppURL.absoluteString)/pay?request=\(payload)"
+    }
+
+    private func embedSnippet(_ presentation: CheckoutPresentation) -> String {
+        let web = AppConfiguration.webAppURL.absoluteString
+        return """
+        <a href="\(checkoutLink(presentation.encodedRequest))">
+          <img src="\(web)/brand/pay-with-recourse.svg" alt="Pay with Recourse" height="48" />
+        </a>
+        """
     }
 
     private func qrCode(_ value: String) -> UIImage? {

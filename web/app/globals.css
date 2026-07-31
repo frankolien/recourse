@@ -6194,6 +6194,32 @@ footer {
   text-decoration: underline;
 }
 
+.integrate-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin: 18px 0 6px;
+}
+
+.integrate-snippet {
+  background: #0d1614;
+  color: #d8e5e0;
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin: 14px 0 6px;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.65;
+  white-space: pre;
+}
+
+.integrate-snippet code {
+  font-size: 12.5px;
+  color: inherit;
+}
+
 .legal-footer {
   max-width: 680px;
   margin: 40px auto 0;
