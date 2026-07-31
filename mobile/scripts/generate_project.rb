@@ -113,7 +113,7 @@ app_target.build_configurations.each do |configuration|
     "CODE_SIGN_ENTITLEMENTS" => "Recourse/Recourse.entitlements",
     "INFOPLIST_FILE" => "Recourse/Info.plist",
     "CURRENT_PROJECT_VERSION" => "1",
-    "DEVELOPMENT_TEAM" => "",
+    "DEVELOPMENT_TEAM" => "YCKKUWB4WD",
     "ENABLE_PREVIEWS" => "YES",
     "GENERATE_INFOPLIST_FILE" => "YES",
     "INFOPLIST_KEY_CFBundleDisplayName" => "Recourse",
@@ -156,7 +156,7 @@ widget_target.build_configurations.each do |configuration|
     # Extension versions must match the containing app or App Store validation fails.
     "CURRENT_PROJECT_VERSION" => "1",
     "MARKETING_VERSION" => "0.1.0",
-    "DEVELOPMENT_TEAM" => "",
+    "DEVELOPMENT_TEAM" => "YCKKUWB4WD",
     "GENERATE_INFOPLIST_FILE" => "YES",
     "INFOPLIST_KEY_CFBundleDisplayName" => "Recourse",
     "PRODUCT_BUNDLE_IDENTIFIER" => "com.recourse.buyer.widgets",

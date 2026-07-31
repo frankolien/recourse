@@ -27,6 +27,7 @@
 		20152C64683059BAED5CEDA2A093A686 /* BuyerSigner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D84872AE9605A66541E62B02772C14 /* BuyerSigner.swift */; };
 		2160BFF4006986EEC34AFE5E113B9F87 /* ContractGateway.swift in Sources */ = {isa = PBXBuildFile; fileRef = A450934884A644BC38E2B627DF564D26 /* ContractGateway.swift */; };
 		2368014EC093D7327278B06CE108D3D1 /* PaymentShareCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DA38F65EC9E55013CC5E6BD041EBC54 /* PaymentShareCard.swift */; };
+		2925B13C36E3E68F56EEFCF3D4685DD9 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 461E2A2E3C422B764B056DAFBD485F46 /* Foundation.framework */; };
 		2D28315B295DDB592090EC6E1CCDAFEF /* TestnetLocalSignerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08DB07AC634E84BCE8238E9084728875 /* TestnetLocalSignerTests.swift */; };
 		2E526667A872342D7A8E01E6DFBAF3B3 /* ArcRPCTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5D09E7CA7AC6FD1D4B06BCA8DA867C8 /* ArcRPCTransport.swift */; };
 		2F7F936E0CC080B61974623C078A4993 /* PlaceholderDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4474781228A151CE5DEDB3EB59CE8C60 /* PlaceholderDetailView.swift */; };
@@ -57,7 +58,6 @@
 		77ACBAFEF5AFB2C929FAFA8CF006E994 /* EvidenceAPITransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73069BC38B5E30A366C54E71821CE367 /* EvidenceAPITransport.swift */; };
 		78546C8E0BBF3B1B0C7ACA4D022AE2E3 /* SendWorkflow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74695E39F0CDA46E5F9B3C30A2A263CD /* SendWorkflow.swift */; };
 		7AFEC4DCA1990327F7EA73675FCB07AF /* SendMoneyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D864207E023AE88BE09798C214C72E /* SendMoneyView.swift */; };
-		7D892A91F278E9EEC7DE0D9C95D37F90 /* RecourseWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13877B90709387D5BEA1FCFB64290C80 /* RecourseWidgetsBundle.swift */; };
 		89E3D7D30EE2CCE1E44285E8D4D7071D /* DisputeReminderScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC2C344A2A3ED3BE0D4E1E6FDFCFCB55 /* DisputeReminderScheduler.swift */; };
 		8CB9E988F491E007EF05A27E4C32FF61 /* BuyerSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C244FC1CAB487049CE97EB3797FDC59 /* BuyerSettingsTests.swift */; };
 		8E788734A949215C5EAD9E73C8CE45D0 /* ContractABI.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6AF52E840B98B71A70439E3345AB616 /* ContractABI.swift */; };
@@ -68,7 +68,6 @@
 		A59F177EBF76B19573275F415145319C /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 461E2A2E3C422B764B056DAFBD485F46 /* Foundation.framework */; };
 		A7EE69B052E12EC16421CE25AE19ACCE /* DisputeWorkflowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFCD02A4AD33693520133E150F06514B /* DisputeWorkflowTests.swift */; };
 		AD3D2A0D10D53FF5131A154333E5D3E1 /* AccountSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDAAC6499408DFC7421A8794FF6D0415 /* AccountSessionTests.swift */; };
-		B4E8F4A14960E4AD7401CA44B4AE88D6 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 461E2A2E3C422B764B056DAFBD485F46 /* Foundation.framework */; };
 		B7296BFB55B3F1ED2695251A2971E018 /* RecourseColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 930AC58BE4E3CB16EE1E3B2AF482C3FE /* RecourseColor.swift */; };
 		B79D7C6BEAF0910B83718F9D8B634D8F /* AccountFoundationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E0FC5900DFB9A0DEB58E1E59AED608A /* AccountFoundationView.swift */; };
 		B8F61E379341D9FDC8B35C0587698003 /* AppShellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E640EEABA2FCCEFF7B175093D50AB808 /* AppShellView.swift */; };
@@ -79,8 +78,10 @@
 		C524D4868934CC8E0902DEEC632D3043 /* ArcContractGateway.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82D8C42EC7277302AE79AB37EEFE1452 /* ArcContractGateway.swift */; };
 		C5F95E52E03E239F6F4C1C0AD67BBD71 /* RecourseApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6ADB9D0189042045ACB17D64862D914 /* RecourseApp.swift */; };
 		CCDD2C6801557E881BA659110820D59E /* OnboardingWelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DE958AD95380A211A514EC8F8335E05 /* OnboardingWelcomeView.swift */; };
+		CD451CE336BEEE476D40185647F74883 /* ProtectionSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D98739560113EC47A2745EA5B0C50C5 /* ProtectionSnapshot.swift */; };
 		CE7420AC5256C56B5D90F14A80DA8278 /* PaymentRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30179EB3E966FA10D8E470F8B1AC8CF2 /* PaymentRequest.swift */; };
 		D7FFB05C1DE41CA32E009B2868FAA7AF /* TransactionAuthorizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D75AD72EC5F1A3DAB3A078CDBE990D86 /* TransactionAuthorizer.swift */; };
+		D8042985A3CE159C19CF2679ADEBFF28 /* RecourseWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13877B90709387D5BEA1FCFB64290C80 /* RecourseWidgetsBundle.swift */; };
 		D88E77EE2474F98B810562ED93D62855 /* GeneralSettingsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF1E59AFBB4D0E192EA8CDF2A888F36C /* GeneralSettingsViews.swift */; };
 		D8A082AB27C9F77D2096BA77255F3230 /* VerdictWorkflowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62E77F30AC72E144E40B06DD29BE5AD9 /* VerdictWorkflowTests.swift */; };
 		DA8957761169F433C282536EE65691DE /* ProtectionSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D98739560113EC47A2745EA5B0C50C5 /* ProtectionSnapshot.swift */; };
@@ -97,17 +98,16 @@
 		F38AE5064F45AC5B5099FEF7613D37D3 /* ScannerFoundationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 340D309A89D1AE2D2233AB904EB87FF8 /* ScannerFoundationView.swift */; };
 		F40F1B1A47A7B06DD885FDE2AB9839E6 /* EvidenceAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BF4EFBA113EFE430165BC3E18C185DE /* EvidenceAPIClient.swift */; };
 		F59D924D2F3BC4A4B8E0EE3275EB3A4A /* web3swift in Frameworks */ = {isa = PBXBuildFile; productRef = 832EB5654DA2CC72883E96B5BB67D3F8 /* web3swift */; };
-		F5CA44C5CFE46AB56BA43FBD9C41E883 /* ProtectionSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D98739560113EC47A2745EA5B0C50C5 /* ProtectionSnapshot.swift */; };
 		FA4940ECAE15C6E6F3F2468B9E950928 /* AppRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3973D630B8F800DBBBD8A663B3E815BA /* AppRouter.swift */; };
 		FD90D6C275FD9A378A5C183138110281 /* BuyerSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E8C0798DEE492E5CB086D3FF040DBD1 /* BuyerSettings.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		C10E5F8D4527C1A5FBA7B46BC3A57029 /* PBXContainerItemProxy */ = {
+		5F39FFFFAE76F0E332B94464D9AA8A46 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 498DC937A1FC09EEF0292161E8444EBB /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 61862273579591708C18934A076C6550;
+			remoteGlobalIDString = C27A6A74E6D01A29471618031733CC9F;
 			remoteInfo = RecourseWidgets;
 		};
 		C1C1C1C1C1C1C1C1C1C1C1C1 /* PBXContainerItemProxy */ = {
@@ -238,11 +238,11 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		D2E4E65E00E32EE03EBC99BB69FF9CB8 /* Frameworks */ = {
+		886EC045F9F1E5DF57507A51784EED67 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B4E8F4A14960E4AD7401CA44B4AE88D6 /* Foundation.framework in Frameworks */,
+				2925B13C36E3E68F56EEFCF3D4685DD9 /* Foundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -672,13 +672,13 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		61862273579591708C18934A076C6550 /* RecourseWidgets */ = {
+		C27A6A74E6D01A29471618031733CC9F /* RecourseWidgets */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 92FFC0D5F6005BC87A344551F4EDFE1F /* Build configuration list for PBXNativeTarget "RecourseWidgets" */;
+			buildConfigurationList = 8EDC6C6507CC477EF27D83B667C8E1C9 /* Build configuration list for PBXNativeTarget "RecourseWidgets" */;
 			buildPhases = (
-				1ABB75EB9C540C2ABB081F957862AEB5 /* Sources */,
-				D2E4E65E00E32EE03EBC99BB69FF9CB8 /* Frameworks */,
-				4752391A7B62083C9D105F9BB319AD84 /* Resources */,
+				3363C1943C41ECE19469D0A5FB6C40C8 /* Sources */,
+				886EC045F9F1E5DF57507A51784EED67 /* Frameworks */,
+				84324C8F67D3B8AAAA91EA8D3C406D45 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -702,7 +702,7 @@
 			buildRules = (
 			);
 			dependencies = (
-				C9D6A60CC36FB984A413D1A1B4DA20C6 /* PBXTargetDependency */,
+				35477BA5247907B4A5A3C0D260B2AA2C /* PBXTargetDependency */,
 			);
 			name = Recourse;
 			packageProductDependencies = (
@@ -739,7 +739,7 @@
 				LastSwiftUpdateCheck = 2640;
 				LastUpgradeCheck = 2640;
 				TargetAttributes = {
-					61862273579591708C18934A076C6550 = {
+					C27A6A74E6D01A29471618031733CC9F = {
 						SystemCapabilities = {
 							com.apple.ApplicationGroups.iOS = {
 								enabled = 1;
@@ -778,7 +778,7 @@
 			targets = (
 				D74A7AE0AE81FB6B47C36A9EB4EC490E /* Recourse */,
 				F299ED5510863676226054139E70288D /* RecourseTests */,
-				61862273579591708C18934A076C6550 /* RecourseWidgets */,
+				C27A6A74E6D01A29471618031733CC9F /* RecourseWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -791,7 +791,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		4752391A7B62083C9D105F9BB319AD84 /* Resources */ = {
+		84324C8F67D3B8AAAA91EA8D3C406D45 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -838,12 +838,12 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		1ABB75EB9C540C2ABB081F957862AEB5 /* Sources */ = {
+		3363C1943C41ECE19469D0A5FB6C40C8 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7D892A91F278E9EEC7DE0D9C95D37F90 /* RecourseWidgetsBundle.swift in Sources */,
-				F5CA44C5CFE46AB56BA43FBD9C41E883 /* ProtectionSnapshot.swift in Sources */,
+				D8042985A3CE159C19CF2679ADEBFF28 /* RecourseWidgetsBundle.swift in Sources */,
+				CD451CE336BEEE476D40185647F74883 /* ProtectionSnapshot.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -945,11 +945,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		C9D6A60CC36FB984A413D1A1B4DA20C6 /* PBXTargetDependency */ = {
+		35477BA5247907B4A5A3C0D260B2AA2C /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			name = RecourseWidgets;
-			target = 61862273579591708C18934A076C6550 /* RecourseWidgets */;
-			targetProxy = C10E5F8D4527C1A5FBA7B46BC3A57029 /* PBXContainerItemProxy */;
+			target = C27A6A74E6D01A29471618031733CC9F /* RecourseWidgets */;
+			targetProxy = 5F39FFFFAE76F0E332B94464D9AA8A46 /* PBXContainerItemProxy */;
 		};
 		D1D1D1D1D1D1D1D1D1D1D1D1 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -960,31 +960,6 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		079CA36749F2DE01A4241EA6C62333C1 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CLANG_ENABLE_OBJC_WEAK = NO;
-				CODE_SIGN_ENTITLEMENTS = RecourseWidgets/RecourseWidgets.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = RecourseWidgets/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Recourse;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.recourse.buyer.widgets;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_STRICT_CONCURRENCY = complete;
-				TARGETED_DEVICE_FAMILY = 1;
-			};
-			name = Debug;
-		};
 		1C27692108225A9CA001A61032B1088B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1047,14 +1022,14 @@
 			};
 			name = Debug;
 		};
-		48854EE42B14DD4AC37FA0D43C8F05BF /* Release */ = {
+		3588A3EBB6173CC443C8FF28A42B327C /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_ENTITLEMENTS = RecourseWidgets/RecourseWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = YCKKUWB4WD;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RecourseWidgets/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Recourse;
@@ -1064,43 +1039,6 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_STRICT_CONCURRENCY = complete;
-				TARGETED_DEVICE_FAMILY = 1;
-				VALIDATE_PRODUCT = YES;
-			};
-			name = Release;
-		};
-		5852ED1E33D8E656F7EFC5B40D4229FF /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CLANG_ENABLE_OBJC_WEAK = NO;
-				CODE_SIGN_ENTITLEMENTS = Recourse/Recourse.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
-				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = Recourse/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Recourse;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
-				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking = YES;
-				INFOPLIST_KEY_NSCameraUsageDescription = "Scan protected payment requests and capture dispute evidence.";
-				INFOPLIST_KEY_NSFaceIDUsageDescription = "Confirm protected payment transactions.";
-				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Connect to the Recourse development backend on your local network.";
-				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save checkout QR cards to your photo library.";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.recourse.buyer;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -1126,7 +1064,49 @@
 			};
 			name = Debug;
 		};
-		5DC8EB5ECEE05AE0E933CE0912D468E7 /* Debug */ = {
+		6D703DE8CF456CD7E7B0EFB60E7B43DF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.recourse.buyer.tests;
+				SDKROOT = iphoneos;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Recourse.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Recourse";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		72DA0C3E6C2F950D9C5F14B11194209F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = RecourseWidgets/RecourseWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = YCKKUWB4WD;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RecourseWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Recourse;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.recourse.buyer.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		851C7B2C442B93E50B89DACF67ABB6C8 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -1136,7 +1116,7 @@
 				CODE_SIGN_ENTITLEMENTS = Recourse/Recourse.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = YCKKUWB4WD;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Recourse/Info.plist;
@@ -1159,22 +1139,6 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				TARGETED_DEVICE_FAMILY = 1;
-			};
-			name = Debug;
-		};
-		6D703DE8CF456CD7E7B0EFB60E7B43DF /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CLANG_ENABLE_OBJC_WEAK = NO;
-				CODE_SIGN_STYLE = Automatic;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.recourse.buyer.tests;
-				SDKROOT = iphoneos;
-				SWIFT_STRICT_CONCURRENCY = complete;
-				TARGETED_DEVICE_FAMILY = 1;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Recourse.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Recourse";
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
@@ -1234,6 +1198,42 @@
 			};
 			name = Release;
 		};
+		E2A2182F66DFD5097142530DECB10FE6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = Recourse/Recourse.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = YCKKUWB4WD;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Recourse/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Recourse;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
+				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Scan protected payment requests and capture dispute evidence.";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Confirm protected payment transactions.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Connect to the Recourse development backend on your local network.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save checkout QR cards to your photo library.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.recourse.buyer;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1258,17 +1258,17 @@
 		7DF089BD43E837AE3BF9012C92C878E4 /* Build configuration list for PBXNativeTarget "Recourse" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				5852ED1E33D8E656F7EFC5B40D4229FF /* Release */,
-				5DC8EB5ECEE05AE0E933CE0912D468E7 /* Debug */,
+				851C7B2C442B93E50B89DACF67ABB6C8 /* Release */,
+				E2A2182F66DFD5097142530DECB10FE6 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		92FFC0D5F6005BC87A344551F4EDFE1F /* Build configuration list for PBXNativeTarget "RecourseWidgets" */ = {
+		8EDC6C6507CC477EF27D83B667C8E1C9 /* Build configuration list for PBXNativeTarget "RecourseWidgets" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				48854EE42B14DD4AC37FA0D43C8F05BF /* Release */,
-				079CA36749F2DE01A4241EA6C62333C1 /* Debug */,
+				3588A3EBB6173CC443C8FF28A42B327C /* Release */,
+				72DA0C3E6C2F950D9C5F14B11194209F /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
