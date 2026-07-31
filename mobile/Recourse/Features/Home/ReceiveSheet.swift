@@ -11,6 +11,7 @@ struct ReceiveSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var address: String?
     @State private var copied = false
+    @State private var showsFaucet = false
 
     var body: some View {
         ScrollView {
@@ -20,6 +21,10 @@ struct ReceiveSheet: View {
         .background(RecourseColor.night)
         .task {
             address = try? await environment.buyerSigner.address().value
+        }
+        .sheet(isPresented: $showsFaucet) {
+            SafariWebView(url: URL(string: "https://faucet.circle.com")!)
+                .ignoresSafeArea()
         }
     }
 
@@ -72,6 +77,32 @@ struct ReceiveSheet: View {
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, 26)
+
+                // Circle's official faucet funds any Arc testnet address, so a
+                // fresh install can self-serve from zero to a first protected
+                // payment. Copying first saves a hop: the faucet form's only
+                // input is the address already on this screen.
+                Button {
+                    UIPasteboard.general.string = address
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    showsFaucet = true
+                } label: {
+                    Label("Get free test USDC", systemImage: "drop.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(RecourseColor.nightText)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(RecourseColor.nightChip, in: Capsule())
+                        .overlay { Capsule().stroke(RecourseColor.nightLine, lineWidth: 1) }
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 26)
+
+                Text("Opens Circle's faucet with your address copied. 20 USDC every 2 hours.")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(RecourseColor.nightMuted)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 30)
             } else {
                 ProgressView()
                     .frame(height: 190)
