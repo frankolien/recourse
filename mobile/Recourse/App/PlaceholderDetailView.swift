@@ -699,6 +699,7 @@ private struct PaymentSuccessView: View {
 struct PaymentDetailView: View {
     let payment: DemoPayment
     let router: AppRouter
+    @State private var shareCard: Image?
 
     var body: some View {
         ScrollView {
@@ -716,6 +717,23 @@ struct PaymentDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
             actions
+        }
+        .task {
+            shareCard = PaymentShareCard.render(for: payment)
+        }
+        .toolbar {
+            if let shareCard {
+                ToolbarItem(placement: .topBarTrailing) {
+                    // The receipt goes back into the chat where the deal
+                    // happened: a branded card with the public verifier QR.
+                    ShareLink(
+                        item: shareCard,
+                        preview: SharePreview("Payment #\(payment.id) · Recourse", image: shareCard)
+                    ) {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                }
+            }
         }
     }
 
