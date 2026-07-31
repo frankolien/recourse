@@ -229,6 +229,25 @@ struct OnboardingSignInView: View {
         }
     }
 
+    private func appleButtonCover(showsProgress: Bool) -> some View {
+        HStack(spacing: 9) {
+            if showsProgress {
+                ProgressView()
+                    .tint(.white)
+                    .scaleEffect(0.8)
+            } else {
+                Image(systemName: "apple.logo")
+                    .font(.system(size: 16, weight: .medium))
+            }
+            Text("Continue with Apple")
+                .font(.system(size: 15, weight: .semibold))
+        }
+        .foregroundStyle(.white)
+        .frame(maxWidth: .infinity)
+        .frame(height: 52)
+        .background(.black, in: Capsule())
+    }
+
     private func authenticationHero(width: CGFloat, height: CGFloat) -> some View {
         ZStack(alignment: .top) {
             Image("AccountEntryHero")
@@ -288,22 +307,25 @@ struct OnboardingSignInView: View {
             .clipShape(Capsule())
             // The system button scales its label with height, landing larger
             // than every other CTA; this cover redraws Apple's branding at the
-            // app's type scale while taps fall through to the real control.
+            // app's type scale. Ready: taps fall through to the real control.
+            // Not ready (the backend nonce hasn't arrived): the cover stays
+            // fully opaque, because dimming a UIKit-backed control and a
+            // SwiftUI overlay dims them separately and Apple's label ghosts
+            // through, and tapping it retries the challenge fetch instead of
+            // leaving the button dead until the screen reappears.
             .overlay {
-                HStack(spacing: 9) {
-                    Image(systemName: "apple.logo")
-                        .font(.system(size: 16, weight: .medium))
-                    Text("Continue with Apple")
-                        .font(.system(size: 15, weight: .semibold))
+                if accountSession.isAppleSignInReady {
+                    appleButtonCover(showsProgress: false)
+                        .allowsHitTesting(false)
+                } else {
+                    Button {
+                        Task { await accountSession.prepareAppleSignIn() }
+                    } label: {
+                        appleButtonCover(showsProgress: accountSession.isPreparingAppleSignIn)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: 52)
-                .background(.black, in: Capsule())
-                .allowsHitTesting(false)
             }
-            .allowsHitTesting(accountSession.isAppleSignInReady)
-            .opacity(accountSession.isAppleSignInReady ? 1 : 0.55)
 
             Button {
                 Task {
