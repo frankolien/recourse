@@ -22,7 +22,9 @@ project.root_object.attributes["LastUpgradeCheck"] = "2640"
 
 app_target = project.new_target(:application, "Recourse", :ios, "17.0")
 test_target = project.new_target(:unit_test_bundle, "RecourseTests", :ios, "17.0")
+widget_target = project.new_target(:app_extension, "RecourseWidgets", :ios, "17.0")
 test_target.add_dependency(app_target)
+app_target.add_dependency(widget_target)
 
 def nested_group(root_group, relative_directory)
   return root_group if relative_directory == "."
@@ -52,9 +54,28 @@ end
 
 app_group = project.main_group.new_group("Recourse", "Recourse")
 test_group = project.main_group.new_group("RecourseTests", "RecourseTests")
+widgets_group = project.main_group.new_group("RecourseWidgets", "RecourseWidgets")
 add_sources(app_target, app_group, File.join(root, "Recourse"))
 add_sources(test_target, test_group, File.join(root, "RecourseTests"))
+add_sources(widget_target, widgets_group, File.join(root, "RecourseWidgets"))
 app_group.new_file("Recourse.entitlements")
+widgets_group.new_file("RecourseWidgets.entitlements")
+
+# Files both the app and the widget compile (the app-group snapshot contract):
+# one file reference each, added to both targets' source phases.
+shared_group = project.main_group.new_group("Shared", "Shared")
+Dir.glob(File.join(root, "Shared", "**", "*.swift")).sort.each do |path|
+  relative_path = Pathname.new(path).relative_path_from(Pathname.new(File.join(root, "Shared"))).to_s
+  parent = nested_group(shared_group, File.dirname(relative_path))
+  reference = parent.new_file(File.basename(relative_path))
+  app_target.source_build_phase.add_file_reference(reference)
+  widget_target.source_build_phase.add_file_reference(reference)
+end
+
+embed_phase = app_target.new_copy_files_build_phase("Embed Foundation Extensions")
+embed_phase.symbol_dst_subfolder_spec = :plug_ins
+embed_build_file = embed_phase.add_file_reference(widget_target.product_reference)
+embed_build_file.settings = { "ATTRIBUTES" => ["RemoveHeadersOnCopy"] }
 
 resources_group = nested_group(app_group, "Resources")
 abi_group = nested_group(resources_group, "ABI")
@@ -119,8 +140,35 @@ end
 project.root_object.attributes["TargetAttributes"] ||= {}
 project.root_object.attributes["TargetAttributes"][app_target.uuid] ||= {}
 project.root_object.attributes["TargetAttributes"][app_target.uuid]["SystemCapabilities"] = {
-  "com.apple.SignInWithApple" => { "enabled" => 1 }
+  "com.apple.SignInWithApple" => { "enabled" => 1 },
+  "com.apple.ApplicationGroups.iOS" => { "enabled" => 1 }
 }
+project.root_object.attributes["TargetAttributes"][widget_target.uuid] ||= {}
+project.root_object.attributes["TargetAttributes"][widget_target.uuid]["SystemCapabilities"] = {
+  "com.apple.ApplicationGroups.iOS" => { "enabled" => 1 }
+}
+
+widget_target.build_configurations.each do |configuration|
+  configuration.build_settings.merge!(
+    "CODE_SIGN_STYLE" => "Automatic",
+    "CODE_SIGN_ENTITLEMENTS" => "RecourseWidgets/RecourseWidgets.entitlements",
+    "INFOPLIST_FILE" => "RecourseWidgets/Info.plist",
+    # Extension versions must match the containing app or App Store validation fails.
+    "CURRENT_PROJECT_VERSION" => "1",
+    "MARKETING_VERSION" => "0.1.0",
+    "DEVELOPMENT_TEAM" => "",
+    "GENERATE_INFOPLIST_FILE" => "YES",
+    "INFOPLIST_KEY_CFBundleDisplayName" => "Recourse",
+    "PRODUCT_BUNDLE_IDENTIFIER" => "com.recourse.buyer.widgets",
+    "PRODUCT_NAME" => "$(TARGET_NAME)",
+    "SKIP_INSTALL" => "YES",
+    "SUPPORTED_PLATFORMS" => "iphoneos iphonesimulator",
+    "SUPPORTS_MACCATALYST" => "NO",
+    "SWIFT_EMIT_LOC_STRINGS" => "YES",
+    "SWIFT_STRICT_CONCURRENCY" => "complete",
+    "TARGETED_DEVICE_FAMILY" => "1"
+  )
+end
 
 test_target.build_configurations.each do |configuration|
   configuration.build_settings.merge!(

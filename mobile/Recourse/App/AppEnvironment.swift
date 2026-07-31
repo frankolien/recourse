@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import WidgetKit
 
 @MainActor
 @Observable
@@ -218,6 +219,7 @@ final class BuyerPaymentStore {
             case .buyer:
                 payments = displayPayments
                 balance = try? await fetchBalance(address: address)
+                publishProtectionSnapshot()
             case .merchant:
                 merchantPayments = displayPayments
                 balance = try? await fetchBalance(address: address)
@@ -227,6 +229,22 @@ final class BuyerPaymentStore {
         } catch {
             errorMessage = "Live Arc data is unavailable. Pull to retry."
         }
+    }
+
+    // The widget renders whatever the last refresh published; pushing a reload
+    // here is what keeps the home screen number honest without giving the
+    // widget its own network stack.
+    private func publishProtectionSnapshot() {
+        let active = payments.filter { $0.state == .protected || $0.state == .underReview }
+        ProtectionSnapshot(
+            protectedBaseUnits: active.reduce(into: UInt64(0)) {
+                $0 = $0.addingReportingOverflow($1.amount.baseUnits).partialValue
+            },
+            activeCount: active.count,
+            nearestDeadline: active.filter { $0.state == .protected }.map(\.protectionEnds).min(),
+            updatedAt: Date()
+        ).save()
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     private func resolveOrderContexts(for rows: [IndexedPayment]) async {
