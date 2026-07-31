@@ -1,6 +1,6 @@
 "use client";
 
-import { Apple, Check, Loader2, ShieldCheck, Smartphone } from "lucide-react";
+import { Check, Loader2, ShieldCheck, Smartphone } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -70,10 +70,6 @@ export function SignInPage() {
           )}
 
           {error && <p className="auth-error">{error}</p>}
-
-          <button className="auth-provider" type="button" disabled title="Sign in with Apple runs in the Recourse iOS app">
-            <Apple size={18} /> Continue with Apple
-          </button>
 
           <p className="auth-mobile-note"><Smartphone size={15} /> Buying on Recourse? Sign in happens in the mobile app.</p>
           <p className="auth-terms">By continuing, you agree to the Terms and Privacy Policy.</p>
