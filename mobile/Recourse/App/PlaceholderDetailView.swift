@@ -474,6 +474,56 @@ struct CheckoutReviewView: View {
 // A choreographed confirmation, not a static screen: haptic + shield spring with a
 // one-shot pulse ring, the amount counting up, detail rows cascading in, and the brand
 // aurora breathing along the bottom. Reduce Motion collapses the sequence to a still.
+// Filing a dispute is the app's most loaded moment: the buyer just escalated
+// against a seller. It earns the same choreographed reassurance as paying,
+// not a system alert.
+private struct DisputeSubmittedView: View {
+    let paymentID: UInt64
+    let onViewStatus: () -> Void
+
+    @State private var revealed = false
+    @State private var showsDetail = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer()
+            VStack(spacing: 20) {
+                Image(systemName: "checkmark.shield.fill")
+                    .font(.system(size: 64, weight: .semibold))
+                    .foregroundStyle(RecourseColor.ledger)
+                    .scaleEffect(revealed ? 1 : 0.4)
+                VStack(spacing: 8) {
+                    Text("Evidence submitted")
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundStyle(RecourseColor.nightText)
+                        .opacity(revealed ? 1 : 0)
+                    Text("Linked to payment #\(paymentID). The policy engine now computes a verdict from the locked rules, and you can recompute it yourself.")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(RecourseColor.nightMuted)
+                        .multilineTextAlignment(.center)
+                        .opacity(showsDetail ? 1 : 0)
+                        .offset(y: showsDetail ? 0 : 8)
+                }
+            }
+            Spacer()
+            Button("View status", action: onViewStatus)
+                .buttonStyle(RecoursePrimaryButtonStyle())
+                .opacity(showsDetail ? 1 : 0)
+        }
+        .padding(24)
+        .background(RecourseColor.night.ignoresSafeArea())
+        .task {
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.65)) {
+                revealed = true
+            }
+            withAnimation(.easeOut(duration: 0.4).delay(0.35)) {
+                showsDetail = true
+            }
+        }
+    }
+}
+
 private struct PaymentSuccessView: View {
     let amount: USDCAmount
     let paidToLabel: String
@@ -978,10 +1028,11 @@ struct DisputeFilingView: View {
         .safeAreaInset(edge: .bottom) {
             disputeActionBar
         }
-        .alert("Evidence submitted", isPresented: $submitted) {
-            Button("View status") { environment.router.push(.verdict(payment.id)) }
-        } message: {
-            Text("Your evidence is linked to payment #\(payment.id). The policy engine will produce a verifiable outcome.")
+        .fullScreenCover(isPresented: $submitted) {
+            DisputeSubmittedView(paymentID: payment.id) {
+                submitted = false
+                environment.router.push(.verdict(payment.id))
+            }
         }
     }
 

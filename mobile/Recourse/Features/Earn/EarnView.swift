@@ -259,6 +259,7 @@ private struct VaultActionSheet: View {
     @State private var stage: String?
     @State private var errorMessage: String?
     @State private var succeeded = false
+    @State private var celebrationRevealed = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -282,9 +283,11 @@ private struct VaultActionSheet: View {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 52, weight: .semibold))
                 .foregroundStyle(RecourseColor.ledger)
+                .scaleEffect(celebrationRevealed ? 1 : 0.4)
             Text(mode == .deposit ? "Deposited on Arc" : "Withdrawn on Arc")
                 .font(.system(size: 16, weight: .bold))
                 .foregroundStyle(RecourseColor.nightText)
+                .opacity(celebrationRevealed ? 1 : 0)
             Button("Done") { dismiss() }
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(.white)
@@ -295,6 +298,12 @@ private struct VaultActionSheet: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 22)
+        .task {
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.65)) {
+                celebrationRevealed = true
+            }
+        }
     }
 
     private var entryBody: some View {
