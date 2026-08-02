@@ -813,7 +813,7 @@ button.dash-nav-item {
 
 @media (max-width: 900px) {
   .auth-page {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .auth-story {
@@ -834,7 +834,7 @@ button.dash-nav-item {
   }
 
   .onboarding-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     width: min(680px, calc(100% - 40px));
   }
 
@@ -932,7 +932,7 @@ button.dash-nav-item {
   }
 
   .onboarding-fields.two-columns {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .setup-summary {
@@ -2092,11 +2092,11 @@ footer {
 
   .verdict-grid,
   .detail-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .sandbox-section {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 35px;
   }
 
@@ -2160,7 +2160,7 @@ footer {
   }
 
   .sandbox-controls {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .evidence-chip {
@@ -2179,7 +2179,7 @@ footer {
   }
 
   .how-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .how-grid > div,
@@ -3186,7 +3186,7 @@ footer {
   }
 
   .dash-content-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .dash-right-rail {
@@ -3283,7 +3283,7 @@ footer {
   .summary-grid,
   .learn-grid,
   .dash-right-rail {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .panel-heading {
@@ -3902,7 +3902,7 @@ footer {
   }
 
   .two-col {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -3920,7 +3920,7 @@ footer {
 @media (max-width: 580px) {
   .metric-grid,
   .metric-grid.cols-3 {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -4033,7 +4033,7 @@ footer {
 
 @media (max-width: 700px) {
   .builder-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -4047,6 +4047,9 @@ footer {
   color: var(--ink);
   background: var(--paper-bright);
   font-family: var(--body);
+  /* The fanned phone artwork bleeds past the edges by design; clip keeps that
+     bleed from becoming horizontal page scroll on phones. */
+  overflow-x: clip;
 }
 
 .landing-nav {
@@ -5149,7 +5152,7 @@ footer {
 
 @media (max-width: 1080px) {
   .landing-hero {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 28px;
   }
 
@@ -5178,7 +5181,7 @@ footer {
   }
 
   .landing-audience-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .landing-audience-grid article {
@@ -5187,7 +5190,7 @@ footer {
 
   .landing-vault-story,
   .landing-faq {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .landing-final-cta {
@@ -5203,7 +5206,7 @@ footer {
 
   .landing-section-intro,
   .landing-verification {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 32px;
   }
 
@@ -5304,7 +5307,7 @@ footer {
   }
 
   .landing-workflow-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .landing-workflow-grid article,
@@ -5328,7 +5331,7 @@ footer {
   }
 
   .proof-demo-engine {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .proof-demo-engine b {
@@ -5351,7 +5354,7 @@ footer {
   }
 
   .vault-equation > div {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .vault-equation strong {
@@ -5371,7 +5374,7 @@ footer {
   }
 
   .landing-feature-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .landing-footer {
@@ -5755,7 +5758,7 @@ footer {
 
 @media (max-width: 900px) {
   .onboarding-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     width: 100%;
   }
 
@@ -5776,7 +5779,7 @@ footer {
   }
 
   .onboarding-fields.two-columns {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -6152,6 +6155,10 @@ footer {
   max-width: 680px;
   margin: 0 auto;
   width: 100%;
+  /* Flex items refuse to shrink below their content's min width, so a wide
+     markdown table would push the whole page past the phone viewport instead
+     of scrolling inside its own box. */
+  min-width: 0;
   padding-top: 44px;
   flex: 1;
 }
@@ -6291,6 +6298,14 @@ footer {
 
 .paper-body li {
   margin-bottom: 6px;
+}
+
+/* The paper quotes raw chain material (tx hashes, orderRefs) inline; those
+   66-character tokens cannot wrap on their own and would drag the whole page
+   wider than a phone. `anywhere` lets them break mid-token only when needed. */
+.paper-body p,
+.paper-body li {
+  overflow-wrap: anywhere;
 }
 
 .paper-body pre {

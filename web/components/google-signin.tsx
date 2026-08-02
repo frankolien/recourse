@@ -54,7 +54,10 @@ export function GoogleSignInButton({
         text: "continue_with",
         shape: "pill",
         logo_alignment: "center",
-        width: 320,
+        // Google renders the button at a fixed pixel width, so on the very
+        // narrowest phones a hardcoded 320 was the one element pushing the
+        // page into horizontal scroll. Size it to the slot instead.
+        width: Math.max(200, Math.min(320, slot.current.clientWidth || 320)),
       });
     }
 
