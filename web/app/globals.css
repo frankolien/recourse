@@ -2491,7 +2491,8 @@ footer {
   gap: 7px;
 }
 
-.balance-actions button {
+.balance-actions button,
+.balance-actions a {
   display: flex;
   height: 35px;
   align-items: center;
@@ -2502,6 +2503,8 @@ footer {
   color: #fff;
   background: rgba(255, 255, 255, 0.1);
   font-size: 11px;
+  text-decoration: none;
+  font-weight: 600;
 }
 
 .summary-card {
@@ -2597,6 +2600,17 @@ footer {
   display: grid;
   align-content: start;
   gap: 17px;
+}
+
+/* Grid items keep min-width: auto by default, so a panel holding a wide table
+   overflows its track instead of shrinking and letting the table scroll
+   internally; zero it so panels always fit the column they were given. This
+   covers the dashboard columns and every .page-stack route (payments,
+   protection, disputes, receipts, vault, settings, support). */
+.dash-primary-column > *,
+.dash-right-rail > *,
+.page-stack > * {
+  min-width: 0;
 }
 
 .dash-panel,
@@ -3214,6 +3228,28 @@ footer {
     display: none;
   }
 
+  /* The workspace chips outgrow one row well before the phone breakpoint. */
+  .dash-topbar,
+  .dash-topbar .dash-header-actions {
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+
+  /* Grid tracks floor at min-content, so the multi-column tables would widen
+     the whole page; let them scroll inside their own panels instead. */
+  .protection-table,
+  .records-table {
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .protection-head,
+  .protection-row,
+  .records-head,
+  .records-row {
+    min-width: 560px;
+  }
+
   .dash-nav {
     display: flex;
     overflow-x: auto;
@@ -3284,6 +3320,25 @@ footer {
   .learn-grid,
   .dash-right-rail {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* On a short single-column card the absolutely pinned action row lands on
+     top of the wallet chip; back to normal flow so they stack. */
+  .balance-actions {
+    position: static;
+    margin-top: 14px;
+  }
+
+  /* Four columns of dispute detail cannot fit a phone; two columns with the
+     timeline running full width keeps every field readable. */
+  .dispute-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    row-gap: 12px;
+    padding: 14px 0;
+  }
+
+  .dispute-timeline {
+    grid-column: 1 / -1;
   }
 
   .panel-heading {
