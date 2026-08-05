@@ -174,7 +174,7 @@ struct HomeView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(displayName)
-                    .font(.system(size: 14, weight: .bold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(RecourseColor.nightText)
                     .lineLimit(2)
                     .minimumScaleFactor(0.78)
@@ -214,7 +214,7 @@ struct HomeView: View {
                 .font(.system(size: 16, weight: .semibold))
                 .frame(height: 19)
             Text(title)
-                .font(.system(size: 8, weight: .semibold))
+                .font(.system(size: 8, weight: .medium))
         }
         .frame(width: 38)
         .foregroundStyle(RecourseColor.nightText)
@@ -228,7 +228,7 @@ struct HomeView: View {
                     .foregroundStyle(RecourseColor.nightText)
                 Spacer()
                 Text("1 action")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(RecourseColor.ledger)
             }
             attentionCard
@@ -252,7 +252,7 @@ struct HomeView: View {
             } label: {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Evidence requested")
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(RecourseColor.nightText)
                     Text(attentionPayment.map {
                         "\($0.merchant) · \($0.orderReference)"
@@ -262,7 +262,7 @@ struct HomeView: View {
                         .lineLimit(2)
                     Label("Add evidence", systemImage: "arrow.right")
                         .labelStyle(.titleAndIcon)
-                        .font(.system(size: 11, weight: .bold))
+                        .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(RecourseColor.ledger)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -305,7 +305,7 @@ struct HomeView: View {
                     Image(systemName: hidesBalance ? "eye.slash.fill" : "eye.fill")
                         .font(.system(size: 10, weight: .semibold))
                 }
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(RecourseColor.nightMuted)
 
                 ZStack {
@@ -323,7 +323,7 @@ struct HomeView: View {
                 .lineLimit(1)
 
                 Text(heroSubtitle)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(activePayments.isEmpty ? RecourseColor.nightMuted : RecourseColor.ledger)
                     .contentTransition(.opacity)
             }
@@ -387,7 +387,7 @@ struct HomeView: View {
                         in: RoundedRectangle(cornerRadius: 18, style: .continuous)
                     )
                 Text(title)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(RecourseColor.nightText)
             }
             .frame(maxWidth: .infinity)
@@ -408,7 +408,7 @@ struct HomeView: View {
                     .background(RecourseColor.nightChip, in: Circle())
                 VStack(alignment: .leading, spacing: 3) {
                     Text(earnPreviewTitle)
-                        .font(.system(size: 13, weight: .bold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(RecourseColor.nightText)
                     Text(earnPreviewDetail)
                         .font(.system(size: 11))
@@ -447,7 +447,7 @@ struct HomeView: View {
     private var firstStepsCard: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("How your first payment works")
-                .font(.system(size: 15, weight: .bold))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(RecourseColor.nightText)
             firstStep("qrcode.viewfinder", "Scan a merchant checkout", "Recourse QRs open here, straight from the Camera app too.")
             firstStep("lock.shield.fill", "USDC escrows under the policy", "Refund rules are locked onchain before any funds move.")
@@ -467,7 +467,7 @@ struct HomeView: View {
                 .background(RecourseColor.nightChip, in: Circle())
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(RecourseColor.nightText)
                 Text(detail)
                     .font(.system(size: 11.5))
@@ -501,7 +501,7 @@ struct HomeView: View {
             MerchantArtwork(payment: payment, size: 38, cornerRadius: 11)
             VStack(alignment: .leading, spacing: 5) {
                 Text(payment.merchant)
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(RecourseColor.nightText)
                 Text(payment.item)
                     .font(.system(size: 10))
@@ -511,10 +511,10 @@ struct HomeView: View {
             Spacer()
             VStack(alignment: .trailing, spacing: 5) {
                 Text("$\(payment.amountText.replacingOccurrences(of: " USDC", with: "")) protected")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(RecourseColor.nightText)
                 Text(timeLeft(for: payment))
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(RecourseColor.nightMuted)
             }
         }
@@ -565,7 +565,7 @@ struct HomeView: View {
             Button("Recompute") {
                 environment.router.push(.verdict(payment.id))
             }
-            .font(.system(size: 11, weight: .bold))
+            .font(.system(size: 11, weight: .semibold))
             .foregroundStyle(RecourseColor.ledger)
             .buttonStyle(.plain)
         }
@@ -579,7 +579,7 @@ struct HomeView: View {
                 .foregroundStyle(RecourseColor.nightText)
             Spacer()
             Text(trailing)
-                .font(.system(size: 11, weight: .semibold))
+                .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(RecourseColor.nightMuted)
         }
     }
