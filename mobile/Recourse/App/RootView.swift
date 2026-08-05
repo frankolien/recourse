@@ -126,7 +126,7 @@ struct RootView: View {
             }
         case .verdict(let paymentID):
             if let payment = environment.paymentStore.payment(id: paymentID) {
-                VerdictDetailView(payment: payment)
+                VerdictDetailView(payment: payment, environment: environment)
             } else {
                 missingPayment(paymentID)
             }

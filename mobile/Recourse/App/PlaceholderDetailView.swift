@@ -1308,6 +1308,14 @@ private struct PhotoEvidencePickerLabel: View {
 
 struct VerdictDetailView: View {
     let payment: DemoPayment
+    let environment: AppEnvironment
+
+    // The proof card shows only what the chain answers right now: a live
+    // previewVerdict eth_call. No canned hashes; a payment that was never
+    // disputed says so instead of faking a verdict.
+    @State private var preview: VerdictPreview?
+    @State private var previewUnavailable = false
+    @State private var presentedWebPage: WebPageLink?
 
     var body: some View {
         ScrollView {
@@ -1323,9 +1331,32 @@ struct VerdictDetailView: View {
         .background(RecourseColor.night)
         .navigationTitle("Verify outcome")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $presentedWebPage) { page in
+            SafariWebView(url: page.url)
+                .ignoresSafeArea()
+        }
+        .task {
+            do {
+                let gateway = try environment.makeContractGateway()
+                preview = try await gateway.previewVerdict(paymentID: payment.id)
+            } catch {
+                previewUnavailable = true
+            }
+        }
     }
 
-    private var isRefunded: Bool { payment.state == .refunded || payment.id == 268 }
+    private var isRefunded: Bool { payment.state == .refunded }
+
+    private var refundPercentText: String? {
+        preview.map { String(format: "%g%%", Double($0.refundBPS) / 100) }
+    }
+
+    private func openBrowserVerifier() {
+        let url = AppConfiguration.webAppURL
+            .appending(path: "verify")
+            .appending(path: String(payment.id))
+        presentedWebPage = WebPageLink(url: url)
+    }
 
     private var verdictHero: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -1353,7 +1384,7 @@ struct VerdictDetailView: View {
                 Text(isRefunded ? "The policy returned your payment." : "The receipt matches Arc state.")
                     .font(.recourse(26, .bold))
                     .foregroundStyle(RecourseColor.nightText)
-                Text(isRefunded ? "100% buyer refund · \(currencyAmount)" : "\(currencyAmount) independently reproducible")
+                Text(isRefunded ? "\(refundPercentText ?? "100%") buyer refund · \(currencyAmount)" : "\(currencyAmount) independently reproducible")
                     .font(.recourse(13, .medium))
                     .foregroundStyle(RecourseColor.nightMuted)
             }
@@ -1385,18 +1416,62 @@ struct VerdictDetailView: View {
                     .foregroundStyle(Color(red: 0.46, green: 0.88, blue: 0.66))
             }
 
-            proofHashRow("Onchain eth_call", "0x683e3c…bc650f", "Solidity")
-            HStack {
-                Rectangle().fill(.white.opacity(0.12)).frame(height: 1)
-                Image(systemName: "equal.circle.fill")
-                    .foregroundStyle(Color(red: 0.46, green: 0.88, blue: 0.66))
-                Rectangle().fill(.white.opacity(0.12)).frame(height: 1)
-            }
-            proofHashRow("In-app recompute", "0x683e3c…bc650f", "Swift")
+            if let preview {
+                proofHashRow("Onchain previewVerdict eth_call", preview.verdictHash.shortened, "Solidity")
 
-            Label("Hashes match exactly", systemImage: "checkmark.shield.fill")
-                .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(Color(red: 0.46, green: 0.88, blue: 0.66))
+                HStack {
+                    Rectangle().fill(.white.opacity(0.12)).frame(height: 1)
+                    Image(systemName: "equal.circle.fill")
+                        .foregroundStyle(Color(red: 0.46, green: 0.88, blue: 0.66))
+                    Rectangle().fill(.white.opacity(0.12)).frame(height: 1)
+                }
+
+                Button(action: openBrowserVerifier) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Second engine: your browser")
+                                .font(.recourse(10, .medium))
+                                .foregroundStyle(.white.opacity(0.48))
+                            Text("Recompute this verdict yourself")
+                                .font(.recourse(13, .semibold))
+                                .foregroundStyle(.white)
+                        }
+                        Spacer()
+                        Text("TypeScript")
+                            .font(.recourse(9, .bold))
+                            .foregroundStyle(.white.opacity(0.74))
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 5)
+                            .background(.white.opacity(0.10), in: Capsule())
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                Label("Live from Arc, fetched just now", systemImage: "checkmark.shield.fill")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(Color(red: 0.46, green: 0.88, blue: 0.66))
+            } else if previewUnavailable {
+                Text("No dispute verdict on record for this payment. Escrow settles by the policy window alone, and the receipt below is still reproducible from Arc state.")
+                    .font(.recourse(12))
+                    .foregroundStyle(.white.opacity(0.7))
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Button(action: openBrowserVerifier) {
+                    Label("Inspect this payment in the browser verifier", systemImage: "safari")
+                        .font(.recourse(12, .semibold))
+                        .foregroundStyle(Color(red: 0.46, green: 0.88, blue: 0.66))
+                }
+                .buttonStyle(.plain)
+            } else {
+                HStack(spacing: 10) {
+                    ProgressView()
+                        .tint(.white)
+                    Text("Reading the verdict from Arc…")
+                        .font(.recourse(12))
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+            }
         }
         .padding(20)
         .background(Color(red: 0.055, green: 0.065, blue: 0.06), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
@@ -1422,33 +1497,51 @@ struct VerdictDetailView: View {
         }
     }
 
+    // Renders only what the eth_call returned: which rule matched (or the
+    // policy default) and the refund it produced. No invented rule lists.
+    @ViewBuilder
     private var policyMatch: some View {
-        ProtectedCard {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack {
-                    Text("FIRST MATCH WINS").recourseEyebrow()
-                    Spacer()
-                    Label("ONCHAIN", systemImage: "lock.fill").font(.system(size: 10, weight: .bold)).foregroundStyle(RecourseColor.ledger)
+        if let preview {
+            ProtectedCard {
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack {
+                        Text("FIRST MATCH WINS").recourseEyebrow()
+                        Spacer()
+                        Label("ONCHAIN", systemImage: "lock.fill").font(.system(size: 10, weight: .bold)).foregroundStyle(RecourseColor.ledger)
+                    }
+                    outcomeRow(preview)
+                    if preview.requiresReturn {
+                        Text("This refund requires returning the item first.")
+                            .font(.recourse(11))
+                            .foregroundStyle(RecourseColor.nightMuted)
+                    }
                 }
-                rule("1", "Not delivered", "100% refund", isRefunded)
-                rule("2", "Damaged", "100% refund", false)
-                rule("3", "Not as described", "50% refund", false)
             }
         }
     }
 
-    private func rule(_ number: String, _ title: String, _ result: String, _ matched: Bool) -> some View {
+    private func outcomeRow(_ preview: VerdictPreview) -> some View {
         HStack(spacing: 12) {
-            Text(number).font(.recourse(12, .bold)).foregroundStyle(matched ? .white : RecourseColor.nightMuted).frame(width: 28, height: 28).background(matched ? RecourseColor.ledger : RecourseColor.ledger.opacity(0.18), in: RoundedRectangle(cornerRadius: 8))
+            Text(preview.matched ? "#\(preview.ruleIndex)" : "-")
+                .font(.recourse(12, .bold))
+                .foregroundStyle(.white)
+                .frame(width: 32, height: 28)
+                .background(RecourseColor.ledger, in: RoundedRectangle(cornerRadius: 8))
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.recourse(13, .semibold)).foregroundStyle(RecourseColor.nightText)
-                Text(result).font(.recourse(11)).foregroundStyle(RecourseColor.nightMuted)
+                Text(preview.matched ? "Policy rule \(preview.ruleIndex) matched" : "No rule matched · policy default applies")
+                    .font(.recourse(13, .semibold))
+                    .foregroundStyle(RecourseColor.nightText)
+                Text("\(refundPercentText ?? "0%") refund computed onchain")
+                    .font(.recourse(11))
+                    .foregroundStyle(RecourseColor.nightMuted)
             }
             Spacer()
-            if matched { Label("Matched", systemImage: "checkmark").font(.system(size: 10, weight: .bold)).foregroundStyle(RecourseColor.ledger) }
+            Label(preview.matched ? "Matched" : "Default", systemImage: preview.matched ? "checkmark" : "minus")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(RecourseColor.ledger)
         }
         .padding(12)
-        .background(matched ? RecourseColor.ledger.opacity(0.18) : RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 14))
+        .background(RecourseColor.ledger.opacity(0.18), in: RoundedRectangle(cornerRadius: 14))
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(RecourseColor.nightLine))
     }
 
@@ -1548,7 +1641,7 @@ struct SupportView: View {
 
 #Preview("Verified refund") {
     NavigationStack {
-        VerdictDetailView(payment: DemoCatalog.payment(id: 268))
+        VerdictDetailView(payment: DemoCatalog.payment(id: 268), environment: .preview())
     }
     .tint(RecourseColor.ledger)
 }
