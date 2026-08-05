@@ -22,9 +22,10 @@ import Link from "next/link";
 import { BrandMark } from "@/components/brand-mark";
 import { LivePulse } from "@/components/live-pulse";
 
-// Two links only: the story and the source. The only door into the app
-// itself is the Launch App button.
+// Three links: the product story, the thinking, and the source. The only
+// door into the app itself is the Launch App button.
 const navLinks = [
+  { label: "Product", href: "#features" },
   { label: "Litepaper", href: "/litepaper" },
   { label: "Developers", href: "https://github.com/frankolien/recourse", external: true },
 ];
