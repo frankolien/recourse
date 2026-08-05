@@ -5,7 +5,10 @@ Target: one continuous story, phone in one hand, browser open. Every number show
 ## Setup (before recording)
 
 - Phone: Recourse app installed (latest build: new home, Earn tab), buyer wallet funded (a few USDC), signed in.
-- A second device or the same phone in merchant mode with a policy published.
+- Merchant beats need no second device: create the checkout on the phone in
+  merchant mode, Save image, AirDrop the QR card to the Mac, display it full
+  screen, then scan it off the Mac screen with the phone's Camera app.
+- Sign out first (or use a fresh account) so the sign-in flash can be filmed.
 - Browser tabs, in order: recourse-arc.vercel.app (landing), /vault, /verify/13.
 - Backend healthy (api.frankolien.com/health) and NOT mid-deploy.
 - CRITICAL: /health must show demoMode: true or the live attest beat fails.
@@ -18,7 +21,15 @@ Say: "USDC payments are final. That is why nobody shops with them. Recourse give
 
 Show: landing page hero (real app screenshots), then the phone.
 
-## Beat 2: a protected purchase (0:20 - 1:00)
+## Beat 1.5: sign-in flash (0:20 - 0:28)
+
+Do: flash the sign-in screen, tap Sign in with Apple.
+
+Say: "One thing you won't see: seed phrases. Sign-in is just Apple or Google;
+the wallet is created quietly on the device. Circle's stack does the heavy
+lifting underneath: Arc is the chain, USDC is the money, USYC is the yield."
+
+## Beat 2: a protected purchase (0:28 - 1:05)
 
 Do: merchant side, create a checkout: item name, description, photo, amount. Show the share card, and flash the Copy embed code button: "this same checkout is two lines of HTML; any website can take protected payments with a Pay with Recourse button." Scan the card with the plain iPhone Camera app; the app opens straight to review.
 
