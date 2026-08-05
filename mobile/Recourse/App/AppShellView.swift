@@ -20,7 +20,10 @@ private enum AppTab: Hashable, CaseIterable {
         switch self {
         case .home: "house.fill"
         case .earn: "chart.line.uptrend.xyaxis"
-        case .receipts: "wallet.bifold.fill"
+        case .receipts:
+            // wallet.bifold does not exist before iOS 18; an unknown symbol
+            // name renders as a blank tab icon rather than failing loudly.
+            if #available(iOS 18.0, *) { "wallet.bifold.fill" } else { "wallet.pass.fill" }
         }
     }
 }
@@ -389,7 +392,9 @@ struct MerchantWorkspaceView: View {
 
     private var walletBalanceStrip: some View {
         HStack(spacing: 11) {
-            Image(systemName: "wallet.bifold")
+            Image(systemName: {
+                if #available(iOS 18.0, *) { "wallet.bifold" } else { "wallet.pass" }
+            }())
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(RecourseColor.nightMuted)
             VStack(alignment: .leading, spacing: 2) {
