@@ -158,6 +158,7 @@ export function LandingPage() {
           <p>Escrow USDC under immutable refund rules. Buyers get verifiable recourse, merchants get paid immediately, and disputes resolve from evidence instead of opinion.</p>
           <div className="landing-cta-row">
             <Link className="landing-cta" href="/verify/13">Try the live demo <ArrowRight size={16} /></Link>
+            <a className="landing-cta ghost" href="https://testflight.apple.com/join/rWWg1wCb" target="_blank" rel="noreferrer">Get the iOS beta</a>
             <a className="landing-cta ghost" href="https://github.com/frankolien/recourse" target="_blank" rel="noreferrer">View developer docs</a>
           </div>
           <div className="landing-proof">

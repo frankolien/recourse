@@ -129,7 +129,10 @@ export default function PayPage() {
           <p className="pay-landing-hint">
             This payment is escrowed under an immutable refund policy on Arc. Paying
             requires the Recourse iOS app, which verifies the order end to end before any
-            funds move.
+            funds move. Don&apos;t have it?{" "}
+            <a href="https://testflight.apple.com/join/rWWg1wCb" target="_blank" rel="noreferrer">
+              Join the free beta on TestFlight
+            </a>.
           </p>
         </main>
       ) : (

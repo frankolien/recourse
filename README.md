@@ -5,6 +5,7 @@
 <h1 align="center">Recourse</h1>
 <p align="center"><b>Deterministic buyer protection for USDC payments on Arc.</b></p>
 <p align="center">
+  <a href="https://testflight.apple.com/join/rWWg1wCb">iOS beta on TestFlight</a> ·
   <a href="https://recourse-arc.vercel.app">Live web app</a> ·
   <a href="https://recourse-arc.vercel.app/verify/13">Public verifier</a> ·
   <a href="https://recourse-arc.vercel.app/litepaper">Litepaper</a> ·

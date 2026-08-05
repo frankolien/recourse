@@ -5997,6 +5997,12 @@ footer {
   line-height: 1.55;
 }
 
+.pay-landing-hint a {
+  color: var(--green);
+  font-weight: 600;
+  text-decoration: none;
+}
+
 /* ---- Provisioned Arc wallet (badge, balance chip, send/receive dialogs) ---- */
 .wallet-badge {
   display: inline-flex;
@@ -6323,6 +6329,7 @@ footer {
   letter-spacing: -0.01em;
   margin: 34px 0 12px;
 }
+
 
 .paper-body p {
   font-size: 15.5px;
