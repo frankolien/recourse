@@ -4,10 +4,12 @@ Target: one continuous story, phone in one hand, browser open. Every number show
 
 ## Setup (before recording)
 
-- Phone: Recourse app installed, buyer wallet funded (a few USDC), signed in.
+- Phone: Recourse app installed (latest build: new home, Earn tab), buyer wallet funded (a few USDC), signed in.
 - A second device or the same phone in merchant mode with a policy published.
 - Browser tabs, in order: recourse-arc.vercel.app (landing), /vault, /verify/13.
 - Backend healthy (api.frankolien.com/health) and NOT mid-deploy.
+- CRITICAL: /health must show demoMode: true or the live attest beat fails.
+  Flip DEMO_MODE=true on Railway first and re-check /health.
 - Do not push to GitHub during the demo window.
 
 ## Beat 1: the claim (0:00 - 0:20)
@@ -18,7 +20,7 @@ Show: landing page hero (real app screenshots), then the phone.
 
 ## Beat 2: a protected purchase (0:20 - 1:00)
 
-Do: merchant side, create a checkout: item name, description, photo, amount. Show the share card. Scan it with the plain iPhone Camera app; the app opens straight to review.
+Do: merchant side, create a checkout: item name, description, photo, amount. Show the share card, and flash the Copy embed code button: "this same checkout is two lines of HTML; any website can take protected payments with a Pay with Recourse button." Scan the card with the plain iPhone Camera app; the app opens straight to review.
 
 Say while the review loads: "The QR carries a hash. The phone refetched the order, rehashed it, and checked the merchant, amount, policy, and chain against what I am about to sign. If any byte were different, payment would be blocked."
 
@@ -38,7 +40,7 @@ Optional flash: /verify/15, the denied Wrong item claim. "Same engine, honest in
 
 Show: /vault.
 
-Say: "Protection windows lock money for two weeks. Merchants do not wait: the settlement vault paid this merchant 6.93 the same minute, took over the escrow claim, and LPs earn the fee plus the yield the escrow accrues. This claim settles August 7 and the share price is already up. Buyer protected, merchant paid today, LP earning bounded risk: all three legs live on Arc."
+Say: "Protection windows lock money for two weeks. Merchants do not wait: the settlement vault fronts them the same minute, takes over the escrow claim, and LPs earn the fee plus the yield the escrow accrues. Share price started at 1.0000; it is 1.0091 today from real settlements, and the next claim reconciles August 7. Buyer protected, merchant paid today, LP earning bounded risk: all three legs live on Arc."
 
 ## Beat 5: close (2:40 - 3:00)
 
