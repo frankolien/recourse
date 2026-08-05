@@ -23,12 +23,13 @@ import Link from "next/link";
 import { BrandMark } from "@/components/brand-mark";
 import { LivePulse } from "@/components/live-pulse";
 
+// Nav links orient within the landing story; the only door into the app
+// itself is the Launch App button.
 const navLinks = [
   { label: "Product", href: "#features", caret: true },
-  { label: "For Merchants", href: "/signin" },
+  { label: "Litepaper", href: "/litepaper" },
   { label: "Vault", href: "/vault" },
-  { label: "Developers", href: "https://github.com/frankolien/recourse", external: true },
-  { label: "Docs", href: "https://github.com/frankolien/recourse", external: true },
+  { label: "Developers", href: "/integrate" },
   { label: "About", href: "#how-it-works" },
 ];
 
@@ -135,13 +136,9 @@ export function LandingPage() {
           <span>Recourse</span>
         </Link>
         <nav className="landing-links" aria-label="Primary">
-          {navLinks.map((link) =>
-            link.external ? (
-              <a key={link.label} href={link.href} target="_blank" rel="noreferrer">{link.label}</a>
-            ) : (
-              <Link key={link.label} href={link.href}>{link.label}{link.caret && <ChevronDown size={14} />}</Link>
-            ),
-          )}
+          {navLinks.map((link) => (
+            <Link key={link.label} href={link.href}>{link.label}{link.caret && <ChevronDown size={14} />}</Link>
+          ))}
         </nav>
         <div className="landing-nav-actions">
           <span className="landing-chip"><Image src="/brand/arc-mark.svg" alt="Arc" width={13} height={14} /> Arc Testnet</span>
