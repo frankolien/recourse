@@ -78,7 +78,7 @@ struct OnboardingWelcomeView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Spacer()
                 Text("Pay with confidence.")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.recourse(16, .semibold))
                 Text("Know the terms before money moves.")
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.78))

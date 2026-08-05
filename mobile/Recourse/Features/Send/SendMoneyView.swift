@@ -73,13 +73,13 @@ struct SendMoneyView: View {
                     .minimumScaleFactor(0.65)
                     .keyboardType(.decimalPad)
                 Text("USDC")
-                    .font(.system(size: 15, weight: .bold))
+                    .font(.recourse(15, .bold))
                     .foregroundStyle(RecourseColor.nightMuted)
             }
             .frame(maxWidth: .infinity)
             if let balance = environment.paymentStore.balance {
                 Text("Available: \(balance.formatted)")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.recourse(11, .medium))
                     .foregroundStyle(RecourseColor.nightMuted)
             }
         }
@@ -89,7 +89,7 @@ struct SendMoneyView: View {
     private var recipientField: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("To")
-                .font(.system(size: 16, weight: .bold))
+                .font(.recourse(16, .bold))
                 .foregroundStyle(RecourseColor.nightText)
             HStack(spacing: 10) {
                 TextField("Wallet address (0x…)", text: $recipientText)
@@ -124,7 +124,7 @@ struct SendMoneyView: View {
             .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 16))
             if !recipientText.isEmpty, recipient == nil {
                 Text("That is not a valid wallet address.")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.recourse(11, .medium))
                     .foregroundStyle(RecourseColor.ledger)
             }
             if let recipient {
@@ -153,10 +153,10 @@ struct SendMoneyView: View {
                 .foregroundStyle(RecourseColor.nightText)
             VStack(alignment: .leading, spacing: 3) {
                 Text("Direct sends have no protection")
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.recourse(13, .bold))
                     .foregroundStyle(RecourseColor.nightText)
                 Text("This transfer is final, with no dispute or refund path. Buying something? Ask the seller for a Recourse checkout instead.")
-                    .font(.system(size: 12))
+                    .font(.recourse(12))
                     .foregroundStyle(RecourseColor.nightMuted)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -219,7 +219,7 @@ struct SendMoneyView: View {
                     ? "Face ID confirms this transfer on Arc Testnet"
                     : "Face ID confirmation is off. Turn it on in Settings."
             )
-            .font(.system(size: 10, weight: .medium))
+            .font(.recourse(10, .medium))
             .foregroundStyle(RecourseColor.nightMuted)
         }
         .padding(.horizontal, 20)
@@ -305,7 +305,7 @@ private struct SavedRecipientPicker: View {
                 } label: {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(recipient.label)
-                            .font(.system(size: 14, weight: .bold))
+                            .font(.recourse(14, .bold))
                             .foregroundStyle(RecourseColor.nightText)
                         Text(recipient.address)
                             .font(.system(size: 11, weight: .medium, design: .monospaced))
@@ -347,7 +347,7 @@ private struct SendSuccessView: View {
                     .scaleEffect(revealed ? 1 : 0.5)
                 VStack(spacing: 8) {
                     Text("Sent")
-                        .font(.system(size: 30, weight: .bold))
+                        .font(.recourse(30, .bold))
                         .foregroundStyle(RecourseColor.nightText)
                     Text(result.amount.formatted)
                         .font(.system(size: 44, weight: .medium, design: .rounded))

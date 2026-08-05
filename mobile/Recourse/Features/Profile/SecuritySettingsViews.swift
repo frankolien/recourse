@@ -32,16 +32,16 @@ struct SignInRecoveryView: View {
                         .frame(width: 34)
                     VStack(alignment: .leading, spacing: 3) {
                         Text(providerName)
-                            .font(.system(size: 14, weight: .bold))
+                            .font(.recourse(14, .bold))
                             .foregroundStyle(RecourseColor.nightText)
                         Text(accountSession.account?.accountLabel ?? "Signed out")
-                            .font(.system(size: 12))
+                            .font(.recourse(12))
                             .foregroundStyle(RecourseColor.nightMuted)
                     }
                     Spacer()
                     if appleCredentialActive {
                         Text("Active")
-                            .font(.system(size: 11, weight: .bold))
+                            .font(.recourse(11, .bold))
                             .foregroundStyle(RecourseColor.ledger)
                     }
                 }
@@ -115,7 +115,7 @@ struct SignInRecoveryView: View {
                 .foregroundStyle(RecourseColor.ledger)
                 .frame(width: 22)
             Text(text)
-                .font(.system(size: 12))
+                .font(.recourse(12))
                 .foregroundStyle(RecourseColor.nightMuted)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -139,7 +139,7 @@ struct PaymentLimitsView: View {
                 if limitBaseUnits > 0 {
                     HStack {
                         Text("Current limit")
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.recourse(14, .medium))
                             .foregroundStyle(RecourseColor.nightText)
                         Spacer()
                         Text(PaymentLimit.formatted(baseUnits: limitBaseUnits))
@@ -190,7 +190,7 @@ struct PaymentLimitsView: View {
                             .keyboardType(.decimalPad)
                             .focused($customFieldFocused)
                         Text("USDC")
-                            .font(.system(size: 12, weight: .bold))
+                            .font(.recourse(12, .bold))
                             .foregroundStyle(RecourseColor.nightMuted)
                         if customAmount != nil {
                             Button("Set") {
@@ -200,7 +200,7 @@ struct PaymentLimitsView: View {
                                     customFieldFocused = false
                                 }
                             }
-                            .font(.system(size: 13, weight: .bold))
+                            .font(.recourse(13, .bold))
                             .foregroundStyle(RecourseColor.ledger)
                         }
                     }
@@ -251,7 +251,7 @@ struct PaymentPreferencesView: View {
                         .foregroundStyle(RecourseColor.ledger)
                         .frame(width: 22)
                     Text("Protected checkouts always escrow funds under the merchant's locked refund policy. There is no setting that weakens that; it is the product.")
-                        .font(.system(size: 12))
+                        .font(.recourse(12))
                         .foregroundStyle(RecourseColor.nightMuted)
                         .fixedSize(horizontal: false, vertical: true)
                 }

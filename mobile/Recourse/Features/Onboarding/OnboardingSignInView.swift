@@ -155,7 +155,7 @@ struct OnboardingSignupStoryView: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             Text("Clear terms before payment. Verifiable outcomes\nafter it.")
-                .font(.system(size: 13))
+                .font(.recourse(13))
                 .foregroundStyle(RecourseColor.muted)
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
@@ -164,7 +164,7 @@ struct OnboardingSignupStoryView: View {
 
             Button(action: onCreateAccount) {
                 Text("Create Recourse account")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.recourse(15, .semibold))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .frame(height: 52)
@@ -174,7 +174,7 @@ struct OnboardingSignupStoryView: View {
             .buttonStyle(.plain)
 
             Button("I already have an account", action: onSignIn)
-                .font(.system(size: 14, weight: .semibold))
+                .font(.recourse(14, .semibold))
                 .foregroundStyle(RecourseColor.ink)
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)
@@ -289,7 +289,7 @@ struct OnboardingSignInView: View {
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(mode.subtitle)
-                    .font(.system(size: 14))
+                    .font(.recourse(14))
                     .foregroundStyle(RecourseColor.muted)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
@@ -340,7 +340,7 @@ struct OnboardingSignInView: View {
                         .scaledToFit()
                         .frame(width: 20, height: 20)
                     Text("Continue with Google")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.recourse(15, .semibold))
                         .foregroundStyle(RecourseColor.ink)
                 }
                 .padding(.horizontal, 18)
@@ -360,7 +360,7 @@ struct OnboardingSignInView: View {
 
             if let errorMessage = accountSession.errorMessage {
                 Text(errorMessage)
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.recourse(11, .medium))
                     .foregroundStyle(RecourseColor.ledger)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -376,7 +376,7 @@ struct OnboardingSignInView: View {
             }
 
             Text("By continuing, you agree to the Terms and Privacy Policy.")
-                .font(.system(size: 9))
+                .font(.recourse(9))
                 .foregroundStyle(RecourseColor.muted)
         }
         .padding(.horizontal, 22)

@@ -184,7 +184,7 @@ struct HomeView: View {
                         .scaledToFit()
                         .frame(height: 10)
                     Text("Protected on Arc Testnet")
-                        .font(.system(size: 10, weight: .medium))
+                        .font(.recourse(10, .medium))
                         .foregroundStyle(RecourseColor.nightMuted)
                 }
             }
@@ -224,11 +224,11 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
                 Text("Needs your attention")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.recourse(16, .semibold))
                     .foregroundStyle(RecourseColor.nightText)
                 Spacer()
                 Text("1 action")
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.recourse(10, .semibold))
                     .foregroundStyle(RecourseColor.ledger)
             }
             attentionCard
@@ -252,12 +252,12 @@ struct HomeView: View {
             } label: {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Evidence requested")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.recourse(14, .semibold))
                         .foregroundStyle(RecourseColor.nightText)
                     Text(attentionPayment.map {
                         "\($0.merchant) · \($0.orderReference)"
                     } ?? "A protected payment needs you")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.recourse(11, .medium))
                         .foregroundStyle(RecourseColor.nightMuted)
                         .lineLimit(2)
                     Label("Add evidence", systemImage: "arrow.right")
@@ -323,7 +323,7 @@ struct HomeView: View {
                 .lineLimit(1)
 
                 Text(heroSubtitle)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.recourse(13, .medium))
                     .foregroundStyle(activePayments.isEmpty ? RecourseColor.nightMuted : RecourseColor.ledger)
                     .contentTransition(.opacity)
             }
@@ -387,7 +387,7 @@ struct HomeView: View {
                         in: RoundedRectangle(cornerRadius: 18, style: .continuous)
                     )
                 Text(title)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.recourse(12, .medium))
                     .foregroundStyle(RecourseColor.nightText)
             }
             .frame(maxWidth: .infinity)
@@ -408,10 +408,10 @@ struct HomeView: View {
                     .background(RecourseColor.nightChip, in: Circle())
                 VStack(alignment: .leading, spacing: 3) {
                     Text(earnPreviewTitle)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.recourse(13, .semibold))
                         .foregroundStyle(RecourseColor.nightText)
                     Text(earnPreviewDetail)
-                        .font(.system(size: 11))
+                        .font(.recourse(11))
                         .foregroundStyle(RecourseColor.nightMuted)
                         .lineLimit(2)
                 }
@@ -447,7 +447,7 @@ struct HomeView: View {
     private var firstStepsCard: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("How your first payment works")
-                .font(.system(size: 15, weight: .semibold))
+                .font(.recourse(15, .semibold))
                 .foregroundStyle(RecourseColor.nightText)
             firstStep("qrcode.viewfinder", "Scan a merchant checkout", "Recourse QRs open here, straight from the Camera app too.")
             firstStep("lock.shield.fill", "USDC escrows under the policy", "Refund rules are locked onchain before any funds move.")
@@ -467,10 +467,10 @@ struct HomeView: View {
                 .background(RecourseColor.nightChip, in: Circle())
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.recourse(13, .semibold))
                     .foregroundStyle(RecourseColor.nightText)
                 Text(detail)
-                    .font(.system(size: 11.5))
+                    .font(.recourse(11.5))
                     .foregroundStyle(RecourseColor.nightMuted)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -501,20 +501,20 @@ struct HomeView: View {
             MerchantArtwork(payment: payment, size: 38, cornerRadius: 11)
             VStack(alignment: .leading, spacing: 5) {
                 Text(payment.merchant)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.recourse(13, .semibold))
                     .foregroundStyle(RecourseColor.nightText)
                 Text(payment.item)
-                    .font(.system(size: 10))
+                    .font(.recourse(10))
                     .foregroundStyle(RecourseColor.nightMuted)
                     .lineLimit(1)
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 5) {
                 Text("$\(payment.amountText.replacingOccurrences(of: " USDC", with: "")) protected")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.recourse(11, .semibold))
                     .foregroundStyle(RecourseColor.nightText)
                 Text(timeLeft(for: payment))
-                    .font(.system(size: 10, weight: .medium))
+                    .font(.recourse(10, .medium))
                     .foregroundStyle(RecourseColor.nightMuted)
             }
         }
@@ -553,10 +553,10 @@ struct HomeView: View {
             } label: {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(payment.merchant)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.recourse(14, .semibold))
                         .foregroundStyle(RecourseColor.nightText)
                     Text("\(payment.state.rawValue) · \(payment.amountText)")
-                        .font(.system(size: 11))
+                        .font(.recourse(11))
                         .foregroundStyle(RecourseColor.nightMuted)
                 }
             }
@@ -565,7 +565,7 @@ struct HomeView: View {
             Button("Recompute") {
                 environment.router.push(.verdict(payment.id))
             }
-            .font(.system(size: 11, weight: .semibold))
+            .font(.recourse(11, .semibold))
             .foregroundStyle(RecourseColor.ledger)
             .buttonStyle(.plain)
         }
@@ -575,11 +575,11 @@ struct HomeView: View {
     private func sectionTitle(_ title: String, trailing: String) -> some View {
         HStack {
             Text(title)
-                .font(.system(size: 16, weight: .semibold))
+                .font(.recourse(16, .semibold))
                 .foregroundStyle(RecourseColor.nightText)
             Spacer()
             Text(trailing)
-                .font(.system(size: 11, weight: .medium))
+                .font(.recourse(11, .medium))
                 .foregroundStyle(RecourseColor.nightMuted)
         }
     }

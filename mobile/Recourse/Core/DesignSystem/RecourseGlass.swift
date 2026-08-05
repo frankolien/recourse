@@ -111,7 +111,7 @@ private struct RecourseGlassCapsule: ViewModifier {
 struct RecoursePrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 15, weight: .semibold))
+            .font(.recourse(15, .semibold))
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
             .frame(height: 52)
@@ -124,7 +124,7 @@ struct RecoursePrimaryButtonStyle: ButtonStyle {
 struct RecourseSecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 15, weight: .semibold))
+            .font(.recourse(15, .semibold))
             .foregroundStyle(RecourseColor.nightText)
             .frame(maxWidth: .infinity)
             .frame(height: 52)

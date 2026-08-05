@@ -33,11 +33,11 @@ struct ReceiveSheet: View {
     private var sheetContent: some View {
         VStack(spacing: 20) {
             Text("Add money")
-                .font(.system(size: 20, weight: .bold))
+                .font(.recourse(20, .bold))
                 .foregroundStyle(RecourseColor.nightText)
 
             Text("Send USDC to this address and it lands in your balance.")
-                .font(.system(size: 12, weight: .medium))
+                .font(.recourse(12, .medium))
                 .foregroundStyle(RecourseColor.nightMuted)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 30)
@@ -99,7 +99,7 @@ struct ReceiveSheet: View {
                 .padding(.horizontal, 26)
 
                 Text("Opens Circle's faucet with your address copied. 20 USDC every 2 hours.")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.recourse(11, .medium))
                     .foregroundStyle(RecourseColor.nightMuted)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 30)
@@ -109,7 +109,7 @@ struct ReceiveSheet: View {
             }
 
             Text("Arc Testnet only. Money added here follows this device.")
-                .font(.system(size: 11, weight: .medium))
+                .font(.recourse(11, .medium))
                 .foregroundStyle(RecourseColor.nightMuted)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 30)

@@ -69,7 +69,7 @@ struct OnboardingReadyView: View {
                 .recourseGlassCapsule()
             Spacer()
             Text("READY")
-                .font(.system(size: 11, weight: .bold))
+                .font(.recourse(11, .bold))
                 .tracking(1)
                 .foregroundStyle(.white)
                 .padding(.horizontal, 15)
@@ -87,16 +87,16 @@ struct OnboardingReadyView: View {
                     .foregroundStyle(RecourseColor.ledger)
                 Spacer()
                 Text("ARC TESTNET")
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.recourse(9, .bold))
                     .foregroundStyle(RecourseColor.muted)
             }
 
             HStack(alignment: .lastTextBaseline) {
                 Text("$24.00")
-                    .font(.system(size: 27, weight: .semibold))
+                    .font(.recourse(27, .semibold))
                     .foregroundStyle(RecourseColor.ink)
                 Text("USDC")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(.recourse(11, .bold))
                     .foregroundStyle(RecourseColor.muted)
                 Spacer()
                 Image(systemName: "checkmark.circle.fill")
@@ -111,7 +111,7 @@ struct OnboardingReadyView: View {
                 Text("Terms locked")
                     .foregroundStyle(RecourseColor.ledger)
             }
-            .font(.system(size: 11, weight: .semibold))
+            .font(.recourse(11, .semibold))
         }
         .padding(15)
         .background(RecourseColor.surface, in: RoundedRectangle(cornerRadius: 19, style: .continuous))
@@ -129,7 +129,7 @@ struct OnboardingReadyView: View {
                     .foregroundStyle(RecourseColor.ink)
                     .multilineTextAlignment(.center)
                 Text(readyMessage)
-                    .font(.system(size: 13))
+                    .font(.recourse(13))
                     .foregroundStyle(RecourseColor.muted)
                     .multilineTextAlignment(.center)
                     .lineSpacing(2)

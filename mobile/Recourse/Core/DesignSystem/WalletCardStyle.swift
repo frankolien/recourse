@@ -142,7 +142,7 @@ struct WalletCardStylePicker: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 Text("Card style")
-                    .font(.system(size: 20, weight: .bold))
+                    .font(.recourse(20, .bold))
                     .foregroundStyle(RecourseColor.nightText)
 
                 LazyVGrid(
@@ -173,7 +173,7 @@ struct WalletCardStylePicker: View {
                 style.face
                     .frame(height: 74)
                 Text("Recourse")
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.recourse(9, .bold))
                     .foregroundStyle(style.textPrimary)
                     .padding(8)
             }
@@ -195,7 +195,7 @@ struct WalletCardStylePicker: View {
                         .foregroundStyle(RecourseColor.ledger)
                 }
                 Text(style.displayName)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.recourse(11, .semibold))
                     .foregroundStyle(RecourseColor.nightText)
                     .lineLimit(1)
             }

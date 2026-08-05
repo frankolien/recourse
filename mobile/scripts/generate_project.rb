@@ -80,6 +80,11 @@ embed_build_file.settings = { "ATTRIBUTES" => ["RemoveHeadersOnCopy"] }
 resources_group = nested_group(app_group, "Resources")
 abi_group = nested_group(resources_group, "ABI")
 add_resources(app_target, abi_group, File.join(root, "Recourse", "Resources", "ABI"))
+fonts_group = nested_group(resources_group, "Fonts")
+Dir.glob(File.join(root, "Recourse", "Resources", "Fonts", "*.otf")).sort.each do |path|
+  reference = fonts_group.new_file(File.basename(path))
+  app_target.resources_build_phase.add_file_reference(reference)
+end
 assets_path = File.join(root, "Recourse", "Resources", "Images.xcassets")
 assets_reference = resources_group.new_file("Images.xcassets")
 app_target.resources_build_phase.add_file_reference(assets_reference)

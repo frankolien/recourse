@@ -70,10 +70,10 @@ struct ScannerFoundationView: View {
             Spacer()
             VStack(spacing: 2) {
                 Text("PROTECTED CHECKOUT")
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.recourse(12, .bold))
                     .tracking(1.4)
                 Text("Arc Testnet")
-                    .font(.system(size: 11))
+                    .font(.recourse(11))
                     .foregroundStyle(.white.opacity(0.65))
             }
             Spacer()
@@ -99,9 +99,9 @@ struct ScannerFoundationView: View {
             }
             VStack(spacing: 7) {
                 Text(isScanning ? "Checkout found" : "Scan the merchant QR")
-                    .font(.system(size: 22, weight: .bold))
+                    .font(.recourse(22, .bold))
                 Text(scannerMessage)
-                    .font(.system(size: 14))
+                    .font(.recourse(14))
                     .foregroundStyle(.white.opacity(scanError == nil ? 0.68 : 1))
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 310)
@@ -157,7 +157,7 @@ struct ScannerFoundationView: View {
                 Button("Open") {
                     openManualCode()
                 }
-                .font(.system(size: 13, weight: .bold))
+                .font(.recourse(13, .bold))
                 .foregroundStyle(RecourseColor.ledger)
                 .disabled(manualCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }

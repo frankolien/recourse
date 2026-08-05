@@ -73,12 +73,12 @@ struct AccountFoundationView: View {
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text(accountName)
-                            .font(.system(size: 16, weight: .bold))
+                            .font(.recourse(16, .bold))
                             .foregroundStyle(RecourseColor.nightText)
                             .lineLimit(1)
                         if let accountEmail {
                             Text(accountEmail)
-                                .font(.system(size: 13))
+                                .font(.recourse(13))
                                 .foregroundStyle(RecourseColor.nightMuted)
                                 .lineLimit(1)
                         }
@@ -90,7 +90,7 @@ struct AccountFoundationView: View {
 
                     Spacer()
                     Text("Edit")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.recourse(13, .semibold))
                         .foregroundStyle(RecourseColor.ledger)
                 }
                 .padding(.vertical, 4)

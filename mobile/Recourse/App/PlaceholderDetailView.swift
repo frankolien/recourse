@@ -141,7 +141,7 @@ struct CheckoutReviewView: View {
             Button("Try again") {
                 Task { await loadOrder() }
             }
-            .font(.system(size: 13, weight: .semibold))
+            .font(.recourse(13, .semibold))
             .foregroundStyle(RecourseColor.ledger)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -234,10 +234,10 @@ struct CheckoutReviewView: View {
                 orderArtwork
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Paying")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.recourse(11, .medium))
                         .foregroundStyle(RecourseColor.nightMuted)
                     Text(orderTitle)
-                        .font(.system(size: 18, weight: .bold))
+                        .font(.recourse(18, .bold))
                         .foregroundStyle(RecourseColor.nightText)
                         .lineLimit(2)
                     Text(request.merchant.shortened)
@@ -250,7 +250,7 @@ struct CheckoutReviewView: View {
 
             if case .verified(let manifest, _) = orderReview {
                 Text(manifest.description)
-                    .font(.system(size: 13))
+                    .font(.recourse(13))
                     .foregroundStyle(RecourseColor.nightMuted)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(manifest.orderReference)
@@ -262,14 +262,14 @@ struct CheckoutReviewView: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 Text("TOTAL")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.recourse(10, .bold))
                     .tracking(1.4)
                     .foregroundStyle(RecourseColor.nightMuted)
                 Text(currencyAmount)
                     .font(.system(size: 46, weight: .medium, design: .rounded))
                     .foregroundStyle(RecourseColor.nightText)
                 Text("\(request.amount.formatted) · Arc Testnet")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.recourse(12, .medium))
                     .foregroundStyle(RecourseColor.nightMuted)
             }
 
@@ -384,7 +384,7 @@ struct CheckoutReviewView: View {
                     ? "Face ID confirms this protected Arc payment"
                     : "Face ID confirmation is off. Turn it on in Settings."
             )
-            .font(.system(size: 10, weight: .medium))
+            .font(.recourse(10, .medium))
             .foregroundStyle(RecourseColor.nightMuted)
         }
         .padding(.horizontal, 20)
@@ -413,12 +413,12 @@ struct CheckoutReviewView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("YOUR PROTECTION").recourseEyebrow()
                     Text("Digital service delivery")
-                        .font(.system(size: 20, weight: .bold))
+                        .font(.recourse(20, .bold))
                         .foregroundStyle(RecourseColor.nightText)
                 }
                 Spacer()
                 Text("POLICY #\(request.policyID)")
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.recourse(9, .bold))
                     .tracking(0.8)
                     .foregroundStyle(RecourseColor.ledger)
             }
@@ -438,8 +438,8 @@ struct CheckoutReviewView: View {
                 .foregroundStyle(RecourseColor.nightText)
                 .frame(width: 22, height: 22)
             VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.system(size: 14, weight: .semibold)).foregroundStyle(RecourseColor.nightText)
-                Text(text).font(.system(size: 12)).foregroundStyle(RecourseColor.nightMuted)
+                Text(title).font(.recourse(14, .semibold)).foregroundStyle(RecourseColor.nightText)
+                Text(text).font(.recourse(12)).foregroundStyle(RecourseColor.nightMuted)
             }
         }
     }
@@ -460,7 +460,7 @@ struct CheckoutReviewView: View {
             Spacer()
             Text(value).fontWeight(bold ? .bold : .medium).foregroundStyle(RecourseColor.nightText)
         }
-        .font(.system(size: 14))
+        .font(.recourse(14))
     }
 
     private var safetyNote: some View {
@@ -494,11 +494,11 @@ private struct DisputeSubmittedView: View {
                     .scaleEffect(revealed ? 1 : 0.4)
                 VStack(spacing: 8) {
                     Text("Evidence submitted")
-                        .font(.system(size: 28, weight: .bold))
+                        .font(.recourse(28, .bold))
                         .foregroundStyle(RecourseColor.nightText)
                         .opacity(revealed ? 1 : 0)
                     Text("Linked to payment #\(paymentID). The policy engine now computes a verdict from the locked rules, and you can recompute it yourself.")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.recourse(13, .medium))
                         .foregroundStyle(RecourseColor.nightMuted)
                         .multilineTextAlignment(.center)
                         .opacity(showsDetail ? 1 : 0)
@@ -552,7 +552,7 @@ private struct PaymentSuccessView: View {
 
                 VStack(spacing: 8) {
                     Text("Payment protected")
-                        .font(.system(size: 30, weight: .bold))
+                        .font(.recourse(30, .bold))
                         .foregroundStyle(RecourseColor.nightText)
                         .opacity(showsShield ? 1 : 0)
                     Text(countedAmount)
@@ -561,7 +561,7 @@ private struct PaymentSuccessView: View {
                         .foregroundStyle(RecourseColor.nightText)
                         .opacity(showsShield ? 1 : 0)
                     Text("Paid for \(paidToLabel) on Arc Testnet")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.recourse(13, .medium))
                         .foregroundStyle(RecourseColor.nightMuted)
                         .lineLimit(1)
                         .opacity(showsCaption ? 1 : 0)
@@ -588,7 +588,7 @@ private struct PaymentSuccessView: View {
                 Button("View protected payments", action: onDone)
                     .buttonStyle(RecoursePrimaryButtonStyle())
                 Text("Your receipt and policy are saved together.")
-                    .font(.system(size: 10, weight: .medium))
+                    .font(.recourse(10, .medium))
                     .foregroundStyle(RecourseColor.nightMuted)
             }
             .opacity(showsFooter ? 1 : 0)
@@ -679,11 +679,11 @@ private struct PaymentSuccessView: View {
                 .foregroundStyle(RecourseColor.ledger)
                 .frame(width: 30)
             Text(label)
-                .font(.system(size: 13, weight: .medium))
+                .font(.recourse(13, .medium))
                 .foregroundStyle(RecourseColor.nightMuted)
             Spacer()
             Text(value)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.recourse(13, .semibold))
                 .foregroundStyle(RecourseColor.nightText)
         }
         .frame(height: 52)
@@ -793,10 +793,10 @@ struct PaymentDetailView: View {
                 MerchantArtwork(payment: payment, size: 58, cornerRadius: 17)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(payment.merchant)
-                        .font(.system(size: 18, weight: .bold))
+                        .font(.recourse(18, .bold))
                         .foregroundStyle(RecourseColor.nightText)
                     Text(payment.item)
-                        .font(.system(size: 12))
+                        .font(.recourse(12))
                         .foregroundStyle(RecourseColor.nightMuted)
                         .lineLimit(1)
                     Text(payment.orderReference)
@@ -820,12 +820,12 @@ struct PaymentDetailView: View {
                         .font(.system(size: 42, weight: .medium, design: .rounded))
                         .foregroundStyle(RecourseColor.nightText)
                     Text("\(payment.amountText) paid \(payment.date.formatted(date: .abbreviated, time: .shortened))")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.recourse(11, .medium))
                         .foregroundStyle(RecourseColor.nightMuted)
                 }
                 Spacer()
                 Text(payment.state.rawValue.uppercased())
-                    .font(.system(size: 9, weight: .black))
+                    .font(.recourse(9, .black))
                     .tracking(0.9)
                     .foregroundStyle(statusColor)
                     .padding(.horizontal, 10)
@@ -848,7 +848,7 @@ struct PaymentDetailView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("PROTECTION").recourseEyebrow()
                     Text(payment.policyName)
-                        .font(.system(size: 18, weight: .bold))
+                        .font(.recourse(18, .bold))
                         .foregroundStyle(RecourseColor.nightText)
                 }
                 Spacer()
@@ -859,11 +859,11 @@ struct PaymentDetailView: View {
 
             HStack(alignment: .firstTextBaseline) {
                 Text(protectionStatusTitle)
-                    .font(.system(size: 15, weight: .bold))
+                    .font(.recourse(15, .bold))
                     .foregroundStyle(RecourseColor.nightText)
                 Spacer()
                 Text(protectionStatusDetail)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.recourse(11, .semibold))
                     .foregroundStyle(RecourseColor.ledger)
             }
 
@@ -949,7 +949,7 @@ struct PaymentDetailView: View {
             Spacer()
             Text(value).fontWeight(.medium).foregroundStyle(RecourseColor.nightText).multilineTextAlignment(.trailing)
         }
-        .font(.system(size: 13))
+        .font(.recourse(13))
     }
 
     private var actions: some View {
@@ -1040,9 +1040,9 @@ struct DisputeFilingView: View {
         HStack(spacing: 14) {
             MerchantArtwork(payment: payment, size: 52, cornerRadius: 16)
             VStack(alignment: .leading, spacing: 3) {
-                Text(payment.merchant).font(.system(size: 16, weight: .bold))
+                Text(payment.merchant).font(.recourse(16, .bold))
                 Text("\(currencyAmount) · \(payment.orderReference)")
-                    .font(.system(size: 12)).foregroundStyle(RecourseColor.nightMuted)
+                    .font(.recourse(12)).foregroundStyle(RecourseColor.nightMuted)
             }
             Spacer()
             Image(systemName: "exclamationmark.shield.fill")
@@ -1055,7 +1055,7 @@ struct DisputeFilingView: View {
 
     private var claimPicker: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("What went wrong?").font(.system(size: 21, weight: .bold)).foregroundStyle(RecourseColor.nightText)
+            Text("What went wrong?").font(.recourse(21, .bold)).foregroundStyle(RecourseColor.nightText)
             VStack(spacing: 0) {
                 ForEach(Array(ClaimType.allCases.enumerated()), id: \.element) { index, claim in
                     Button {
@@ -1091,7 +1091,7 @@ struct DisputeFilingView: View {
         let hasPhoto = photoData != nil
 
         return VStack(alignment: .leading, spacing: 12) {
-            Text("Add evidence").font(.system(size: 21, weight: .bold)).foregroundStyle(RecourseColor.nightText)
+            Text("Add evidence").font(.recourse(21, .bold)).foregroundStyle(RecourseColor.nightText)
             PhotosPicker(selection: $selectedPhoto, matching: .images) {
                 PhotoEvidencePickerLabel(hasPhoto: hasPhoto)
             }
@@ -1106,7 +1106,7 @@ struct DisputeFilingView: View {
 
     private var descriptionField: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Tell us more").font(.system(size: 16, weight: .bold))
+            Text("Tell us more").font(.recourse(16, .bold))
             TextEditor(text: $description)
                 .frame(minHeight: 110)
                 .padding(12)
@@ -1170,7 +1170,7 @@ struct DisputeFilingView: View {
             .opacity(photoData == nil && trimmedDescription.isEmpty ? 0.48 : 1)
 
             Text("Your device key signs the evidence manifest")
-                .font(.system(size: 10, weight: .medium))
+                .font(.recourse(10, .medium))
                 .foregroundStyle(RecourseColor.nightMuted)
         }
         .padding(.horizontal, 20)
@@ -1290,10 +1290,10 @@ private struct PhotoEvidencePickerLabel: View {
                 .foregroundStyle(RecourseColor.ledger)
             VStack(alignment: .leading, spacing: 3) {
                 Text(hasPhoto ? "Evidence photo selected" : "Add a photo")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.recourse(14, .semibold))
                     .foregroundStyle(RecourseColor.nightText)
                 Text(hasPhoto ? "Ready for encrypted upload" : "Show what happened clearly")
-                    .font(.system(size: 12))
+                    .font(.recourse(12))
                     .foregroundStyle(RecourseColor.nightMuted)
             }
             Spacer()
@@ -1333,7 +1333,7 @@ struct VerdictDetailView: View {
                 MerchantArtwork(payment: payment, size: 54, cornerRadius: 16)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(payment.merchant)
-                        .font(.system(size: 17, weight: .bold))
+                        .font(.recourse(17, .bold))
                         .foregroundStyle(RecourseColor.nightText)
                     Text(payment.orderReference)
                         .font(.system(size: 11, weight: .medium, design: .monospaced))
@@ -1347,14 +1347,14 @@ struct VerdictDetailView: View {
 
             VStack(alignment: .leading, spacing: 7) {
                 Text(isRefunded ? "REFUNDED" : payment.state == .underReview ? "UNDER REVIEW" : "VERIFIED")
-                    .font(.system(size: 11, weight: .black))
+                    .font(.recourse(11, .black))
                     .tracking(1.5)
                     .foregroundStyle(RecourseColor.ledger)
                 Text(isRefunded ? "The policy returned your payment." : "The receipt matches Arc state.")
-                    .font(.system(size: 26, weight: .bold))
+                    .font(.recourse(26, .bold))
                     .foregroundStyle(RecourseColor.nightText)
                 Text(isRefunded ? "100% buyer refund · \(currencyAmount)" : "\(currencyAmount) independently reproducible")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.recourse(13, .medium))
                     .foregroundStyle(RecourseColor.nightMuted)
             }
         }
@@ -1372,11 +1372,11 @@ struct VerdictDetailView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("CRYPTOGRAPHIC PROOF")
-                        .font(.system(size: 9, weight: .bold))
+                        .font(.recourse(9, .bold))
                         .tracking(1.2)
                         .foregroundStyle(.white.opacity(0.52))
                     Text("Two engines, one result")
-                        .font(.system(size: 20, weight: .bold))
+                        .font(.recourse(20, .bold))
                         .foregroundStyle(.white)
                 }
                 Spacer()
@@ -1406,7 +1406,7 @@ struct VerdictDetailView: View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.system(size: 10, weight: .medium))
+                    .font(.recourse(10, .medium))
                     .foregroundStyle(.white.opacity(0.48))
                 Text(hash)
                     .font(.system(size: 13, weight: .semibold, design: .monospaced))
@@ -1414,7 +1414,7 @@ struct VerdictDetailView: View {
             }
             Spacer()
             Text(source)
-                .font(.system(size: 9, weight: .bold))
+                .font(.recourse(9, .bold))
                 .foregroundStyle(.white.opacity(0.74))
                 .padding(.horizontal, 9)
                 .padding(.vertical, 5)
@@ -1439,10 +1439,10 @@ struct VerdictDetailView: View {
 
     private func rule(_ number: String, _ title: String, _ result: String, _ matched: Bool) -> some View {
         HStack(spacing: 12) {
-            Text(number).font(.system(size: 12, weight: .bold)).foregroundStyle(matched ? .white : RecourseColor.nightMuted).frame(width: 28, height: 28).background(matched ? RecourseColor.ledger : RecourseColor.ledger.opacity(0.18), in: RoundedRectangle(cornerRadius: 8))
+            Text(number).font(.recourse(12, .bold)).foregroundStyle(matched ? .white : RecourseColor.nightMuted).frame(width: 28, height: 28).background(matched ? RecourseColor.ledger : RecourseColor.ledger.opacity(0.18), in: RoundedRectangle(cornerRadius: 8))
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.system(size: 13, weight: .semibold)).foregroundStyle(RecourseColor.nightText)
-                Text(result).font(.system(size: 11)).foregroundStyle(RecourseColor.nightMuted)
+                Text(title).font(.recourse(13, .semibold)).foregroundStyle(RecourseColor.nightText)
+                Text(result).font(.recourse(11)).foregroundStyle(RecourseColor.nightMuted)
             }
             Spacer()
             if matched { Label("Matched", systemImage: "checkmark").font(.system(size: 10, weight: .bold)).foregroundStyle(RecourseColor.ledger) }
@@ -1475,7 +1475,7 @@ struct SupportView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 Text("Help when money\nfeels uncertain.")
-                    .font(.system(size: 36, weight: .bold))
+                    .font(.recourse(36, .bold))
                     .foregroundStyle(RecourseColor.nightText)
                 Text("Start with the payment. Recourse keeps its policy, proof, and support context together.")
                     .foregroundStyle(RecourseColor.nightMuted)

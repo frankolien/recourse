@@ -43,7 +43,7 @@ struct OnboardingWalletSetupView: View {
                         .font(RecourseTypography.display(size: compact ? 32 : 38))
                         .foregroundStyle(RecourseColor.ink)
                     Text("Recourse creates a testnet wallet in Keychain. Face ID confirms every protected payment action.")
-                        .font(.system(size: 15))
+                        .font(.recourse(15))
                         .foregroundStyle(RecourseColor.muted)
                         .lineSpacing(2)
                 }
@@ -59,7 +59,7 @@ struct OnboardingWalletSetupView: View {
                         Button("Try again") {
                             Task { await prepareWallet() }
                         }
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.recourse(13, .semibold))
                         .foregroundStyle(RecourseColor.ledger)
                     }
                 }
@@ -129,14 +129,14 @@ struct OnboardingWalletSetupView: View {
                     .foregroundStyle(RecourseColor.ledger)
                 Spacer()
                 Text("ARC TESTNET")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.recourse(10, .bold))
                     .tracking(0.8)
                     .foregroundStyle(RecourseColor.muted)
             }
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(walletAddress == nil ? "Preparing secure wallet" : "Wallet ready")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.recourse(16, .semibold))
                     .foregroundStyle(RecourseColor.ink)
                 HStack(spacing: 10) {
                     Text(walletAddress.map(shortAddress) ?? "Generating your encrypted device key...")
@@ -250,7 +250,7 @@ struct OnboardingSetupView: View {
                 )
                 Spacer()
                 Text("SIGNED IN")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(.recourse(11, .bold))
                     .tracking(0.8)
                     .foregroundStyle(RecourseColor.ledgerDeep)
                     .padding(.horizontal, 14)
@@ -272,7 +272,7 @@ struct OnboardingSetupView: View {
                     .font(RecourseTypography.display(size: compact ? 29 : 33))
                     .foregroundStyle(RecourseColor.ink)
                 Text("Choose your first workspace. You can add another role later.")
-                    .font(.system(size: 14))
+                    .font(.recourse(14))
                     .foregroundStyle(RecourseColor.muted)
             }
 
@@ -313,9 +313,9 @@ struct OnboardingSetupView: View {
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(role.rawValue)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.recourse(14, .semibold))
                     Text(role.detail)
-                        .font(.system(size: 11))
+                        .font(.recourse(11))
                         .foregroundStyle(RecourseColor.muted)
                         .lineLimit(2)
                 }

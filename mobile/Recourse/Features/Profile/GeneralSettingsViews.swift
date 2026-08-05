@@ -36,11 +36,11 @@ struct NotificationsSettingsView: View {
                     ForEach(pendingReminders) { reminder in
                         VStack(alignment: .leading, spacing: 3) {
                             Text(reminder.body)
-                                .font(.system(size: 13, weight: .medium))
+                                .font(.recourse(13, .medium))
                                 .foregroundStyle(RecourseColor.nightText)
                             if let fireDate = reminder.fireDate {
                                 Text(fireDate.formatted(date: .abbreviated, time: .shortened))
-                                    .font(.system(size: 11))
+                                    .font(.recourse(11))
                                     .foregroundStyle(RecourseColor.nightMuted)
                             }
                         }
@@ -70,7 +70,7 @@ struct NotificationsSettingsView: View {
             case .authorized, .provisional, .ephemeral:
                 Label {
                     Text("Notifications allowed")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.recourse(14, .medium))
                         .foregroundStyle(RecourseColor.nightText)
                 } icon: {
                     Image(systemName: "checkmark.circle.fill")
@@ -85,10 +85,10 @@ struct NotificationsSettingsView: View {
                     Label {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Notifications are off in iOS Settings")
-                                .font(.system(size: 14, weight: .medium))
+                                .font(.recourse(14, .medium))
                                 .foregroundStyle(RecourseColor.nightText)
                             Text("Open Settings to allow them")
-                                .font(.system(size: 11))
+                                .font(.recourse(11))
                                 .foregroundStyle(RecourseColor.nightMuted)
                         }
                     } icon: {
@@ -152,7 +152,7 @@ struct AddressBookView: View {
                         Text("Save the wallet addresses you send USDC to, and pick them by name instead of pasting 0x strings.")
                     } actions: {
                         Button("Add address") { showsEditor = true }
-                            .font(.system(size: 14, weight: .bold))
+                            .font(.recourse(14, .bold))
                             .foregroundStyle(RecourseColor.ledger)
                     }
                     .listRowBackground(Color.clear)
@@ -162,7 +162,7 @@ struct AddressBookView: View {
                     ForEach(store.recipients) { recipient in
                         VStack(alignment: .leading, spacing: 3) {
                             Text(recipient.label)
-                                .font(.system(size: 14, weight: .bold))
+                                .font(.recourse(14, .bold))
                                 .foregroundStyle(RecourseColor.nightText)
                             Text(recipient.address)
                                 .font(.system(size: 11, weight: .medium, design: .monospaced))
