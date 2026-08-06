@@ -15,7 +15,7 @@ actor TestnetLocalSigner: BuyerSigner {
     private let scope: @Sendable () -> String?
 
     init(
-        store: any SecureDataStore = KeychainStore(),
+        store: any SecureDataStore = KeychainStore(synchronizable: true),
         authorizer: any TransactionAuthorizing = DeviceOwnerTransactionAuthorizer(),
         scope: @escaping @Sendable () -> String? = { ActiveAccount.scope }
     ) {
