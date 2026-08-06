@@ -18,8 +18,7 @@ struct OnboardingHeroVideo: View {
     let fallback: OnboardingHeroArt.Variant
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var fillPlayer: AVPlayer?
-    @State private var markPlayer: AVPlayer?
+    @State private var engine: HeroClipEngine?
 
     private static let clip = Bundle.main.url(forResource: "recourse-onboarding", withExtension: "mp4")
     private static let clipAspect: CGFloat = 1080.0 / 1920.0
@@ -38,8 +37,8 @@ struct OnboardingHeroVideo: View {
                     // from flashing pale before the first frame arrives.
                     Color(red: 0.043, green: 0.047, blue: 0.043)
 
-                    if let fillPlayer {
-                        HeroPlayerLayer(player: fillPlayer, gravity: .resizeAspectFill)
+                    if let engine {
+                        HeroPlayerLayer(player: engine.fill, gravity: .resizeAspectFill)
                             // Overfilled so the blur's soft edge falls outside
                             // the band instead of thinning against it.
                             .scaleEffect(1.18)
@@ -47,8 +46,8 @@ struct OnboardingHeroVideo: View {
                             .overlay(Color.black.opacity(0.18))
                     }
 
-                    if let markPlayer {
-                        HeroPlayerLayer(player: markPlayer, gravity: .resizeAspect)
+                    if let engine {
+                        HeroPlayerLayer(player: engine.mark, gravity: .resizeAspect)
                             .frame(width: markWidth, height: proxy.size.height)
                             // Without this the fitted clip meets the blurred
                             // fill on two hard vertical lines.
@@ -68,36 +67,48 @@ struct OnboardingHeroVideo: View {
                 }
                 .frame(width: proxy.size.width, height: proxy.size.height)
             }
-            .onAppear { start() }
-            .onDisappear {
-                fillPlayer?.pause()
-                markPlayer?.pause()
+            .onAppear {
+                if engine == nil, let url = Self.clip {
+                    engine = HeroClipEngine(url: url)
+                }
+                engine?.play()
             }
+            .onDisappear { engine?.pause() }
         }
     }
+}
 
-    private func start() {
-        guard let url = Self.clip else { return }
-        if fillPlayer == nil {
-            // One AVPlayer drives one AVPlayerLayer, so the two layers need two
-            // players. They start together and the fill is unrecognisable, which
-            // leaves any drift over three seconds invisible.
-            fillPlayer = makePlayer(url)
-            markPlayer = makePlayer(url)
-        }
-        for player in [fillPlayer, markPlayer].compactMap({ $0 }) {
-            player.seek(to: .zero)
-            player.play()
-        }
-    }
+/// Owns the two looping players behind a hero band.
+///
+/// One AVPlayer drives one AVPlayerLayer, so the fitted clip and the blurred
+/// fill need one each. AVPlayerLooper handles the repeat without a seek on every
+/// pass, which is what makes the loop land without a visible hitch; it has to be
+/// held for as long as the players are alive or looping silently stops.
+private final class HeroClipEngine {
+    let fill: AVQueuePlayer
+    let mark: AVQueuePlayer
+    private let fillLooper: AVPlayerLooper
+    private let markLooper: AVPlayerLooper
 
-    private func makePlayer(_ url: URL) -> AVPlayer {
-        let player = AVPlayer(playerItem: AVPlayerItem(url: url))
+    init(url: URL) {
+        fill = AVQueuePlayer()
+        mark = AVQueuePlayer()
         // The clip carries no audio track, but muting also keeps it from ever
         // interrupting whatever the user is already listening to.
-        player.isMuted = true
-        player.actionAtItemEnd = .pause
-        return player
+        fill.isMuted = true
+        mark.isMuted = true
+        fillLooper = AVPlayerLooper(player: fill, templateItem: AVPlayerItem(url: url))
+        markLooper = AVPlayerLooper(player: mark, templateItem: AVPlayerItem(url: url))
+    }
+
+    func play() {
+        fill.play()
+        mark.play()
+    }
+
+    func pause() {
+        fill.pause()
+        mark.pause()
     }
 }
 

@@ -44,9 +44,8 @@ struct OnboardingReadyView: View {
 
     private func hero(width: CGFloat, height: CGFloat) -> some View {
         ZStack(alignment: .top) {
-            OnboardingHeroArt(variant: .ready)
+            OnboardingHeroVideo(fallback: .ready)
                 .frame(width: width, height: height)
-                .scaleEffect(hasAppeared ? 1 : 1.05)
 
             receipt
                 .padding(.horizontal, 28)
