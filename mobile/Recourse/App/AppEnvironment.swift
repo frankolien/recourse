@@ -119,9 +119,19 @@ final class BuyerPaymentStore {
     // them for the rest of the session instead of refetching every refresh.
     private var unresolvableOrderRefs: Set<String> = []
 
+    // The account whose data is currently held. Starts deliberately unequal to
+    // any real scope so the first refresh always establishes it.
+    private var loadedAccountScope: String? = "unloaded"
+
+    // Scoped to the signed-in account: what someone bought is theirs, and two
+    // accounts sharing a device must not read each other's purchase history.
+    private var orderContextKey: String {
+        ActiveAccount.scope.map { "recourse.buyer.orderContext.\($0)" } ?? "recourse.buyer.orderContext"
+    }
+
     private var orderContexts: [UInt64: OrderContext] {
         get {
-            guard let data = UserDefaults.standard.data(forKey: "recourse.buyer.orderContext"),
+            guard let data = UserDefaults.standard.data(forKey: orderContextKey),
                   let decoded = try? JSONDecoder().decode([UInt64: OrderContext].self, from: data)
             else {
                 return [:]
@@ -130,7 +140,7 @@ final class BuyerPaymentStore {
         }
         set {
             if let data = try? JSONEncoder().encode(newValue) {
-                UserDefaults.standard.set(data, forKey: "recourse.buyer.orderContext")
+                UserDefaults.standard.set(data, forKey: orderContextKey)
             }
         }
     }
@@ -183,12 +193,30 @@ final class BuyerPaymentStore {
         await refresh(scope: .buyer)
     }
 
+    /// Rows and a balance loaded under one account must not survive into the
+    /// next. Without this the previous account's figures stay on screen until
+    /// the network answers, which is long enough to read as your own.
+    private func discardDataFromAnotherAccount() {
+        let current = ActiveAccount.scope
+        guard current != loadedAccountScope else { return }
+        loadedAccountScope = current
+        payments = []
+        merchantPayments = []
+        policies = []
+        balance = nil
+        walletAddress = nil
+        lastUpdated = nil
+        errorMessage = nil
+        unresolvableOrderRefs = []
+    }
+
     func refreshMerchant() async {
         await refresh(scope: .merchant)
     }
 
     private func refresh(scope: Scope) async {
         guard !isLoading else { return }
+        discardDataFromAnotherAccount()
         isLoading = true
         defer { isLoading = false }
 

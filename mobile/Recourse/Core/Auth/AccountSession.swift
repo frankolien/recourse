@@ -304,6 +304,9 @@ final class AccountSession {
             account = nil
             pendingChallenge = nil
             errorMessage = nil
+            // The wallet itself stays in the keychain under this account's scope,
+            // so signing back in restores the same address and balance.
+            ActiveAccount.set(nil)
         } catch {
             errorMessage = "Your local session could not be cleared."
         }
@@ -313,6 +316,9 @@ final class AccountSession {
         try await store.save(sessionGrant)
         grant = sessionGrant
         account = sessionGrant.account
+        // Recorded before anything else observes the new session, so the wallet
+        // and order history resolve against this account and not the last one.
+        ActiveAccount.set(sessionGrant.account)
         errorMessage = nil
     }
 }

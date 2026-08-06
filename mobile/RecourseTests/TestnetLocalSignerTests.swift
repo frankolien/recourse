@@ -14,6 +14,61 @@ final class TestnetLocalSignerTests: XCTestCase {
         XCTAssertEqual(accountCount, 2)
     }
 
+    func testEachAccountGetsItsOwnWalletOnTheSameDevice() async throws {
+        let store = InMemorySecureDataStore()
+        let alice = TestnetLocalSigner(
+            store: store,
+            authorizer: AllowingTransactionAuthorizer(),
+            scope: { "account-1" }
+        )
+        let bob = TestnetLocalSigner(
+            store: store,
+            authorizer: AllowingTransactionAuthorizer(),
+            scope: { "account-2" }
+        )
+
+        let aliceAddress = try await alice.address()
+        let bobAddress = try await bob.address()
+
+        XCTAssertNotEqual(aliceAddress, bobAddress)
+
+        // Signing back in has to return the same wallet, not mint another one.
+        let aliceAgain = TestnetLocalSigner(
+            store: store,
+            authorizer: AllowingTransactionAuthorizer(),
+            scope: { "account-1" }
+        )
+        let restored = try await aliceAgain.address()
+        XCTAssertEqual(restored, aliceAddress)
+    }
+
+    func testFirstAccountAdoptsAWalletCreatedBeforeAccountScoping() async throws {
+        let store = InMemorySecureDataStore()
+        let deviceWide = TestnetLocalSigner(
+            store: store,
+            authorizer: AllowingTransactionAuthorizer(),
+            scope: { nil }
+        )
+        let existingAddress = try await deviceWide.address()
+
+        let firstAccount = TestnetLocalSigner(
+            store: store,
+            authorizer: AllowingTransactionAuthorizer(),
+            scope: { "account-1" }
+        )
+        let adopted = try await firstAccount.address()
+        XCTAssertEqual(adopted, existingAddress)
+
+        // Adopted, not shared: the next account must not inherit it too.
+        let secondAccount = TestnetLocalSigner(
+            store: store,
+            authorizer: AllowingTransactionAuthorizer(),
+            scope: { "account-2" }
+        )
+        let freshWallet = try await secondAccount.address()
+        XCTAssertNotEqual(freshWallet, existingAddress)
+    }
+
     func testSignsDeterministicLegacyTransaction() async throws {
         let authorizer = AllowingTransactionAuthorizer()
         let signer = TestnetLocalSigner(
