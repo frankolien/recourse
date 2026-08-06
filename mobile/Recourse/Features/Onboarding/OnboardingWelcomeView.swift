@@ -34,9 +34,10 @@ struct OnboardingWelcomeView: View {
 
     private func hero(width: CGFloat, height: CGFloat) -> some View {
         ZStack(alignment: .top) {
-            OnboardingHeroArt(variant: .welcome)
+            // The clip carries its own entrance, so no scale-in here; two
+            // overlapping reveals read as a stutter.
+            OnboardingHeroVideo(fallback: .welcome)
                 .frame(width: width, height: height)
-                .scaleEffect(hasAppeared ? 1 : 1.06)
 
             HStack {
                 Label("Recourse", systemImage: "shield.checkered")

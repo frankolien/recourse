@@ -85,6 +85,11 @@ Dir.glob(File.join(root, "Recourse", "Resources", "Fonts", "*.otf")).sort.each d
   reference = fonts_group.new_file(File.basename(path))
   app_target.resources_build_phase.add_file_reference(reference)
 end
+video_group = nested_group(resources_group, "Video")
+Dir.glob(File.join(root, "Recourse", "Resources", "Video", "*.mp4")).sort.each do |path|
+  reference = video_group.new_file(File.basename(path))
+  app_target.resources_build_phase.add_file_reference(reference)
+end
 assets_path = File.join(root, "Recourse", "Resources", "Images.xcassets")
 assets_reference = resources_group.new_file("Images.xcassets")
 app_target.resources_build_phase.add_file_reference(assets_reference)
