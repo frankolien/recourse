@@ -34,16 +34,9 @@ struct OnboardingWelcomeView: View {
 
     private func hero(width: CGFloat, height: CGFloat) -> some View {
         ZStack(alignment: .top) {
-            Image("OnboardingPayment")
-                .resizable()
-                .scaledToFill()
-                .frame(width: width, height: height, alignment: .trailing)
-                .clipped()
+            OnboardingHeroArt(variant: .welcome)
+                .frame(width: width, height: height)
                 .scaleEffect(hasAppeared ? 1 : 1.06)
-
-            Rectangle()
-                .fill(.black.opacity(0.16))
-                .frame(height: height)
 
             HStack {
                 Label("Recourse", systemImage: "shield.checkered")

@@ -250,11 +250,8 @@ struct OnboardingSignInView: View {
 
     private func authenticationHero(width: CGFloat, height: CGFloat) -> some View {
         ZStack(alignment: .top) {
-            Image("AccountEntryHero")
-                .resizable()
-                .scaledToFill()
+            OnboardingHeroArt(variant: .account)
                 .frame(width: width, height: height)
-                .clipped()
                 .scaleEffect(hasAppeared ? 1 : 1.05)
 
             HStack {
