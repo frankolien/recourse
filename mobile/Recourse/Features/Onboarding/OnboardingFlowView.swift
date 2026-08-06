@@ -80,12 +80,6 @@ struct OnboardingFlowView: View {
                 }
             }
             .id(stage)
-            .transition(
-                .asymmetric(
-                    insertion: .move(edge: .trailing).combined(with: .opacity),
-                    removal: .move(edge: .leading).combined(with: .opacity)
-                )
-            )
         }
         .onAppear {
             guard accountSession.isAuthenticated, stage == .welcome else { return }
@@ -93,10 +87,10 @@ struct OnboardingFlowView: View {
         }
     }
 
+    // Onboarding steps swap outright. A slide between them animated every tap,
+    // including Back, which read as the flow performing rather than responding.
     private func advance(to newStage: OnboardingStage) {
-        withAnimation(.spring(response: 0.48, dampingFraction: 0.9)) {
-            stage = newStage
-        }
+        stage = newStage
     }
 
     private func openAuthentication(mode: OnboardingAuthenticationMode, backTo target: OnboardingStage) {

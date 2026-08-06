@@ -46,7 +46,6 @@ struct OnboardingSignupStoryView: View {
     ]
 
     @State private var activeIndex = 1
-    @State private var hasAppeared = false
 
     var body: some View {
         GeometryReader { proxy in
@@ -63,11 +62,6 @@ struct OnboardingSignupStoryView: View {
             .background {
                 RecourseAnimatedStoryBackground()
                     .ignoresSafeArea()
-            }
-        }
-        .onAppear {
-            withAnimation(.easeOut(duration: 0.65)) {
-                hasAppeared = true
             }
         }
         .task {
@@ -129,8 +123,6 @@ struct OnboardingSignupStoryView: View {
             .padding(.horizontal, 40)
             .padding(.top, 40)
         }
-        .offset(y: hasAppeared ? 0 : 20)
-        .opacity(hasAppeared ? 1 : 0)
     }
 
     private var storyHero: some View {
@@ -188,9 +180,6 @@ struct OnboardingSignupStoryView: View {
         .padding(.top, 12)
         .padding(.bottom, 24)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .offset(y: hasAppeared ? 0 : 18)
-        .opacity(hasAppeared ? 1 : 0)
-        .animation(.easeOut(duration: 0.7).delay(0.15), value: hasAppeared)
     }
 }
 
@@ -199,8 +188,6 @@ struct OnboardingSignInView: View {
     let accountSession: AccountSession
     let onBack: () -> Void
     let onAuthenticated: () -> Void
-
-    @State private var hasAppeared = false
 
     var body: some View {
         GeometryReader { proxy in
@@ -215,11 +202,6 @@ struct OnboardingSignInView: View {
             .ignoresSafeArea(edges: .top)
         }
         .background(RecourseColor.canvas)
-        .onAppear {
-            withAnimation(.easeOut(duration: 0.65)) {
-                hasAppeared = true
-            }
-        }
         .task {
             await accountSession.prepareAppleSignIn()
         }
@@ -388,8 +370,6 @@ struct OnboardingSignInView: View {
                     .background(RecourseColor.surface, in: Circle())
             }
         }
-        .offset(y: hasAppeared ? 0 : 22)
-        .opacity(hasAppeared ? 1 : 0)
     }
 
     private func authenticationOption(_ title: String, icon: String) -> some View {

@@ -28,7 +28,6 @@ struct OnboardingWalletSetupView: View {
     @State private var walletAddress: EthereumAddress?
     @State private var errorMessage: String?
     @State private var isPreparing = false
-    @State private var hasAppeared = false
     @State private var hasCopiedAddress = false
 
     var body: some View {
@@ -86,18 +85,11 @@ struct OnboardingWalletSetupView: View {
             .padding(.top, compact ? 18 : 24)
             .padding(.bottom, max(proxy.safeAreaInsets.bottom, 18))
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
-            .offset(y: hasAppeared ? 0 : 22)
-            .opacity(hasAppeared ? 1 : 0)
         }
         .safeAreaInset(edge: .top, spacing: 0) {
             walletSetupAppBar
         }
         .background(RecourseColor.canvas.ignoresSafeArea())
-        .onAppear {
-            withAnimation(.easeOut(duration: 0.6)) {
-                hasAppeared = true
-            }
-        }
         .task {
             await prepareWallet()
         }
@@ -211,7 +203,6 @@ struct OnboardingSetupView: View {
     let onContinue: (OnboardingRole) -> Void
 
     @State private var selectedRole: OnboardingRole = .buyer
-    @State private var hasAppeared = false
 
     var body: some View {
         GeometryReader { proxy in
@@ -226,11 +217,6 @@ struct OnboardingSetupView: View {
             .ignoresSafeArea(edges: .top)
         }
         .background(RecourseColor.canvas)
-        .onAppear {
-            withAnimation(.easeOut(duration: 0.65)) {
-                hasAppeared = true
-            }
-        }
     }
 
     private func hero(width: CGFloat, height: CGFloat) -> some View {
@@ -240,7 +226,6 @@ struct OnboardingSetupView: View {
                 .scaledToFill()
                 .frame(width: width, height: height)
                 .clipped()
-                .scaleEffect(hasAppeared ? 1 : 1.05)
 
             HStack {
                 RecourseGlassIconButton(
@@ -291,8 +276,6 @@ struct OnboardingSetupView: View {
         .padding(.top, compact ? 14 : 18)
         .padding(.bottom, compact ? 10 : 18)
         .frame(maxHeight: .infinity)
-        .offset(y: hasAppeared ? 0 : 22)
-        .opacity(hasAppeared ? 1 : 0)
     }
 
     private func roleButton(_ role: OnboardingRole) -> some View {

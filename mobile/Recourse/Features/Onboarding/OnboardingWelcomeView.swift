@@ -4,8 +4,6 @@ struct OnboardingWelcomeView: View {
     let onGetStarted: () -> Void
     let onSignIn: () -> Void
 
-    @State private var hasAppeared = false
-
     var body: some View {
         GeometryReader { proxy in
             let compact = proxy.size.height < 760
@@ -25,11 +23,6 @@ struct OnboardingWelcomeView: View {
         }
         .ignoresSafeArea()
         .background(RecourseColor.canvas)
-        .onAppear {
-            withAnimation(.easeOut(duration: 0.8)) {
-                hasAppeared = true
-            }
-        }
     }
 
     private func hero(width: CGFloat, height: CGFloat) -> some View {
@@ -117,8 +110,6 @@ struct OnboardingWelcomeView: View {
         .padding(.horizontal, 22)
         .padding(.top, compact ? 16 : 20)
         .frame(maxHeight: .infinity, alignment: .top)
-        .offset(y: hasAppeared ? 0 : 24)
-        .opacity(hasAppeared ? 1 : 0)
     }
 
     private func actions(bottomInset: CGFloat) -> some View {
@@ -133,8 +124,6 @@ struct OnboardingWelcomeView: View {
         .padding(.top, 12)
         .padding(.bottom, max(bottomInset, 34))
         .background(RecourseColor.canvas)
-        .offset(y: hasAppeared ? 0 : 24)
-        .opacity(hasAppeared ? 1 : 0)
     }
 
     private func trustItem(icon: String, label: String) -> some View {

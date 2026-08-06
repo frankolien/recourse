@@ -5,9 +5,6 @@ struct OnboardingReadyView: View {
     let walletAddress: EthereumAddress?
     let onComplete: () -> Void
 
-    @State private var hasAppeared = false
-    @State private var symbolBounce = false
-
     var body: some View {
         GeometryReader { proxy in
             let compact = proxy.size.height < 760
@@ -34,12 +31,6 @@ struct OnboardingReadyView: View {
             }
         }
         .background(RecourseColor.canvas)
-        .onAppear {
-            withAnimation(.spring(response: 0.62, dampingFraction: 0.82)) {
-                hasAppeared = true
-            }
-            symbolBounce.toggle()
-        }
     }
 
     private func hero(width: CGFloat, height: CGFloat) -> some View {
@@ -50,8 +41,7 @@ struct OnboardingReadyView: View {
             receipt
                 .padding(.horizontal, 28)
                 .frame(width: width, height: height, alignment: .bottom)
-                .offset(y: hasAppeared ? 28 : 70)
-                .scaleEffect(hasAppeared ? 1 : 0.9)
+                .offset(y: 28)
         }
     }
 
@@ -98,7 +88,6 @@ struct OnboardingReadyView: View {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 23))
                     .foregroundStyle(RecourseColor.ledger)
-                    .symbolEffect(.bounce, value: symbolBounce)
             }
 
             HStack {
@@ -145,7 +134,6 @@ struct OnboardingReadyView: View {
         .padding(.horizontal, 22)
         .padding(.bottom, compact ? 10 : 18)
         .frame(maxHeight: .infinity)
-        .opacity(hasAppeared ? 1 : 0)
     }
 
     private func readyPoint(_ icon: String, _ title: String) -> some View {
