@@ -13,6 +13,8 @@
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:recourse-arc.vercel.app</string>
+		<!-- Passkeys refuse to run without this, separately from applinks. -->
+		<string>webcredentials:recourse-arc.vercel.app</string>
 	</array>
 </dict>
 </plist>

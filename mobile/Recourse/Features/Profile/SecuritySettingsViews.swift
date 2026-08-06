@@ -92,6 +92,18 @@ struct SignInRecoveryView: View {
             } header: {
                 Text("If you lose this phone")
             }
+
+            #if DEBUG
+            Section {
+                NavigationLink("Passkey PRF probe") {
+                    PasskeyPRFProbeView()
+                }
+            } header: {
+                Text("Spike")
+            } footer: {
+                Text("Measures whether this device can derive stable key material from a passkey. Debug builds only.")
+            }
+            #endif
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)

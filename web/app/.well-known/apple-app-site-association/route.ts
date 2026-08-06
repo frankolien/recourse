@@ -12,5 +12,10 @@ export function GET() {
         },
       ],
     },
+    // Passkeys are bound to a domain, and iOS checks this alongside the app's
+    // webcredentials entitlement before it will run a single ceremony.
+    webcredentials: {
+      apps: ["YCKKUWB4WD.com.recourse.buyer"],
+    },
   });
 }
