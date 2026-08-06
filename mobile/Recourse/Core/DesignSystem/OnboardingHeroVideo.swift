@@ -35,9 +35,10 @@ struct OnboardingHeroVideo: View {
                 let markWidth = min(proxy.size.height * Self.clipAspect, proxy.size.width)
 
                 ZStack {
-                    // The clip opens on near black. Matching it keeps the band
-                    // from flashing pale before the first frame arrives.
-                    Color(red: 0.043, green: 0.047, blue: 0.043)
+                    // The drawn hero sits underneath rather than a flat colour:
+                    // anything that leaves the players without a frame then
+                    // shows the band it would have had, never a black rectangle.
+                    OnboardingHeroArt(variant: fallback)
 
                     if let engine {
                         HeroPlayerLayer(player: engine.fill, gravity: .resizeAspectFill)
@@ -120,6 +121,7 @@ private enum HeroReveal {
 
 /// Owns the two players behind a hero band. One AVPlayer drives one
 /// AVPlayerLayer, so the fitted clip and the blurred fill need one each.
+@MainActor
 private final class HeroClipEngine {
     let fill: AVPlayer
     let mark: AVPlayer
@@ -145,8 +147,25 @@ private final class HeroClipEngine {
     func settle() {
         for player in [fill, mark] {
             player.pause()
-            player.seek(to: .positiveInfinity, toleranceBefore: .zero, toleranceAfter: .zero)
+            seekToEnd(player, retries: 8)
         }
+    }
+
+    private func seekToEnd(_ player: AVPlayer, retries: Int) {
+        // An item still loading reports an indefinite duration. Seeking against
+        // that lands nowhere and the layer is left with no frame at all, which
+        // is a black band rather than a settled one.
+        guard let duration = player.currentItem?.duration, duration.isNumeric, duration.seconds > 0 else {
+            guard retries > 0 else { return }
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(120))
+                seekToEnd(player, retries: retries - 1)
+            }
+            return
+        }
+
+        let target = CMTimeSubtract(duration, CMTime(seconds: 0.05, preferredTimescale: 600))
+        player.seek(to: target, toleranceBefore: .zero, toleranceAfter: .zero)
     }
 
     private static func makePlayer(_ url: URL) -> AVPlayer {
