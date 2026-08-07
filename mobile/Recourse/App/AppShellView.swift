@@ -255,6 +255,11 @@ struct MerchantWorkspaceView: View {
                 .padding(.vertical, 18)
         }
         .scrollDismissesKeyboard(.interactively)
+        // This is the page that tells you to pull to refresh when a policy is
+        // slow to appear, and it was the one merchant page that could not.
+        .refreshable {
+            await environment.paymentStore.refreshMerchant()
+        }
         .background(merchantCanvas)
     }
 
@@ -540,9 +545,17 @@ struct MerchantWorkspaceView: View {
                         .disabled(isPublishingPolicy)
 
                         if let policyStatusMessage {
-                            Text(policyStatusMessage)
-                                .font(.recourse(11, .medium))
-                                .foregroundStyle(RecourseColor.nightMuted)
+                            HStack(spacing: 7) {
+                                // The wait runs to about twenty seconds across
+                                // the confirmation and the indexer catching up.
+                                // Status text alone read as a stalled screen.
+                                if isPublishingPolicy {
+                                    ProgressView().controlSize(.small)
+                                }
+                                Text(policyStatusMessage)
+                                    .font(.recourse(11, .medium))
+                                    .foregroundStyle(RecourseColor.nightMuted)
+                            }
                         }
                     }
                 } else {
@@ -952,7 +965,23 @@ struct MerchantWorkspaceView: View {
 
     private var productImagePicker: some View {
         HStack(spacing: 12) {
-            if let attachedImageData = productImageData,
+            // An iCloud original takes seconds to come down, and publishing is
+            // blocked until it lands. Without this the row looked untouched and
+            // the block read as the button being broken.
+            if isLoadingProductPhoto {
+                ProgressView()
+                    .controlSize(.small)
+                    .frame(width: 44, height: 44)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Loading photo…")
+                        .font(.recourse(14, .semibold))
+                        .foregroundStyle(RecourseColor.nightText)
+                    Text("Fetching the full size from your library")
+                        .font(.recourse(11))
+                        .foregroundStyle(RecourseColor.nightMuted)
+                }
+                Spacer()
+            } else if let attachedImageData = productImageData,
                let preview = UIImage(data: attachedImageData) {
                 Image(uiImage: preview)
                     .resizable()
@@ -1062,7 +1091,9 @@ struct MerchantWorkspaceView: View {
                 }
                 try? await Task.sleep(for: .seconds(2))
             }
-            policyStatusMessage = "Policy confirmed. Pull to refresh if it does not appear yet."
+            // Confirmed on chain either way; only the indexer is behind. Say so,
+            // rather than implying the policy might not have been created.
+            policyStatusMessage = "Policy is live on Arc. Pull down to refresh if it has not appeared yet."
         } catch {
             policyStatusMessage = nil
             checkoutErrorMessage = "Could not publish the policy. Make sure this wallet has Arc gas and try again."
