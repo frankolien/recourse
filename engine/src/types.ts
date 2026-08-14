@@ -13,6 +13,35 @@ export enum ClaimType {
 // Attestation types: 0 = NONE, 1 = DELIVERY_STATUS.
 // DELIVERY_STATUS values: 0 = UNKNOWN, 1 = DELIVERED, 2 = NOT_DELIVERED.
 
+// Agent commerce vocabulary, mirroring the constants in Types.sol. Kept separate
+// from ClaimType above because the parcel authoring UI types its label maps as
+// total records over that enum, and widening it would break them.
+export const AgentClaimType = {
+  NotServed: 5,
+  SchemaViolation: 6,
+  SlaBreach: 7,
+  PartialFailure: 8,
+} as const;
+
+export const AgentEvidence = {
+  CallLogRoot: 16,
+  SchemaFailure: 32,
+  SlaMeasurement: 64,
+  Unreachable: 128,
+} as const;
+
+export const ATT_SLA_OUTCOME = 2;
+
+// Severity buckets for ATT_SLA_OUTCOME. Ordered worst-last so the numeric value
+// rises with severity, which is what makes the refund ladder readable.
+export const SlaOutcome = {
+  Clean: 0,
+  Minor: 1,
+  Moderate: 2,
+  Severe: 3,
+  Total: 4,
+} as const;
+
 export interface Rule {
   claimType: number;
   requiredEvidenceMask: number;

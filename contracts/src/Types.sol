@@ -19,6 +19,34 @@ enum ClaimType {
 // Attestation types: 0 = NONE, 1 = DELIVERY_STATUS.
 // DELIVERY_STATUS values: 0 = UNKNOWN, 1 = DELIVERED, 2 = NOT_DELIVERED.
 
+// Agent commerce vocabulary, docs/agent-settlement.md sections A1 and A2.
+// PolicyEngine compares these values and never interprets them, so the parcel
+// range and the agent range share one uint8 with no change to matching. Declared
+// as constants rather than an enum because Solidity enums must start at zero and
+// these continue an existing numbering.
+uint8 constant CLAIM_NOT_SERVED = 5;
+uint8 constant CLAIM_SCHEMA_VIOLATION = 6;
+uint8 constant CLAIM_SLA_BREACH = 7;
+uint8 constant CLAIM_PARTIAL_FAILURE = 8;
+
+// evType is uint8, so eight evidence bits exist. Four are spent on the parcel
+// vocabulary above and these are the remaining four.
+uint8 constant EV_CALL_LOG_ROOT = 16;
+uint8 constant EV_SCHEMA_FAILURE = 32;
+uint8 constant EV_SLA_MEASUREMENT = 64;
+uint8 constant EV_UNREACHABLE = 128;
+
+// Attestation type 2. The value is a severity bucket, not a measurement: the
+// engine can only test equality, so the attestor quantises the observed failure
+// rate and the policy carries one rule per bucket.
+uint8 constant ATT_SLA_OUTCOME = 2;
+
+uint8 constant SLA_CLEAN = 0;
+uint8 constant SLA_MINOR = 1;
+uint8 constant SLA_MODERATE = 2;
+uint8 constant SLA_SEVERE = 3;
+uint8 constant SLA_TOTAL = 4;
+
 struct Rule {
     uint8 claimType;
     uint16 requiredEvidenceMask;

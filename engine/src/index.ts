@@ -18,8 +18,20 @@ export {
   ClaimType,
   NO_RULE,
   MAX_RULES,
+  AgentClaimType,
+  AgentEvidence,
+  ATT_SLA_OUTCOME,
+  SlaOutcome,
   type Rule,
   type Policy,
   type VerdictInput,
   type Verdict,
 } from "./types";
+export {
+  severity,
+  agentServicePolicy,
+  AgentPolicyError,
+  DEFAULT_SLA_LADDER,
+  type SlaSeverity,
+  type AgentPolicyOptions,
+} from "./agent";
