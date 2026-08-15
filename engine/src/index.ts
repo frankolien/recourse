@@ -35,3 +35,14 @@ export {
   type SlaSeverity,
   type AgentPolicyOptions,
 } from "./agent";
+export {
+  callHash,
+  callLogRoot,
+  evidenceRoot,
+  evidenceMask,
+  SessionRecorder,
+  SessionError,
+  type CallRecord,
+  type EvidenceItem,
+  type DisputeDraft,
+} from "./session";

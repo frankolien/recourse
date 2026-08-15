@@ -44,3 +44,20 @@ export const verdictHashParams = [
   { name: "input", type: "tuple", components: verdictInputComponents },
   { name: "verdict", type: "tuple", components: verdictComponents },
 ] as const satisfies readonly AbiParameter[];
+
+// keccak256(abi.encode(index, requestHash, responseHash, statusCode, latencyMs, schemaValid))
+// per call in a session, docs/agent-settlement.md section A4.
+//
+// abi.encode pads every value to 32 bytes, so these integer widths do not change
+// the bytes and an independent implementation using wider types still derives the
+// same hash. What is load bearing is the field order and count. The widths are
+// declared to document the accepted range, which session.ts enforces separately;
+// the packed folds in that module are where width does change the result.
+export const callRecordParams = [
+  { name: "index", type: "uint256" },
+  { name: "requestHash", type: "bytes32" },
+  { name: "responseHash", type: "bytes32" },
+  { name: "statusCode", type: "uint16" },
+  { name: "latencyMs", type: "uint32" },
+  { name: "schemaValid", type: "bool" },
+] as const satisfies readonly AbiParameter[];
