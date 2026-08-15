@@ -16,6 +16,8 @@
     "date": "2026-08-15",
     "payment5": "clean session, released to the merchant after the window closed",
     "payment6": "15 of 20 calls failed, attested SEVERE, resolved at 5000 bps",
-    "runner": "ops/agent-demo-arc.sh"
+    "runner": "ops/agent-demo-arc.sh",
+    "payment7": "clean session, released to the merchant",
+    "payment8": "attestor fetched the published log, refused a tampered copy, resolved at 5000 bps"
   }
 }

@@ -108,6 +108,18 @@ export function evidenceMask(items: readonly EvidenceItem[]): number {
   return items.reduce((mask, item) => mask | item.evType, 0);
 }
 
+/**
+ * What counts as a failed call, in one place because the buyer and the attestor
+ * both apply it and must agree. If they can disagree, the attestor signs a bucket
+ * the buyer did not expect and the refund is not the one the policy advertised.
+ *
+ * Latency is deliberately not part of it: being slow is SLA_BREACH, a separate
+ * claim with its own rule and its own refund.
+ */
+export function countFailed(calls: readonly CallRecord[]): number {
+  return calls.filter((c) => c.statusCode < 200 || c.statusCode >= 300 || !c.schemaValid).length;
+}
+
 export interface DisputeDraft {
   claimType: number;
   items: EvidenceItem[];
@@ -148,7 +160,7 @@ export class SessionRecorder {
   // the advertised schema. Latency is deliberately excluded: being slow is
   // SLA_BREACH, a different claim with a different refund.
   get failed(): number {
-    return this.records.filter((r) => r.statusCode < 200 || r.statusCode >= 300 || !r.schemaValid).length;
+    return countFailed(this.records);
   }
 
   get root(): `0x${string}` {
@@ -157,6 +169,16 @@ export class SessionRecorder {
 
   toJSON(): { sessionId: `0x${string}`; calls: CallRecord[] } {
     return { sessionId: this.sessionId, calls: [...this.records] };
+  }
+
+  /**
+   * The bundle a buyer publishes so anyone can check its dispute: the calls, and
+   * the evidence items filed against them. The items belong here because the chain
+   * stores only their fold, so without them there is nothing tying the log to what
+   * was filed.
+   */
+  publish(schemaId?: `0x${string}`): { sessionId: `0x${string}`; calls: CallRecord[]; items: EvidenceItem[] } {
+    return { sessionId: this.sessionId, calls: [...this.records], items: this.draft(schemaId).items };
   }
 
   // Builds the PARTIAL_FAILURE dispute. The schema failure item is included only

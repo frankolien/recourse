@@ -37,8 +37,15 @@ export {
 } from "./agent";
 export * from "./x402";
 export {
+  reviewSession,
+  parsePublishedSession,
+  type PublishedSession,
+  type SessionReview,
+} from "./attestor";
+export {
   callHash,
   callLogRoot,
+  countFailed,
   evidenceRoot,
   evidenceMask,
   SessionRecorder,

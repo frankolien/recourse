@@ -306,6 +306,36 @@ The full log is published off chain. The attestor and the merchant recompute
 everything is recomputed. Cost is constant: five calls and fifty thousand submit
 the same two items.
 
+### What the attestor is actually given
+
+Worth stating precisely, because an attestor that reads the disputing party's
+own state is not attesting to anything. `reviewSession` in `engine/src/attestor.ts`
+takes two arguments and nothing else: the published bundle, and the
+`evidenceRoot` already on chain. It never sees the buyer's recorder.
+
+Verification chains through the one value the escrow stores. `evidenceRoot` is a
+fold over the evidence items, not over the calls, so:
+
+1. the published items must reproduce `evidenceRoot`, and
+2. the `CALL_LOG_ROOT` item among them must reproduce the fold over the calls.
+
+Only a log surviving both is the log the dispute was filed against. This is why
+the published bundle carries the items as well as the calls: without them there is
+nothing tying the log to what was filed.
+
+A mismatch is refused rather than graded clean. Grading it would let a buyer file
+one log and publish a different one to draw a better attestation, and a CLEAN
+signature on a session nobody can verify is worse than no signature at all.
+
+The pinning is exact rather than approximate. Editing a single `latencyMs`, which
+changes no verdict and no severity bucket, still fails verification. The demo
+asserts precisely that.
+
+Failure counting lives in one function, `countFailed`, used by both the buyer and
+the attestor. If the two could disagree about what failed, the attestor would sign
+a bucket the buyer never expected and the refund would not be the one the policy
+advertised.
+
 ### A5. The settlement loop
 
 ```
@@ -406,7 +436,7 @@ Numbered so tests can cite them.
 | Id | Attacker | Capability | Status |
 |---|---|---|---|
 | T1 | Merchant | attests CLEAN over a genuine failure | **closed by I8**: the merchant cannot be the attestor |
-| T2 | Buyer | fabricates a failure log and disputes | mitigated: merchant holds the same log, attestor recomputes the root and signs CLEAN |
+| T2 | Buyer | fabricates a failure log and disputes | **closed for a doctored publication**: a log that does not reproduce the filed `evidenceRoot` is refused outright. A buyer that filed an honest root cannot later publish a worse log. Residual: a buyer that recorded dishonestly from the start, which the merchant rebuts with its own log |
 | T3 | Facilitator | replays or redirects an authorization | **closed by I7** plus EIP-3009 nonces |
 | T4 | Attestor | offline during the dispute window | **residual**: falls through to `defaultRefundBps`. Managed by A3, not eliminated |
 | T5 | Yield adapter | returns less than principal | contained by S4, loss falls on the beneficiary |

@@ -27,6 +27,7 @@ import { privateKeyToAccount } from "viem/accounts";
 
 import { agentServicePolicy, severity } from "../src/agent";
 import { SessionRecorder } from "../src/session";
+import { reviewSession } from "../src/attestor";
 import { AgentClaimType, AgentEvidence, ATT_SLA_OUTCOME, SlaOutcome } from "../src/types";
 import {
   buildPaymentHeader,
@@ -125,6 +126,11 @@ suite("agent buys from agent", () => {
   let policyId: bigint;
   let server: Server;
   let origin: string;
+  // The buyer's evidence host. Separate from the seller so the attestor is
+  // demonstrably fetching published bytes rather than reading anyone's memory.
+  let evidenceServer: Server;
+  let evidenceOrigin: string;
+  const publishedSessions = new Map<string, unknown>();
 
   // The service succeeds on every Nth call and fails the rest, so a scenario lands
   // on an exact failure ratio rather than an approximate one. 1 means never fail.
@@ -296,10 +302,21 @@ suite("agent buys from agent", () => {
     const address = server.address();
     origin = `http://127.0.0.1:${typeof address === "object" && address ? address.port : 0}`;
     log(`  seller      ${origin}`);
+
+    evidenceServer = createServer((req, res) => {
+      const body = publishedSessions.get((req.url ?? "").replace("/session/", ""));
+      res.writeHead(body ? 200 : 404, { "content-type": "application/json" });
+      res.end(JSON.stringify(body ?? { error: "not published" }));
+    });
+    await new Promise<void>((resolve) => evidenceServer.listen(0, "127.0.0.1", resolve));
+    const evidenceAddress = evidenceServer.address();
+    evidenceOrigin = `http://127.0.0.1:${typeof evidenceAddress === "object" && evidenceAddress ? evidenceAddress.port : 0}`;
+    log(`  evidence    ${evidenceOrigin}`);
   }, 600_000);
 
   afterAll(() => {
     server?.close();
+    evidenceServer?.close();
   });
 
   // The buyer's side of A5 steps 1 to 8, shared by both scenarios.
@@ -414,14 +431,32 @@ suite("agent buys from agent", () => {
     });
     await publicClient.waitForTransactionReceipt({ hash });
 
-    // The attestor recomputes the root from the published log and signs the bucket
-    // it derives itself. It never decides the refund; the policy already did.
+    // The buyer publishes its log so the dispute can be checked by anyone.
+    publishedSessions.set(sessionId, recorder.publish());
+
+    // From here the attestor has only two things: the URL, and the root already on
+    // chain. It never touches `recorder`. Everything it signs it derived itself.
     const onchain = await publicClient.readContract({
       address: escrow, abi: escrowAbi, functionName: "getPayment", args: [paymentId],
     });
     expect(onchain.evidenceRoot).toBe(draft.evidenceRoot);
-    const independent = severity(recorder.failed, recorder.length);
-    log(`  attestor    recomputed root matches, signs severity ${independent}`);
+
+    const fetched = await (await fetch(`${evidenceOrigin}/session/${sessionId}`)).json();
+    const review = reviewSession(fetched, onchain.evidenceRoot);
+    expect(review.attestable).toBe(true);
+    if (!review.attestable) throw new Error(review.reason);
+
+    // A doctored log must not be attestable against the same on chain root. The
+    // edit here is a latency value, which changes no verdict at all: the log is
+    // pinned exactly, not approximately, so even a cosmetic edit is refused.
+    const tampered = JSON.parse(JSON.stringify(fetched));
+    tampered.calls[0].latencyMs = fetched.calls[0].latencyMs + 1;
+    expect(reviewSession(tampered, onchain.evidenceRoot).attestable).toBe(false);
+
+    const independent = review.attValue;
+    expect(independent).toBe(severity(recorder.failed, recorder.length));
+    log(`  attestor    fetched log, root matches chain, derives ${review.failed}/${review.total} -> severity ${independent}`);
+    log(`              a tampered copy of the same log is refused`);
 
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 86_400);
     const digest = await publicClient.readContract({
