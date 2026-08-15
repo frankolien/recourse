@@ -504,18 +504,39 @@ the agent flow, not an enhancement.
 
 ## 7. Build order
 
-1. **Vocabulary and engine mirror.** Constants plus new vectors. Hours. No
-   contract change, and it makes everything below expressible.
-2. **Session recorder and evidence derivation (A4)** in the TS SDK, with the
-   differential test against a Solidity harness. Half a day.
-3. **Contract changes C1 to C3** with the invariant suite and regenerated
-   vectors. One day, and per repo rule R13 the fund moving paths get an anvil
-   fork run before anything touches testnet.
-4. **Gateway middleware and buyer SDK**, x402 v2 conformant. One day.
-5. **End to end demo**: one agent buys inference from another, a second run fails
-   its SLA and is refunded without a human. Half a day.
+All five are built. What each one landed:
 
-Roughly a weekend of focused work. Each step is demonstrable alone.
+1. **Vocabulary and engine mirror.** Claim types 5 to 8, the four free evidence
+   bits, `ATT_SLA_OUTCOME` and its buckets, mirrored in `Types.sol` and
+   `engine/src/types.ts`, plus `agentServicePolicy` and 14 new golden vectors.
+   Held separate from the parcel vocabulary because the authoring UI types its
+   label maps as total records over those unions, and widening them breaks the
+   web build.
+2. **Session recorder and evidence derivation (A4).** `engine/src/session.ts`
+   against a second implementation in `contracts/test/SessionReader.sol`, both
+   asserting on `packages/vectors/session-roots.json`.
+3. **Contract changes C1 to C3**, with `AgentEscrow.t.sol` for the negative cases
+   and `EscrowInvariants.t.sol` for the sequence properties. R13's anvil run
+   cannot cover Arc value movement (section 1), so `ArcForkAgent.t.sol` pins what
+   a fork does still settle and the mock carries the rest.
+4. **Gateway and buyer SDK** under `engine/src/x402/`, conformant to v2 including
+   the extension echo rule in both directions.
+5. **End to end demo**, `ops/agent-demo.sh`. Real HTTP over a real socket against
+   contracts on a throwaway anvil node, running both outcomes: a clean session the
+   merchant is paid for, and a session with 15 of 20 calls failed where the buyer
+   is refunded 50% with nobody in the loop.
+
+Each step is demonstrable alone, and none of them touches Arc.
+
+## 7a. What deployment still needs
+
+The escrow changes are a redeploy, not an upgrade, and it has not happened.
+`deployments/arc-testnet.json`, the backend indexer and the mobile app all point
+at the current escrow, and payments already open there stay with it. The registry
+is untouched by C1 to C3, so policies and their hashes survive a cutover.
+
+When to cut over is a product call rather than a technical one, and nothing above
+depends on it.
 
 ## 8. Open questions
 
