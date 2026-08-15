@@ -45,20 +45,38 @@ import {
 const RPC = process.env.DEMO_RPC;
 const suite = RPC ? describe : describe.skip;
 
-// anvil's first three deterministic accounts.
+// Dual target. With no overrides this deploys everything onto a throwaway anvil
+// node; against Arc it reuses the registry and yield adapter already deployed
+// there and only the escrow is new, so nothing in deployments/arc-testnet.json
+// has to move.
+const CHAIN_ID = Number(process.env.DEMO_CHAIN_ID ?? 31337);
+const LIVE = CHAIN_ID !== 31337;
+const EXISTING_USDC = process.env.DEMO_USDC as Address | undefined;
+const EXISTING_REGISTRY = process.env.DEMO_REGISTRY as Address | undefined;
+const EXISTING_ADAPTER = process.env.DEMO_ADAPTER as Address | undefined;
+
+// anvil's first three deterministic accounts. Publicly known on purpose: on a
+// testnet they hold nothing worth stealing, and using them creates no new secret.
 const KEYS = {
-  merchant: "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
-  buyer: "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
-  attestor: "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a",
+  merchant: (process.env.DEMO_DEPLOYER_PK ??
+    "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80") as Hex,
+  buyer: (process.env.DEMO_BUYER_PK ??
+    "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d") as Hex,
+  attestor: (process.env.DEMO_ATTESTOR_PK ??
+    "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a") as Hex,
 } as const;
+
+// Reuse an escrow and policy from an earlier run rather than deploying again.
+const EXISTING_ESCROW = process.env.DEMO_ESCROW as Address | undefined;
+const EXISTING_POLICY = process.env.DEMO_POLICY_ID ? BigInt(process.env.DEMO_POLICY_ID) : undefined;
 
 const here = dirname(fileURLToPath(import.meta.url));
 const artifact = (name: string) =>
   JSON.parse(readFileSync(join(here, `../../contracts/out/${name}.sol/${name}.json`), "utf8"));
 
 const anvil = defineChain({
-  id: 31337,
-  name: "Anvil",
+  id: CHAIN_ID,
+  name: LIVE ? "Arc" : "Anvil",
   nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
   rpcUrls: { default: { http: [RPC ?? "http://127.0.0.1:8545"] } },
 });
@@ -77,6 +95,7 @@ const escrowAbi = parseAbi([
   "event Paid(uint256 indexed paymentId, address indexed buyer, address indexed merchant, uint256 policyId, uint128 amount, bytes32 orderRef, bytes32 policyHash)",
 ]);
 const registryAbi = parseAbi([
+  "function policyCount() view returns (uint256)",
   "function registerPolicy(uint32 disputeWindow, uint16 defaultRefundBps, (uint8 claimType, uint16 requiredEvidenceMask, uint8 attType, uint8 attExpected, uint32 claimWindow, uint16 refundBps, bool requiresReturn)[] rules, string metadataURI) returns (uint256)",
   "function policyHash(uint256 policyId) view returns (bytes32)",
   "function getPolicy(uint256 policyId) view returns ((address merchant, uint32 disputeWindow, uint16 defaultRefundBps, (uint8 claimType, uint16 requiredEvidenceMask, uint8 attType, uint8 attExpected, uint32 claimWindow, uint16 refundBps, bool requiresReturn)[] rules))",
@@ -87,8 +106,9 @@ const usdcAbi = parseAbi([
   "function balanceOf(address a) view returns (uint256)",
 ]);
 
-const DISPUTE_WINDOW = 3600;
-const BUDGET = 5_000_000n; // 5 USDC session budget
+// Short enough on a live chain that scenario A can wait the window out for real.
+const DISPUTE_WINDOW = Number(process.env.DEMO_DISPUTE_WINDOW ?? (LIVE ? 90 : 3600));
+const BUDGET = BigInt(process.env.DEMO_BUDGET ?? (LIVE ? 200_000n : 5_000_000n));
 const log = (line: string) => console.log(line);
 const usd = (v: bigint) => `${(Number(v) / 1e6).toFixed(2)} USDC`;
 
@@ -130,10 +150,17 @@ suite("agent buys from agent", () => {
     },
     // The escrow never stores orderRef, but paymentId is indexed on Paid, so it is
     // recoverable from logs. This is what binds a payment to one session.
+    //
+    // Bounded lookback rather than fromBlock 0: public RPC providers cap eth_getLogs
+    // ranges (drpc's free plan at 10k blocks), and an unbounded query fails outright
+    // on any chain with real history. A payment being presented is necessarily
+    // recent, so a window is both cheaper and sufficient.
     async getOrderRef(paymentId) {
+      const head = await publicClient.getBlockNumber();
+      const span = 9_000n;
       const logs = await publicClient.getContractEvents({
-        address: escrow, abi: escrowAbi, eventName: "Paid",
-        args: { paymentId }, fromBlock: 0n, toBlock: "latest",
+        address: escrow, abi: escrowAbi, eventName: "Paid", args: { paymentId },
+        fromBlock: head > span ? head - span : 0n, toBlock: "latest",
       });
       return (logs[0]?.args.orderRef as Hex) ?? null;
     },
@@ -163,24 +190,48 @@ suite("agent buys from agent", () => {
 
   beforeAll(async () => {
     log("\n=== setup ===");
-    usdc = await deploy("TestUSDC", []);
-    registry = await deploy("PolicyRegistry", []);
-    const adapter = await deploy("MockUSYCAdapter", [usdc]);
-    escrow = await deploy("RecourseEscrow", [usdc, registry, adapter, attestor.address, merchant.address, 1000, 60]);
+
+    // Arc USDC is a Circle FiatToken and carries a blacklist. A blocked account
+    // reverts with "Blocked address" inside whatever call touches it, which reads
+    // as a contract bug rather than an account problem, so it is checked up front.
+    if (LIVE) {
+      const blacklistAbi = parseAbi(["function isBlacklisted(address) view returns (bool)"]);
+      for (const [role, account] of [["merchant", merchant], ["buyer", buyer], ["attestor", attestor]] as const) {
+        const blocked = await publicClient.readContract({
+          address: EXISTING_USDC!, abi: blacklistAbi, functionName: "isBlacklisted", args: [account.address],
+        });
+        if (blocked) throw new Error(`${role} ${account.address} is blacklisted on this USDC and cannot transact`);
+      }
+      log("  preflight   no account is blacklisted");
+    }
+    usdc = EXISTING_USDC ?? (await deploy("TestUSDC", []));
+    registry = EXISTING_REGISTRY ?? (await deploy("PolicyRegistry", []));
+    // Adapter shares are tracked per holder, so a second escrow can share the one
+    // already deployed without disturbing the payments the first one holds.
+    const adapter = EXISTING_ADAPTER ?? (await deploy("MockUSYCAdapter", [usdc]));
+    escrow = EXISTING_ESCROW ??
+      (await deploy("RecourseEscrow", [usdc, registry, adapter, attestor.address, merchant.address, 1000, 60]));
 
     const policy = agentServicePolicy({ merchant: merchant.address, disputeWindowSeconds: DISPUTE_WINDOW });
+    if (EXISTING_POLICY !== undefined) {
+      policyId = EXISTING_POLICY;
+    } else {
     let hash = await wallet(merchant).writeContract({
       address: registry, abi: registryAbi, functionName: "registerPolicy",
       args: [policy.disputeWindow, policy.defaultRefundBps, policy.rules, "ipfs://agent-service"],
     });
     await publicClient.waitForTransactionReceipt({ hash });
-    policyId = 1n;
+    // Read rather than assume: the shared registry on Arc already holds policies.
+    policyId = await publicClient.readContract({
+      address: registry, abi: registryAbi, functionName: "policyCount",
+    });
 
     // I8: the merchant names a third party, and cannot name itself.
     hash = await wallet(merchant).writeContract({
       address: escrow, abi: escrowAbi, functionName: "setPolicyAttestor", args: [policyId, attestor.address],
     });
     await publicClient.waitForTransactionReceipt({ hash });
+    }
 
     policyHashValue = await publicClient.readContract({
       address: registry, abi: registryAbi, functionName: "policyHash", args: [policyId],
@@ -189,18 +240,25 @@ suite("agent buys from agent", () => {
       address: escrow, abi: escrowAbi, functionName: "agreementHash", args: [policyId],
     });
 
-    for (const who of [buyer.address, adapter]) {
-      const h = await wallet(merchant).writeContract({
-        address: usdc, abi: usdcAbi, functionName: "mint", args: [who, 1_000_000_000n],
-      });
-      await publicClient.waitForTransactionReceipt({ hash: h });
+    // Only the mock token can be minted. On a live chain the accounts are funded
+    // already and the shared adapter carries its own yield buffer.
+    if (!EXISTING_USDC) {
+      for (const who of [buyer.address, adapter]) {
+        const h = await wallet(merchant).writeContract({
+          address: usdc, abi: usdcAbi, functionName: "mint", args: [who, 1_000_000_000n],
+        });
+        await publicClient.waitForTransactionReceipt({ hash: h });
+      }
     }
     const approve = await wallet(buyer).writeContract({
       address: usdc, abi: usdcAbi, functionName: "approve", args: [escrow, 2n ** 255n],
     });
     await publicClient.waitForTransactionReceipt({ hash: approve });
 
+    log(`  chain       ${CHAIN_ID}${LIVE ? " (live)" : " (anvil)"}`);
     log(`  escrow      ${escrow}`);
+    log(`  registry    ${registry}${EXISTING_REGISTRY ? " (existing)" : ""}`);
+    log(`  adapter     ${adapter}${EXISTING_ADAPTER ? " (existing)" : ""}`);
     log(`  policy      ${policyId}, ladder of 8 rules, default 5000 bps`);
     log(`  attestor    ${attestor.address} (not the merchant, enforced on chain)`);
 
@@ -238,7 +296,7 @@ suite("agent buys from agent", () => {
     const address = server.address();
     origin = `http://127.0.0.1:${typeof address === "object" && address ? address.port : 0}`;
     log(`  seller      ${origin}`);
-  }, 120_000);
+  }, 600_000);
 
   afterAll(() => {
     server?.close();
@@ -288,6 +346,17 @@ suite("agent buys from agent", () => {
     return { paymentId, recorder };
   }
 
+  // No cheating on a live chain: the window is waited out rather than warped past.
+  async function advancePast(seconds: number) {
+    if (!LIVE) {
+      await publicClient.request({ method: "evm_increaseTime" as never, params: [seconds] as never });
+      await publicClient.request({ method: "evm_mine" as never, params: [] as never });
+      return;
+    }
+    log(`  waiting     ${seconds}s for the dispute window to close`);
+    await new Promise((r) => setTimeout(r, seconds * 1000));
+  }
+
   it("pays for a service that works, and the service keeps the money", async () => {
     log("\n=== scenario A: the service delivers ===");
     succeedEvery = 1;
@@ -302,8 +371,7 @@ suite("agent buys from agent", () => {
     expect(severity(recorder.failed, recorder.length)).toBe(SlaOutcome.Clean);
 
     // The buyer does nothing. Doing nothing is what paying looks like.
-    await publicClient.request({ method: "evm_increaseTime" as never, params: [DISPUTE_WINDOW + 60] as never });
-    await publicClient.request({ method: "evm_mine" as never, params: [] as never });
+    await advancePast(DISPUTE_WINDOW + 15);
 
     const hash = await wallet(buyer).writeContract({
       address: escrow, abi: escrowAbi, functionName: "release", args: [paymentId],
@@ -315,7 +383,7 @@ suite("agent buys from agent", () => {
     });
     log(`  released    merchant +${usd(merchantAfter - merchantBefore)}`);
     expect(merchantAfter - merchantBefore).toBeGreaterThanOrEqual(BUDGET);
-  }, 120_000);
+  }, 600_000);
 
   it("refunds a session the service mostly failed, with no human involved", async () => {
     log("\n=== scenario B: the service breaks its SLA ===");
@@ -382,11 +450,22 @@ suite("agent buys from agent", () => {
     });
     const net = buyerAfter - buyerBefore;
 
+    const principal = -(BUDGET / 2n);
     log(`  resolved    verdict ${settled.verdictBps} bps, buyer net ${usd(net)} on a ${usd(BUDGET)} budget`);
+    if (LIVE) log(`              of which ${usd(principal - net)} is gas, because gas on Arc is USDC`);
     log(`  no human was involved at any point\n`);
 
     expect(settled.status).toBe(EscrowStatus.Settled);
     expect(settled.verdictBps).toBe(5000); // SEVERE rung of the published ladder
-    expect(net).toBe(-(BUDGET / 2n));
-  }, 120_000);
+
+    if (!LIVE) {
+      expect(net).toBe(principal);
+    } else {
+      // On Arc the gas token is USDC itself, so the buyer's balance also carries
+      // what it spent on pay, fileDispute and resolve. The refund is exact; the
+      // wallet delta cannot be, so it is bounded rather than pinned.
+      expect(net).toBeLessThanOrEqual(principal);
+      expect(net).toBeGreaterThan(principal - 50_000n); // 0.05 USDC of gas headroom
+    }
+  }, 600_000);
 });

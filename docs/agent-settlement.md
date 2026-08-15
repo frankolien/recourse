@@ -528,15 +528,34 @@ All five are built. What each one landed:
 
 Each step is demonstrable alone, and none of them touches Arc.
 
-## 7a. What deployment still needs
+## 7a. Deployment
 
-The escrow changes are a redeploy, not an upgrade, and it has not happened.
-`deployments/arc-testnet.json`, the backend indexer and the mobile app all point
-at the current escrow, and payments already open there stay with it. The registry
-is untouched by C1 to C3, so policies and their hashes survive a cutover.
+Running on Arc testnet since August 15, 2026, as a **second escrow** rather than a
+cutover: `deployments/arc-testnet-agent.json`. The app's escrow in
+`arc-testnet.json` is untouched, so the payments open there, the indexer and the
+iOS build all keep working. The registry and yield adapter are shared, which is
+safe because policies are immutable once registered and adapter shares are tracked
+per holder.
 
-When to cut over is a product call rather than a technical one, and nothing above
-depends on it.
+That sidesteps the migration question entirely. Nothing has to move, and a cutover
+becomes a later choice rather than a prerequisite.
+
+Verified end to end on chain with `ops/agent-demo-arc.sh`: payment 5 released to
+the merchant after a real 90 second window, payment 6 attested SEVERE on 15 of 20
+failed calls and resolved at 5000 bps.
+
+Three Arc specific things that only appeared on the live chain, all now handled in
+the demo:
+
+- **The token blacklist.** Arc USDC is a Circle FiatToken and anvil's account #1 is
+  blacklisted on it. A blocked account reverts with `Blocked address` inside
+  whatever call touched it, which reads as a contract bug, so the demo preflights
+  `isBlacklisted` on every account.
+- **Log range caps.** drpc's free plan rejects `eth_getLogs` over 10000 blocks, so
+  recovering `orderRef` needs a bounded lookback rather than `fromBlock: 0`.
+- **Gas is the asset.** A buyer's USDC balance after a refund also carries what it
+  spent transacting, so a wallet delta cannot be asserted exactly on Arc the way it
+  can on anvil. Assert the on chain verdict and bound the delta.
 
 ## 8. Open questions
 

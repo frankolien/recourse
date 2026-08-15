@@ -1,0 +1,21 @@
+{
+  "network": "arc-testnet",
+  "chainId": 5042002,
+  "note": "Second escrow, for agent settlement only. Deliberately separate from arc-testnet.json: that escrow holds live payments and is what the iOS app and the indexer point at, so this one adds the agent path without a cutover. The registry and yield adapter are shared, which is safe because policies are immutable and adapter shares are tracked per holder.",
+  "escrow": "0xfbef7709e78ef704735f197b4b1ccab9a6ed9055",
+  "policyRegistry": "0x94f8551fbE43aB919D87c3951394b148c914430E",
+  "yieldAdapter": "0x2336AaBE139b7F426aF63f713b9f93CD3FFC6204",
+  "usdc": "0x3600000000000000000000000000000000000000",
+  "agentPolicyId": 9,
+  "policyAttestor": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+  "merchant": "0xD6c574461d96Ee708f58Fe553049aD4f48BB983A",
+  "disputeWindow": 90,
+  "resolveDelay": 60,
+  "yieldFeeBps": 1000,
+  "verified": {
+    "date": "2026-08-15",
+    "payment5": "clean session, released to the merchant after the window closed",
+    "payment6": "15 of 20 calls failed, attested SEVERE, resolved at 5000 bps",
+    "runner": "ops/agent-demo-arc.sh"
+  }
+}
