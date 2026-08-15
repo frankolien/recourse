@@ -10,6 +10,7 @@ import {Policy, VerdictInput, Verdict} from "./Types.sol";
 import {PolicyEngine} from "./PolicyEngine.sol";
 import {PolicyRegistry} from "./PolicyRegistry.sol";
 import {IYieldAdapter} from "./interfaces/IYieldAdapter.sol";
+import {IERC3009} from "./interfaces/IERC3009.sol";
 
 // Per-payment escrow pinned to an immutable policy. Principal sweeps into the yield
 // adapter on pay and is redeemed at settlement. Disputes resolve deterministically
@@ -52,9 +53,15 @@ contract RecourseEscrow is Ownable, ReentrancyGuard {
     PolicyRegistry public immutable registry;
     IYieldAdapter public immutable adapter;
 
-    address public attestor; // signs delivery attestations
+    address public attestor; // default attestor, used by policies that name none
     address public treasury; // collects the yield fee
     address public vault; // the trusted settlement vault permitted to take assignment
+
+    // Per-policy attestor, set once by that policy's merchant. Agent services each
+    // name their own, and the escrow rather than the registry holds it so the
+    // Policy struct (and therefore policyHash) is untouched: the mobile app, the
+    // indexer and the golden vectors all decode Policy positionally.
+    mapping(uint256 => address) public policyAttestor;
     uint16 public immutable yieldFeeBps; // protocol cut of yield at settlement
     uint64 public immutable resolveDelay; // min wait before resolving an un-attested dispute
 
@@ -83,6 +90,7 @@ contract RecourseEscrow is Ownable, ReentrancyGuard {
     );
     event Released(uint256 indexed paymentId, uint128 principal, uint128 paidToBeneficiary);
     event Assigned(uint256 indexed paymentId, address indexed newBeneficiary);
+    event PolicyAttestorSet(uint256 indexed policyId, address indexed attestor);
 
     error BadPolicy();
     error NotBuyer();
@@ -95,6 +103,10 @@ contract RecourseEscrow is Ownable, ReentrancyGuard {
     error BadAttestor();
     error OnlyVault();
     error ClaimClosed();
+    error NotPolicyMerchant();
+    error AttestorIsMerchant();
+    error AttestorAlreadySet();
+    error BadNonce();
 
     constructor(
         IERC20 _usdc,
@@ -129,18 +141,89 @@ contract RecourseEscrow is Ownable, ReentrancyGuard {
         vault = v;
     }
 
+    // Named once by the policy's merchant and never changed, so a buyer that reads
+    // it before paying knows it cannot move underneath the payment.
+    //
+    // The merchant is refused as its own attestor deliberately. A merchant that can
+    // attest against its own dispute defeats the engine at will: whichever way
+    // defaultRefundBps is set, either it signs the outcome it prefers or it stays
+    // silent for the same effect. No choice of default repairs that, so separation
+    // is a precondition rather than a recommendation.
+    function setPolicyAttestor(uint256 policyId, address a) external {
+        Policy memory p = registry.getPolicy(policyId);
+        if (msg.sender != p.merchant) revert NotPolicyMerchant();
+        if (a == address(0) || a == p.merchant) revert AttestorIsMerchant();
+        if (policyAttestor[policyId] != address(0)) revert AttestorAlreadySet();
+
+        policyAttestor[policyId] = a;
+        emit PolicyAttestorSet(policyId, a);
+    }
+
+    function attestorFor(uint256 policyId) public view returns (address) {
+        address a = policyAttestor[policyId];
+        return a == address(0) ? attestor : a;
+    }
+
+    // One value pinning the entire agreement: the rules through policyHash, and who
+    // may attest against them. Quoted to a buyer in place of policyHash alone, which
+    // covers the rules but not the attestor.
+    function agreementHash(uint256 policyId) external view returns (bytes32) {
+        return keccak256(abi.encode(registry.policyHash(policyId), attestorFor(policyId)));
+    }
+
     function pay(uint256 policyId, uint128 amount, bytes32 orderRef) external nonReentrant returns (uint256 paymentId) {
+        usdc.safeTransferFrom(msg.sender, address(this), amount);
+        paymentId = _openPayment(msg.sender, policyId, amount, orderRef);
+    }
+
+    // Payment by EIP-3009 authorization, so an agent with no native balance can be
+    // submitted by a relayer without that relayer becoming the buyer. Recording
+    // msg.sender as the buyer here would leave the real payer unable to dispute or
+    // be refunded, which is why this exists rather than reusing pay().
+    //
+    // The nonce is not free: it commits to the policy and the order, so an
+    // authorization lifted from the mempool cannot be redirected at a different
+    // policy. EIP-3009 then blocks reuse of that nonce on the token itself.
+    function payWithAuthorization(
+        uint256 policyId,
+        uint128 amount,
+        bytes32 orderRef,
+        address from,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes32 nonce,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external nonReentrant returns (uint256 paymentId) {
+        if (nonce != authorizationNonce(policyId, orderRef, from)) revert BadNonce();
+
+        IERC3009(address(usdc)).receiveWithAuthorization(
+            from, address(this), amount, validAfter, validBefore, nonce, v, r, s
+        );
+        paymentId = _openPayment(from, policyId, amount, orderRef);
+    }
+
+    function authorizationNonce(uint256 policyId, bytes32 orderRef, address from) public pure returns (bytes32) {
+        return keccak256(abi.encode(policyId, orderRef, from));
+    }
+
+    // Shared tail of both entry points. Assumes `amount` has already landed in this
+    // contract; the caller decides how it got here.
+    function _openPayment(address buyer, uint256 policyId, uint128 amount, bytes32 orderRef)
+        private
+        returns (uint256 paymentId)
+    {
         require(amount > 0, "zero amount");
         Policy memory p = registry.getPolicy(policyId);
         if (p.merchant == address(0)) revert BadPolicy();
 
-        usdc.safeTransferFrom(msg.sender, address(this), amount);
         usdc.forceApprove(address(adapter), amount);
         uint256 shares = adapter.deposit(amount);
 
         paymentId = ++paymentCount;
         Payment storage pmt = _payments[paymentId];
-        pmt.buyer = msg.sender;
+        pmt.buyer = buyer;
         pmt.merchant = p.merchant;
         pmt.beneficiary = p.merchant;
         pmt.policyId = policyId;
@@ -149,7 +232,7 @@ contract RecourseEscrow is Ownable, ReentrancyGuard {
         pmt.paidAt = uint64(block.timestamp);
         pmt.status = Status.Paid;
 
-        emit Paid(paymentId, msg.sender, p.merchant, policyId, amount, orderRef, registry.policyHash(policyId));
+        emit Paid(paymentId, buyer, p.merchant, policyId, amount, orderRef, registry.policyHash(policyId));
     }
 
     function fileDispute(uint256 paymentId, uint8 claimType, EvidenceItem[] calldata evidence) external {
@@ -185,7 +268,7 @@ contract RecourseEscrow is Ownable, ReentrancyGuard {
 
         bytes32 digest = attestationDigest(paymentId, attType, value, deadline);
         address signer = _recover(digest, sig);
-        if (signer == address(0) || signer != attestor) revert BadAttestor();
+        if (signer == address(0) || signer != attestorFor(pmt.policyId)) revert BadAttestor();
 
         pmt.attType = attType;
         pmt.attValue = value;

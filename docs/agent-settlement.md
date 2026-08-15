@@ -30,11 +30,21 @@ settlement, and anything needing counterparty liquidity.
 | EIP-3009 | `transferWithAuthorization`, `receiveWithAuthorization`, `cancelAuthorization`, `authorizationState` all present | selector grep of implementation bytecode |
 | EIP-2612 | `permit` present | same |
 | Token domain | `name "USDC"`, `version "2"` | eth_call |
+| Transfers | delegated to a precompile at `0x1800...0000`, 18 decimals | fork trace |
 | Escrow | `0x61Fd9978...`, `resolveDelay` 60s, `yieldFeeBps` 1000 | eth_call |
 
 The EIP-3009 result is load bearing. It means the standard x402 `exact` scheme
 works on Arc unmodified, and it gives us a way to pay into escrow gaslessly. Both
 were open questions before this was checked.
+
+The precompile result constrains how any of this can be verified. Arc USDC keeps
+balances and transfers in a chain level module rather than in token bytecode, so
+no local fork can execute a transfer: `forge --fork-url` and anvil both fail with
+`StackUnderflow` inside the precompile, and `vm.deal` cannot find the balance slot
+behind the proxy. R13's anvil dry run therefore cannot cover Arc value movement.
+What a fork does still settle is the half that fails silently in production, the
+EIP-712 domain a payer signs under, which `ArcForkAgent.t.sol` reconstructs and
+matches against the deployed token.
 
 **x402, from `coinbase/x402` specs, v2.**
 
@@ -341,8 +351,13 @@ Numbered so tests can cite them.
   `orderRef` committed inside its nonce, where
   `nonce == keccak256(abi.encode(policyId, orderRef, salt))`. The contract
   recomputes and rejects a mismatch.
-- **I8 Attestor separation (new).** `attestor != merchant` for every policy,
-  checked at registration.
+- **I8 Attestor separation (new).** A policy's attestor is never its merchant nor
+  the zero address, checked in `setPolicyAttestor`, and is immutable once set so a
+  buyer's pre-payment check cannot be invalidated afterwards.
+- **I9 Agreement pinning (new).** `agreementHash(policyId)` is a pure function of
+  `policyHash(policyId)` and `attestorFor(policyId)`, both immutable after
+  registration, so the value a buyer quotes before paying still describes the
+  agreement at settlement.
 
 ### 5.3 Safety and liveness
 
@@ -379,31 +394,68 @@ cryptographic, and both are stated so they are chosen rather than discovered.
 
 ### 5.5 Verification strategy
 
-- I1, I2, I3, S1, S3 as Foundry invariant tests with a bounded actor set. These
-  are properties over sequences, so a handler based invariant suite is the right
-  tool, not unit tests.
+- I1, I2, I3 as Foundry invariant tests over random action sequences
+  (`EscrowInvariants.t.sol`, 32k calls each). These are properties over sequences,
+  so a handler based suite is the right tool, not unit tests. Every handler action
+  swallows its reverts, which means the invariants could pass on an empty run, so
+  `afterInvariant` asserts the campaign actually reached paid, disputed, attested
+  and settled states.
 - I5 by extending `packages/vectors/verdicts.json` with the new claim types and
   keeping both suites green in the same commit, which is the discipline already
   written into `Types.sol` and `PolicyEngine.sol`.
-- I6, I7, I8 as unit tests with negative cases: wrong signer, mutated nonce,
-  merchant as attestor, replayed authorization.
+- I6, I7, I8, I9 as unit tests with negative cases (`AgentEscrow.t.sol`): wrong
+  signer, the global attestor after a policy names its own, an authorization
+  redirected at another policy or another order, a replayed authorization, the
+  merchant as its own attestor, and a second `setPolicyAttestor`.
 - A4 by differential test: the TypeScript SDK and a Solidity harness must derive
-  the same `root` from the same log.
+  the same `root` from the same log, both asserting against
+  `packages/vectors/session-roots.json`.
+
+A green suite is not evidence on its own, so each layer was mutation tested: the
+fold order and the packed `evType` width in A4, and a settlement that strands the
+beneficiary residual here. Both were caught by the specific assertion meant to
+catch them. One mutation that was not caught, a widened integer inside
+`abi.encode`, turned out to be genuinely harmless because that encoding pads to 32
+bytes, and the comment claiming otherwise was wrong and has been corrected.
 
 ## 6. Contract changes
 
 Three, all small.
 
-**C1. Per policy attestor.** `Policy` gains `address attestor`. This puts it
-inside `policyHash`, so one hash still pins the entire agreement, which is the
-product's core promise. Cost: `Types.sol` field order is load bearing, so the
-`policyHash` encoding, `engine/src/hash.ts`, and `packages/vectors/*.json` all
-change together in one commit. `submitAttestation` compares against the policy's
-attestor, falling back to the global one when unset.
+**C1. Per policy attestor.** Built on the escrow rather than in `Policy`, which
+reverses what this document recommended before the cost was measured.
 
-**C2. Attestor separation (I8).** In `registerPolicy`, revert when
-`attestor == msg.sender`. One line, and it closes T1 structurally rather than by
-convention.
+The original plan added `address attestor` to `Policy` so `policyHash` would
+cover it. Surveying the call sites first showed what that actually breaks:
+`backend/src/services/chain.rs` declares the `Policy` struct positionally inside a
+`sol!` macro, `ArcContractReader.swift` hard checks `tuple.count == 4`, and every
+one of the 28 golden vectors carries a policy. It also forces a `PolicyRegistry`
+redeploy, which orphans the policies and payments already live on testnet,
+including the one sitting in the settlement vault, and breaks the shipped iOS
+build against the current addresses.
+
+The escrow already had to be redeployed for C3, so putting the attestor there
+costs one contract instead of two and leaves `Policy` untouched:
+
+- `mapping(uint256 => address) public policyAttestor`, set once by that policy's
+  merchant and immutable after, so a buyer that checked before paying cannot have
+  it swapped underneath the payment.
+- `attestorFor(policyId)` falls back to the global attestor while unset, which is
+  what keeps every existing parcel policy working unchanged.
+- `agreementHash(policyId) = keccak256(policyHash, attestorFor(policyId))` is the
+  single value that pins the whole agreement. Quote this to a buyer rather than
+  `policyHash`, which covers the rules but not who may attest against them.
+
+What this gives up: `policyHash` alone no longer determines the attestor, so an
+offline verifier reconstructing an agreement needs `agreementHash`. That is a
+naming change, not a weaker guarantee, because both values come from the same
+immutable on chain state and neither can move after registration.
+
+**C2. Attestor separation (I8).** `setPolicyAttestor` reverts when the attestor is
+the policy's merchant or the zero address. It closes T1 structurally rather than
+by convention: a merchant that can attest against its own dispute defeats the
+engine whichever way `defaultRefundBps` points, because it either signs the
+outcome it prefers or stays silent for the same effect.
 
 **C3. `payWithAuthorization` (I7).** A new entry point so a facilitator can
 submit on the buyer's behalf without becoming the buyer:
