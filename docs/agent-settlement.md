@@ -93,9 +93,11 @@ still parses the payment and simply does not get protection.
     "recourse/v1": {
       "info": {
         "policyId":      "42",
-        "policyHash":    "0x...",          // pins the whole agreement
+        "policyHash":    "0x...",          // the rules
+        "agreementHash": "0x...",          // the rules and the attestor, see C1
         "merchant":      "0x...",
         "attestor":      "0x...",
+        "escrow":        "0x...",
         "disputeWindow": 3600,
         "engineVersion": "1"
       },
@@ -108,6 +110,27 @@ still parses the payment and simply does not get protection.
 `payTo` is the escrow, not the merchant. A client that ignores the extension
 still pays correctly and simply forfeits the ability to dispute, which is the
 right failure mode: degraded, not broken.
+
+The extension is advertised by the server and echoed back by the client. The spec
+lets a client append to `info` but never delete or overwrite what the server sent,
+and both halves of that are enforced: `echoExtensions` merges additions underneath
+the received values, and `assertExtensionsEchoed` rejects a payment whose echo
+dropped or altered a term. A buyer that quietly rewrote `disputeWindow` is claiming
+to have agreed to something that was never offered.
+
+The scheme payload carries one of two modes. `settled` presents a `paymentId` the
+buyer already opened itself, which is natural on Arc because USDC is the gas token
+and an agent holding USDC needs no relayer. `authorization` carries an EIP-3009
+signature for the server or a facilitator to submit through `payWithAuthorization`.
+Verification of the second mode can only go as far as checking the nonce binding,
+the recipient, the amount and the expiry, because the payment has not happened yet;
+the gateway returns `settle` rather than `ok` so the caller decides whether to relay
+it.
+
+Binding a payment to a session needs no extra state. The escrow does not store
+`orderRef`, but `paymentId` is indexed on the `Paid` event, so the seller recovers
+it from logs and checks it against the presented `sessionId`. Without that check one
+payment would buy unlimited sessions from the same merchant.
 
 ## 3. Architecture
 

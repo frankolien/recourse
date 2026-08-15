@@ -227,6 +227,19 @@ contract AgentEscrowTest is Test {
         assertEq(usdc.balanceOf(relayer), 0);
     }
 
+    // Pinned against the TypeScript client's authorizationNonce for the same inputs.
+    // The buyer derives this off chain and the escrow recomputes it, so a divergence
+    // between the two is invisible in either suite alone and rejects every relayed
+    // payment with BadNonce.
+    function test_authorizationNonceMatchesTheClientDerivation() public view {
+        assertEq(
+            escrow.authorizationNonce(
+                42, 0x5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e, address(0xB1)
+            ),
+            0xc0add9bcb03087e86c24fe2da04f94753ef5485be83c6244cee0c7ccb6451c5a
+        );
+    }
+
     function test_authorizationCannotBeRedirectedToAnotherPolicy() public {
         vm.prank(merchant);
         uint256 otherPolicy = registry.registerPolicy(WINDOW, 0, _ladder(), "ipfs://other");

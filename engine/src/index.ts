@@ -35,6 +35,7 @@ export {
   type SlaSeverity,
   type AgentPolicyOptions,
 } from "./agent";
+export * from "./x402";
 export {
   callHash,
   callLogRoot,
