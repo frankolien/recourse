@@ -28,6 +28,8 @@ import { privateKeyToAccount } from "viem/accounts";
 import { agentServicePolicy, severity } from "../src/agent";
 import { SessionRecorder } from "../src/session";
 import { reviewSession } from "../src/attestor";
+import { sweepOnce } from "../src/attestor-daemon";
+import type { AttestorChain, AttestorDeps } from "../src/attestor-daemon";
 import { AgentClaimType, AgentEvidence, ATT_SLA_OUTCOME, SlaOutcome } from "../src/types";
 import {
   buildPaymentHeader,
@@ -458,18 +460,59 @@ suite("agent buys from agent", () => {
     log(`  attestor    fetched log, root matches chain, derives ${review.failed}/${review.total} -> severity ${independent}`);
     log(`              a tampered copy of the same log is refused`);
 
-    const deadline = BigInt(Math.floor(Date.now() / 1000) + 86_400);
-    const digest = await publicClient.readContract({
-      address: escrow, abi: escrowAbi, functionName: "attestationDigest",
-      args: [paymentId, ATT_SLA_OUTCOME, independent, deadline],
-    });
-    const signature = await attestor.sign({ hash: digest });
+    // Signed and submitted by the daemon rather than inline, so what runs here is
+    // the same code path a standalone attestor process takes: read the dispute off
+    // chain, fetch the published log, review it, sign, submit.
+    const attestorChain: AttestorChain = {
+      recentDisputes: async () => [paymentId],
+      async getPayment(id) {
+        const p = await publicClient.readContract({
+          address: escrow, abi: escrowAbi, functionName: "getPayment", args: [id],
+        });
+        return p.status === 0 ? null : {
+          paymentId: id, policyId: p.policyId, evidenceRoot: p.evidenceRoot,
+          claimType: p.claimType, attType: p.attType, status: p.status,
+        };
+      },
+      orderRef: async (id) => (await reader.getOrderRef(id)) as Hex,
+      attestorFor: (id) =>
+        publicClient.readContract({ address: escrow, abi: escrowAbi, functionName: "attestorFor", args: [id] }),
+      attestationDigest: (id, attType, value, deadline) =>
+        publicClient.readContract({
+          address: escrow, abi: escrowAbi, functionName: "attestationDigest",
+          args: [id, attType, value, deadline],
+        }),
+      async submitAttestation(id, attType, value, deadline, signature) {
+        const h = await wallet(attestor).writeContract({
+          address: escrow, abi: escrowAbi, functionName: "submitAttestation",
+          args: [id, attType, value, deadline, signature],
+        });
+        await publicClient.waitForTransactionReceipt({ hash: h });
+        return h;
+      },
+    };
 
-    hash = await wallet(attestor).writeContract({
-      address: escrow, abi: escrowAbi, functionName: "submitAttestation",
-      args: [paymentId, ATT_SLA_OUTCOME, independent, deadline, signature],
-    });
-    await publicClient.waitForTransactionReceipt({ hash });
+    const attestorDeps: AttestorDeps = {
+      chain: attestorChain,
+      fetchSession: async (id) => (await fetch(`${evidenceOrigin}/session/${id}`)).json(),
+      sign: (digest) => attestor.sign({ hash: digest }),
+      self: attestor.address,
+      // Chain time. Scenario A warped this node forward, so the wall clock is
+      // behind block.timestamp and a deadline derived from it is already expired.
+      nowSeconds: async () => Number((await publicClient.getBlock()).timestamp),
+    };
+
+    const sweep = await sweepOnce(attestorDeps);
+    expect(sweep.skipped).toEqual([]);
+    expect(sweep.attested).toHaveLength(1);
+    expect(sweep.attested[0]!.attValue).toBe(independent);
+    log(`  daemon      swept 1 dispute and submitted the attestation`);
+
+    // Running again must change nothing: an attestation is one-shot on chain.
+    const again = await sweepOnce(attestorDeps);
+    expect(again.attested).toEqual([]);
+    expect(again.skipped[0]!.reason).toBe("already attested");
+    log(`              a second sweep correctly does nothing`);
 
     // Permissionless: the buyer settles its own dispute because anyone can.
     hash = await wallet(buyer).writeContract({

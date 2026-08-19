@@ -438,14 +438,39 @@ Numbered so tests can cite them.
 | T1 | Merchant | attests CLEAN over a genuine failure | **closed by I8**: the merchant cannot be the attestor |
 | T2 | Buyer | fabricates a failure log and disputes | **closed for a doctored publication**: a log that does not reproduce the filed `evidenceRoot` is refused outright. A buyer that filed an honest root cannot later publish a worse log. Residual: a buyer that recorded dishonestly from the start, which the merchant rebuts with its own log |
 | T3 | Facilitator | replays or redirects an authorization | **closed by I7** plus EIP-3009 nonces |
-| T4 | Attestor | offline during the dispute window | **residual**: falls through to `defaultRefundBps`. Managed by A3, not eliminated |
+| T4 | Attestor | offline during the dispute window | **residual, but now operable**: `engine/src/attestor-daemon.ts` runs the sweep, and `ops/attestor.sh` runs the daemon. Downtime still falls through to `defaultRefundBps`, which A3 manages rather than eliminates |
 | T5 | Yield adapter | returns less than principal | contained by S4, loss falls on the beneficiary |
 | T6 | Buyer | reuses one paymentId beyond the escrowed budget | metering is the seller's responsibility, step 7. Not enforced on chain |
 
 T4 and T6 are the two live residuals. Both are operational rather than
 cryptographic, and both are stated so they are chosen rather than discovered.
 
-### 5.5 Verification strategy
+#### 5.6 Running the attestor
+
+The review logic is a pure function, which is what makes it testable, but a pure
+function nobody calls attests to nothing: without a process watching for disputes,
+every one of them expires into `defaultRefundBps` and the severity ladder never
+fires. `engine/src/attestor-daemon.ts` is that process.
+
+Its behaviour is defined by what it refuses. It acts only when the policy names it
+(`attestorFor == self`), only on `Disputed`, and only once per payment because an
+attestation is one-shot on chain. It stays silent when the buyer has not published,
+and when the published log does not reproduce the filed root. Silence is a real
+outcome rather than a failure: the dispute then settles at the policy default,
+which is the right answer when nothing can be verified.
+
+It polls rather than subscribing to logs, because it has to survive restarts and
+missed blocks, and every check above makes a repeated sweep idempotent.
+
+One thing worth recording because it is invisible until it bites: **the deadline
+must come from chain time, not the daemon's clock.** The escrow validates an
+attestation against `block.timestamp`, so a deadline computed from `Date.now()`
+is already expired anywhere the two drift. This showed up on anvil, where the
+demo warps time forward, and reverted with `AttestationExpired`. A skewed node
+clock would do the same on a live chain.
+
+
+## 5.5 Verification strategy
 
 - I1, I2, I3 as Foundry invariant tests over random action sequences
   (`EscrowInvariants.t.sol`, 32k calls each). These are properties over sequences,
