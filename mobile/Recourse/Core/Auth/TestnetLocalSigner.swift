@@ -100,6 +100,32 @@ actor TestnetLocalSigner: BuyerSigner {
         }
     }
 
+    /// The escape hatch. Hands back the raw signing key so a wallet created here can
+    /// be moved somewhere else, or recovered if this app goes away.
+    ///
+    /// Deliberately not a BIP39 phrase. These keystores hold random keys rather than
+    /// keys derived from a seed, so encoding one as 24 words would produce something
+    /// that looks like a standard recovery phrase but resolves to a different address
+    /// in any other wallet: the importer treats a mnemonic as a seed and walks
+    /// m/44'/60'/0'/0/0 from it. Someone importing that phrase would see an empty
+    /// account and reasonably conclude their funds were gone. A private key imports
+    /// as exactly the account it came from.
+    ///
+    /// Gated behind the same authorizer as signing, because possession of this is
+    /// possession of the funds.
+    func exportPrivateKey() async throws -> Data {
+        try await authorizer.authorizeTransaction()
+        let (keystore, password) = try await loadCredentials()
+        guard let account = keystore.addresses?.first else {
+            throw BuyerSignerError.invalidAccount
+        }
+        do {
+            return try keystore.UNSAFE_getPrivateKeyData(password: password, account: account)
+        } catch {
+            throw BuyerSignerError.signingFailed
+        }
+    }
+
     func reset() async throws {
         try await store.delete(account: keystoreAccount)
         try await store.delete(account: passwordAccount)

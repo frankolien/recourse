@@ -83,9 +83,19 @@ struct SignInRecoveryView: View {
             }
 
             Section {
+                NavigationLink {
+                    WalletExportView(signer: signer)
+                } label: {
+                    Label("Export wallet", systemImage: "square.and.arrow.up")
+                }
+            } footer: {
+                Text("Take this wallet's signing key with you, into another wallet app or out of Recourse entirely.")
+            }
+
+            Section {
                 VStack(alignment: .leading, spacing: 10) {
                     recoveryPoint("person.badge.key.fill", "Account: sign in again with \(providerName) and everything server-side comes back.")
-                    recoveryPoint("iphone.gen3", "Wallet: the key is bound to this iPhone by design on testnet. Do not send funds here you cannot afford to lose with the phone.")
+                    recoveryPoint("iphone.gen3", "Wallet: the key lives in this device keychain. Export it from the screen above to keep a copy you control.")
                     recoveryPoint("shield.checkered", "Protected payments are recorded on chain, so their verdicts and refunds survive any device.")
                 }
                 .padding(.vertical, 4)

@@ -37,6 +37,24 @@ export {
 } from "./agent";
 export * from "./x402";
 export {
+  FXError,
+  DEFAULT_SLIPPAGE_BPS,
+  MAX_DEVIATION_BPS,
+  applySlippage,
+  deviationBps,
+  assertQuoteSane,
+  type FXVenue,
+  type Quote,
+  type QuoteRequest,
+} from "./fx";
+export {
+  UniswapV2Venue,
+  getAmountOut,
+  swapDeadline,
+  type RouterReader,
+  type UniswapV2VenueOptions,
+} from "./fx-uniswap-v2";
+export {
   reviewSession,
   parsePublishedSession,
   type PublishedSession,

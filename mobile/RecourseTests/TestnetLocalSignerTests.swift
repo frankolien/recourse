@@ -1,4 +1,5 @@
 import XCTest
+@preconcurrency import Web3Core
 @testable import Recourse
 
 final class TestnetLocalSignerTests: XCTestCase {
@@ -164,6 +165,41 @@ final class TestnetLocalSignerTests: XCTestCase {
         let loadsAfterSigning = await store.loadCount()
         XCTAssertEqual(loadsAfterSigning, loadsBeforeSigning)
     }
+
+    // An export nobody can import is worse than none: it reads as a backup while
+    // being useless. This proves the bytes handed out rebuild the same account.
+    func testExportedKeyRebuildsTheSameWallet() async throws {
+        let signer = TestnetLocalSigner(
+            store: InMemorySecureDataStore(),
+            authorizer: AllowingTransactionAuthorizer(),
+            scope: { "account-1" }
+        )
+
+        let address = try await signer.address()
+        let key = try await signer.exportPrivateKey()
+        XCTAssertEqual(key.count, 32)
+
+        let rebuilt = try XCTUnwrap(try EthereumKeystoreV3(privateKey: key, password: "test"))
+        let rebuiltAddress = try XCTUnwrap(rebuilt.addresses?.first)
+        XCTAssertEqual(rebuiltAddress.address.lowercased(), address.value.lowercased())
+    }
+
+    // Possession of this key is possession of the funds, so it sits behind the same
+    // gate as signing rather than being readable by anyone holding the phone.
+    func testExportRequiresDeviceOwnerAuthorization() async throws {
+        let signer = TestnetLocalSigner(
+            store: InMemorySecureDataStore(),
+            authorizer: DenyingTransactionAuthorizer(),
+            scope: { "account-1" }
+        )
+        do {
+            _ = try await signer.exportPrivateKey()
+            XCTFail("export should not succeed when the device owner check fails")
+        } catch {
+            XCTAssertNotNil(error)
+        }
+    }
+
 }
 
 private actor InMemorySecureDataStore: SecureDataStore {
