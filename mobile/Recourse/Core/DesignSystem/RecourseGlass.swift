@@ -48,6 +48,26 @@ extension View {
         modifier(RecourseGlassCapsule())
     }
 
+    /// A field or control that sits on the flat ground and still reads as tappable.
+    /// The in-app theme puts content directly on one black; the exception it makes is
+    /// for small interactive things, which is exactly what Liquid Glass is for, so on
+    /// iOS 26 they become glass and elsewhere they keep the chip fill.
+    func recourseGlassField(cornerRadius: CGFloat = 20) -> some View {
+        modifier(RecourseGlassField(cornerRadius: cornerRadius))
+    }
+
+    /// Groups nearby glass elements so they blend and separate as one system rather
+    /// than as unrelated panes. No effect before iOS 26, where there is no blending
+    /// to coordinate.
+    @ViewBuilder
+    func recourseGlassGroup(spacing: CGFloat = 14) -> some View {
+        if #available(iOS 26.0, *) {
+            GlassEffectContainer(spacing: spacing) { self }
+        } else {
+            self
+        }
+    }
+
     func recourseGlassBar() -> some View {
         modifier(RecourseGlassBar())
     }
@@ -89,6 +109,23 @@ private struct RecourseGlassBar: ViewModifier {
                     Capsule().stroke(.white.opacity(0.12), lineWidth: 0.8)
                 }
                 .shadow(color: .black.opacity(0.12), radius: 24, y: 10)
+        }
+    }
+}
+
+private struct RecourseGlassField: ViewModifier {
+    let cornerRadius: CGFloat
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.glassEffect(.regular.interactive(), in: .rect(cornerRadius: cornerRadius, style: .continuous))
+        } else {
+            content
+                .background(
+                    RecourseColor.nightChip,
+                    in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                )
         }
     }
 }

@@ -57,6 +57,10 @@ struct ArcContractGateway: ContractGateway {
         try await reader.fxAmountOut(amountIn: amountIn)
     }
 
+    func fxReserves() async throws -> FXReserves {
+        try await reader.fxReserves()
+    }
+
     func approveUSDC(amount: USDCAmount) async throws -> ChainHash {
         try await writer.approveUSDC(amount: amount)
     }

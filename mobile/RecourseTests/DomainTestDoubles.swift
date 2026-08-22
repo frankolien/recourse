@@ -122,6 +122,11 @@ actor FakeContractGateway: ContractGateway {
     var fxOut: BigUInt = 339_855
     func fxAmountOut(amountIn: USDCAmount) async throws -> BigUInt { fxOut }
 
+    // The pool this app actually seeded on Arc, so a caller that forgets to set it
+    // gets the real depth rather than an unrealistically deep one.
+    var fxPoolReserves = FXReserves(usdc: 23_072_357, eurc: 20_000_000)
+    func fxReserves() async throws -> FXReserves { fxPoolReserves }
+
     var vault = VaultState(
         totalAssets: USDCAmount(baseUnits: 11_251_250),
         totalShares: 7_998_750,

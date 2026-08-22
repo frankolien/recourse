@@ -22,6 +22,7 @@ actor ArcContractReader: ContractReading {
     private let escrow: EthereumContract
     private let vault: EthereumContract
     private let fxRouter: EthereumContract?
+    private let fxPair: EthereumContract?
 
     init(
         configuration: AppConfiguration,
@@ -57,8 +58,17 @@ actor ArcContractReader: ContractReading {
                 address: configuration.fxRouterAddress!,
                 name: ContractABI.fxRouter.rawValue
             )
+            // Bound to the router's address only so the contract can be built here;
+            // the pair address is not known until getPair is asked at call time, and
+            // every call below supplies it explicitly.
+            fxPair = try Self.makeContract(
+                abi: ContractABI.fxPair.load(from: bundle),
+                address: configuration.fxRouterAddress!,
+                name: ContractABI.fxPair.rawValue
+            )
         } else {
             fxRouter = nil
+            fxPair = nil
         }
     }
 
@@ -92,6 +102,52 @@ actor ArcContractReader: ContractReading {
         }
         return out
     }
+
+    /// The pool's reserves, USDC first.
+    ///
+    /// Quoting goes through the router so the number shown matches the number
+    /// filled, but a ceiling is a question about the pool's depth rather than about
+    /// one trade, and asking the router would mean a round trip per candidate size.
+    /// Two reads answer it once and the curve does the rest locally.
+    func fxReserves() async throws -> FXReserves {
+        guard let fxPair, let fxRouter,
+              let router = configuration.fxRouterAddress,
+              let eurc = configuration.eurcAddress else {
+            throw ContractReadError.unsupportedMethod("getReserves")
+        }
+
+        let usdc = try web3Address(configuration.usdcAddress)
+        let eurcAddress = try web3Address(eurc)
+        let pairResult = try await call(
+            contract: fxRouter,
+            address: router,
+            method: "getPair",
+            parameters: [usdc, eurcAddress]
+        )
+        let pair = try domainAddress(pairResult["0"], method: "getPair")
+        guard pair.value.lowercased() != Self.zeroAddress else {
+            throw ContractReadError.malformedResult(method: "getPair")
+        }
+
+        let reserves = try await call(
+            contract: fxPair,
+            address: pair,
+            method: "getReserves",
+            parameters: []
+        )
+        guard let reserve0 = reserves["0"] as? BigUInt, let reserve1 = reserves["1"] as? BigUInt else {
+            throw ContractReadError.malformedResult(method: "getReserves")
+        }
+
+        // The pair stores reserves in the token order the router sorted them into, so
+        // which one is USDC is a fact about the two addresses, not about the pool.
+        let usdcIsToken0 = configuration.usdcAddress.value.lowercased() < eurc.value.lowercased()
+        return usdcIsToken0
+            ? FXReserves(usdc: reserve0, eurc: reserve1)
+            : FXReserves(usdc: reserve1, eurc: reserve0)
+    }
+
+    private static let zeroAddress = "0x0000000000000000000000000000000000000000"
 
     func usdcBalance(of owner: EthereumAddress) async throws -> USDCAmount {
         let result = try await call(

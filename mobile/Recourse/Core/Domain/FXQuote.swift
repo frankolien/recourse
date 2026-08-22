@@ -17,6 +17,14 @@ struct FXQuote: Equatable, Sendable {
     let deviationBps: Int?
 }
 
+/// What the pool holds, named rather than positional: the two sides share six
+/// decimals on Arc, so a tuple would let them be swapped without any type error and
+/// the ceiling would come out inverted.
+struct FXReserves: Equatable, Sendable {
+    let usdc: BigUInt
+    let eurc: BigUInt
+}
+
 enum FXQuoteError: Error, Equatable, Sendable {
     case zeroAmount
     case noLiquidity
@@ -91,6 +99,78 @@ enum FX {
         if let deviation = quote.deviationBps, deviation > maxDeviationBps {
             throw FXQuoteError.offMarket(deviationBps: deviation)
         }
+    }
+
+    /// The largest input this pool can fill without tripping the deviation guard.
+    ///
+    /// Without it the refusal is a dead end: "try a smaller amount" makes someone
+    /// guess their way down from 18 USDC to 0.40, and nothing on the screen says how
+    /// far down. A thin pool is a fact about the venue, so state it rather than
+    /// making the user discover it a keystroke at a time.
+    ///
+    /// Solved from the curve rather than searched for, because near the boundary the
+    /// integer check is not monotone and there is nothing to search. Flooring makes
+    /// the paid output hold still for a unit and then jump, so the effective price
+    /// sawtooths and sizes alternate between passing and failing across a band a few
+    /// hundredths of a cent wide. A bisection lands somewhere arbitrary in that band.
+    ///
+    /// So take the exact real valued boundary instead:
+    ///
+    ///   price(x) = 997 Rout 10^dIn / ((1000 Rin + 997 x) 10^dOut)
+    ///
+    /// stays at or above the threshold while x is at or below (K - 1000 Rin) / 997,
+    /// where K = 997 Rout 10^dIn / (threshold 10^dOut). That lands just under the
+    /// band rather than inside it, which is the right side to be on for a number
+    /// offered to someone as a maximum.
+    ///
+    /// Returns zero when no size clears the guard, which is the honest answer for a
+    /// pool as far off market as Arc Swap's.
+    static func maxAmountIn(
+        reserveIn: BigUInt,
+        reserveOut: BigUInt,
+        decimalsIn: Int,
+        decimalsOut: Int,
+        referencePrice: Double,
+        maxDeviationBps: Int = FX.maxDeviationBps
+    ) -> BigUInt {
+        guard reserveIn > 0, reserveOut > 0, referencePrice > 0 else { return 0 }
+
+        let threshold = referencePrice * (1 - Double(maxDeviationBps) / 10_000)
+        guard threshold > 0 else { return 0 }
+
+        let scale = pow(10, Double(decimalsIn)) / pow(10, Double(decimalsOut))
+        let k = 997 * Double(reserveOut) * scale / threshold
+        let solved = (k - 1000 * Double(reserveIn)) / 997
+        guard solved.isFinite, solved >= 1 else { return 0 }
+
+        var candidate = BigUInt(UInt64(min(solved, Double(UInt64.max))))
+        if candidate > reserveIn { candidate = reserveIn }
+
+        // Exact in real arithmetic, so this normally holds first time. Halving rather
+        // than stepping keeps a pool that clears no size at all from looping.
+        while candidate > 0, !fills(candidate, reserveIn, reserveOut, decimalsIn, decimalsOut, referencePrice, maxDeviationBps) {
+            candidate /= 2
+        }
+        return candidate
+    }
+
+    /// Whether a size would survive `assertSane`, asked without building a quote.
+    private static func fills(
+        _ amountIn: BigUInt,
+        _ reserveIn: BigUInt,
+        _ reserveOut: BigUInt,
+        _ decimalsIn: Int,
+        _ decimalsOut: Int,
+        _ referencePrice: Double,
+        _ maxDeviationBps: Int
+    ) -> Bool {
+        guard amountIn > 0,
+              let out = try? amountOut(amountIn: amountIn, reserveIn: reserveIn, reserveOut: reserveOut),
+              out > 0 else { return false }
+        let humanIn = Double(amountIn) / pow(10, Double(decimalsIn))
+        let humanOut = Double(out) / pow(10, Double(decimalsOut))
+        guard humanIn > 0 else { return false }
+        return deviationBps(price: humanOut / humanIn, reference: referencePrice) <= maxDeviationBps
     }
 
     /// A swap must never be signed without one: an open ended order can sit unmined

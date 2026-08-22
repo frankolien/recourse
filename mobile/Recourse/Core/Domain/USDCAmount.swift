@@ -47,13 +47,18 @@ struct USDCAmount: Codable, Hashable, Sendable, Comparable {
         lhs.baseUnits < rhs.baseUnits
     }
 
-    var formatted: String {
+    /// The amount as a plain number, no unit. Separate from `formatted` because a
+    /// text field and a label want different things: writing "USDC" into the field
+    /// would make it unparseable on the next keystroke.
+    var decimalString: String {
         let whole = baseUnits / Self.base
         let fraction = baseUnits % Self.base
-        guard fraction > 0 else { return "\(whole) USDC" }
+        guard fraction > 0 else { return "\(whole)" }
 
         let fractionString = String(format: "%06llu", fraction)
             .replacingOccurrences(of: "0+$", with: "", options: .regularExpression)
-        return "\(whole).\(fractionString) USDC"
+        return "\(whole).\(fractionString)"
     }
+
+    var formatted: String { "\(decimalString) USDC" }
 }

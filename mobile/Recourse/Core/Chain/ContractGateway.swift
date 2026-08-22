@@ -49,6 +49,9 @@ protocol ContractReading: Sendable {
     /// Quoted through the router rather than derived from reserves, so the number
     /// shown and the number filled come from one curve, one fee, one rounding.
     func fxAmountOut(amountIn: USDCAmount) async throws -> BigUInt
+    /// What the pool holds. Read so the screen can state the largest amount it can
+    /// fill, instead of refusing sizes one at a time until the user finds it.
+    func fxReserves() async throws -> FXReserves
 }
 
 protocol ContractWriting: Sendable {
