@@ -21,6 +21,7 @@ actor ArcContractReader: ContractReading {
     private let policyRegistry: EthereumContract
     private let escrow: EthereumContract
     private let vault: EthereumContract
+    private let fxRouter: EthereumContract?
 
     init(
         configuration: AppConfiguration,
@@ -49,6 +50,16 @@ actor ArcContractReader: ContractReading {
             address: configuration.settlementVaultAddress,
             name: ContractABI.settlementVault.rawValue
         )
+        // Optional: a chain with no FX venue deployed simply has no Convert.
+        if configuration.fxRouterAddress != nil, configuration.eurcAddress != nil {
+            fxRouter = try Self.makeContract(
+                abi: ContractABI.fxRouter.load(from: bundle),
+                address: configuration.fxRouterAddress!,
+                name: ContractABI.fxRouter.rawValue
+            )
+        } else {
+            fxRouter = nil
+        }
     }
 
     static func live(configuration: AppConfiguration = .live) throws -> ArcContractReader {
@@ -56,6 +67,30 @@ actor ArcContractReader: ContractReading {
             configuration: configuration,
             transport: HTTPArcRPCTransport(rpcURL: configuration.rpcURL)
         )
+    }
+
+    func fxAmountOut(amountIn: USDCAmount) async throws -> BigUInt {
+        guard let fxRouter,
+              let router = configuration.fxRouterAddress,
+              let eurc = configuration.eurcAddress else {
+            throw ContractReadError.unsupportedMethod("getAmountsOut")
+        }
+
+        let path = [
+            try web3Address(configuration.usdcAddress),
+            try web3Address(eurc),
+        ]
+        let result = try await call(
+            contract: fxRouter,
+            address: router,
+            method: "getAmountsOut",
+            parameters: [BigUInt(amountIn.baseUnits), path]
+        )
+        // getAmountsOut returns one amount per hop; the last is what arrives.
+        guard let amounts = result["0"] as? [BigUInt], let out = amounts.last else {
+            throw ContractReadError.malformedResult(method: "getAmountsOut")
+        }
+        return out
     }
 
     func usdcBalance(of owner: EthereumAddress) async throws -> USDCAmount {

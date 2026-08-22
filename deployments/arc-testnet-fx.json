@@ -14,8 +14,9 @@
     "note": "Faucet capped at 20 EURC, so this is the largest pool those balances allow. The ratio deposited is the price the pool trades at."
   },
   "verified": {
-    "maxSaneTradeUsdc": "400000",
-    "note": "The wallet's 200 bps deviation guard passes up to 0.40 USDC and refuses 1.00 USDC at 444 bps. A live swap of 0.40 USDC filled at 339855 EURC, exactly the quoted amount.",
+    "maxSaneTradeUsdc": "398200",
+    "note": "The wallet's 200 bps guard passes up to about 0.398 USDC. A live swap of 0.40 USDC filled at 339855 EURC, exactly the quoted amount.",
+    "depthWarning": "23 USDC of depth is shallow enough that one trade moves the price out of tolerance: the 0.40 USDC verification swap shifted the pool from 0.867 to 0.835 EURC per USDC and the guard then refused every size until the trade was reversed. Selling the proceeds back restored it, minus 0.6% of fees which stay with the LP and permanently narrow the window by roughly half a percent per round trip. Convert is demonstrable, not durable, until the pool is deeper.",
     "runner": "ops/seed-pool.sh"
   }
 }

@@ -1,4 +1,5 @@
 import Foundation
+@preconcurrency import BigInt
 @testable import Recourse
 
 enum DomainFixture {
@@ -115,6 +116,11 @@ actor FakeContractGateway: ContractGateway {
     func previewVerdict(paymentID: UInt64) async throws -> VerdictPreview { verdict }
     func resolveDelay() async throws -> UInt64 { delay }
     func vaultState(of owner: EthereumAddress) async throws -> VaultState { vault }
+
+    // Priced off the live Arc pool by default so a caller that forgets to set it
+    // still gets a realistic number rather than zero.
+    var fxOut: BigUInt = 339_855
+    func fxAmountOut(amountIn: USDCAmount) async throws -> BigUInt { fxOut }
 
     var vault = VaultState(
         totalAssets: USDCAmount(baseUnits: 11_251_250),

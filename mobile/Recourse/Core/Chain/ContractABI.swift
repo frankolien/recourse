@@ -5,6 +5,7 @@ enum ContractABI: String, CaseIterable, Sendable {
     case policyRegistry = "PolicyRegistry.abi"
     case recourseEscrow = "RecourseEscrow.abi"
     case settlementVault = "SettlementVault.abi"
+    case fxRouter = "MiniRouter.abi"
 
     func load(from bundle: Bundle = .main) throws -> String {
         guard let url = bundle.url(forResource: rawValue, withExtension: "json") else {

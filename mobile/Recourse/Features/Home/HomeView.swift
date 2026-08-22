@@ -361,6 +361,13 @@ struct HomeView: View {
             actionTile("paperplane.fill", "Send") {
                 environment.router.push(.send)
             }
+            // Only where an FX venue is deployed. A chain without one has no
+            // Convert rather than one that fails when tapped.
+            if Deployment.fxRouter != nil {
+                actionTile("arrow.left.arrow.right", "Convert") {
+                    environment.router.push(.convert)
+                }
+            }
             actionTile("checkmark.seal.fill", "Verify") {
                 if let paymentID = settledPayments.first?.id ?? allPayments.first?.id {
                     environment.router.push(.verdict(paymentID))

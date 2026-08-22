@@ -14,7 +14,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "94F8BAFF41EB5F93C642C0ABB68CF358"
+               BlueprintIdentifier = "32313F6F1EAFA1E7C2B9456301F4F6BC"
                BuildableName = "Recourse.app"
                BlueprintName = "Recourse"
                ReferencedContainer = "container:Recourse.xcodeproj">
@@ -30,7 +30,7 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "94F8BAFF41EB5F93C642C0ABB68CF358"
+            BlueprintIdentifier = "32313F6F1EAFA1E7C2B9456301F4F6BC"
             BuildableName = "Recourse.app"
             BlueprintName = "Recourse"
             ReferencedContainer = "container:Recourse.xcodeproj">
@@ -41,7 +41,7 @@
             skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "8DEE439D14E3843E4B88FB7B411A36EA"
+               BlueprintIdentifier = "2CE38F81DB10992663D39BEEF858A653"
                BuildableName = "RecourseTests.xctest"
                BlueprintName = "RecourseTests"
                ReferencedContainer = "container:Recourse.xcodeproj">
@@ -63,7 +63,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "94F8BAFF41EB5F93C642C0ABB68CF358"
+            BlueprintIdentifier = "32313F6F1EAFA1E7C2B9456301F4F6BC"
             BuildableName = "Recourse.app"
             BlueprintName = "Recourse"
             ReferencedContainer = "container:Recourse.xcodeproj">
@@ -80,7 +80,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "94F8BAFF41EB5F93C642C0ABB68CF358"
+            BlueprintIdentifier = "32313F6F1EAFA1E7C2B9456301F4F6BC"
             BuildableName = "Recourse.app"
             BlueprintName = "Recourse"
             ReferencedContainer = "container:Recourse.xcodeproj">

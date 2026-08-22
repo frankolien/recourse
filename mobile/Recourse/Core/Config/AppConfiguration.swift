@@ -8,6 +8,10 @@ struct AppConfiguration: Sendable {
     let policyRegistryAddress: EthereumAddress
     let settlementVaultAddress: EthereumAddress
     let usdcAddress: EthereumAddress
+    // Both nil when no FX venue is deployed for this chain, which simply means the
+    // app has no Convert rather than a broken one.
+    let fxRouterAddress: EthereumAddress?
+    let eurcAddress: EthereumAddress?
     let apiURL: URL
     let merchantWebURL: URL
 
@@ -19,6 +23,8 @@ struct AppConfiguration: Sendable {
         policyRegistryAddress: EthereumAddress,
         settlementVaultAddress: EthereumAddress,
         usdcAddress: EthereumAddress,
+        fxRouterAddress: EthereumAddress? = nil,
+        eurcAddress: EthereumAddress? = nil,
         apiURL: URL = AppConfiguration.defaultAPIURL,
         merchantWebURL: URL = AppConfiguration.defaultMerchantWebURL
     ) {
@@ -29,6 +35,8 @@ struct AppConfiguration: Sendable {
         self.policyRegistryAddress = policyRegistryAddress
         self.settlementVaultAddress = settlementVaultAddress
         self.usdcAddress = usdcAddress
+        self.fxRouterAddress = fxRouterAddress
+        self.eurcAddress = eurcAddress
         self.apiURL = apiURL
         self.merchantWebURL = merchantWebURL
     }
@@ -41,6 +49,8 @@ struct AppConfiguration: Sendable {
         policyRegistryAddress: EthereumAddress(trusted: Deployment.policyRegistry),
         settlementVaultAddress: EthereumAddress(trusted: Deployment.settlementVault),
         usdcAddress: EthereumAddress(trusted: Deployment.usdc),
+        fxRouterAddress: Deployment.fxRouter.map { EthereumAddress(trusted: $0) },
+        eurcAddress: Deployment.eurc.map { EthereumAddress(trusted: $0) },
         apiURL: defaultAPIURL,
         merchantWebURL: defaultMerchantWebURL
     )

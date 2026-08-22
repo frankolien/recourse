@@ -1,4 +1,5 @@
 import Foundation
+@preconcurrency import BigInt
 
 struct ArcContractGateway: ContractGateway {
     private let reader: ArcContractReader
@@ -50,6 +51,10 @@ struct ArcContractGateway: ContractGateway {
 
     func vaultState(of owner: EthereumAddress) async throws -> VaultState {
         try await reader.vaultState(of: owner)
+    }
+
+    func fxAmountOut(amountIn: USDCAmount) async throws -> BigUInt {
+        try await reader.fxAmountOut(amountIn: amountIn)
     }
 
     func approveUSDC(amount: USDCAmount) async throws -> ChainHash {

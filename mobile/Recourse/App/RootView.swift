@@ -132,6 +132,10 @@ struct RootView: View {
             }
         case .send:
             SendMoneyView(environment: environment)
+        case .convert:
+            // Quoting is a read, so this needs no signer state from the
+            // environment. The default signer resolves the same scoped keystore.
+            ConvertView(reader: try? ArcContractGateway.live())
         case .earn:
             EarnView(environment: environment)
         case .account:

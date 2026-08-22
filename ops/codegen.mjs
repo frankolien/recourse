@@ -13,6 +13,15 @@ const d = JSON.parse(readFileSync(resolve(repoRoot, inputArg), "utf8"));
 const arcConfig = JSON.parse(
   readFileSync(resolve(repoRoot, "deployments/arc-config.json"), "utf8"),
 );
+// The FX venue is deployed separately from the escrow, so it has its own file and
+// is optional: a deployment without one simply has no Convert.
+let fx = null;
+try {
+  fx = JSON.parse(readFileSync(resolve(repoRoot, "deployments/arc-testnet-fx.json"), "utf8"));
+  if (fx.chainId !== arcConfig.chainId) throw new Error("FX deployment is on a different chain");
+} catch (error) {
+  if (error.code !== "ENOENT") throw error;
+}
 
 if (d.chainId !== arcConfig.chainId) {
   throw new Error("Deployment and Arc configuration chain IDs do not match");
@@ -54,6 +63,12 @@ enum Deployment {
     static let settlementVault = "${d.settlementVault}"
     static let attestor = "${d.attestor}"
     static let treasury = "${d.treasury}"
+${fx ? `
+    // FX venue, deployed separately. See deployments/arc-testnet-fx.json.
+    static let fxRouter: String? = "${fx.router}"
+    static let eurc: String? = "${fx.eurc}"` : `
+    static let fxRouter: String? = nil
+    static let eurc: String? = nil`}
 }
 `,
   },

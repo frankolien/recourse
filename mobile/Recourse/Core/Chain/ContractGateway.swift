@@ -1,4 +1,5 @@
 import Foundation
+@preconcurrency import BigInt
 
 struct ChainReceipt: Hashable, Sendable {
     enum Outcome: Hashable, Sendable {
@@ -44,6 +45,10 @@ protocol ContractReading: Sendable {
     func previewVerdict(paymentID: UInt64) async throws -> VerdictPreview
     func resolveDelay() async throws -> UInt64
     func vaultState(of owner: EthereumAddress) async throws -> VaultState
+    /// Output the FX venue would pay for `amountIn` of USDC, in EURC base units.
+    /// Quoted through the router rather than derived from reserves, so the number
+    /// shown and the number filled come from one curve, one fee, one rounding.
+    func fxAmountOut(amountIn: USDCAmount) async throws -> BigUInt
 }
 
 protocol ContractWriting: Sendable {
