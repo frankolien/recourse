@@ -53,6 +53,8 @@ web/assets/
 # Backend evidence blob store (user data, not committed)
 evidence-store/
 backend/evidence-store/
+# what ops/attestor-service.sh writes when run locally
+.evidence-store/
 
 # Backend order store: merchant order manifests and product images (user data)
 order-store/

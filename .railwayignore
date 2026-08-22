@@ -1,10 +1,11 @@
-# `railway up` builds only the backend via the repo-root Dockerfile (which copies backend/
-# and deployments/). Exclude everything else so the upload stays small.
+# `railway up` uploads this directory for whichever service is targeted. Two services
+# build from it: the backend via Dockerfile (backend/ plus deployments/) and the agent
+# attestor via Dockerfile.attestor (engine/ plus deployments/). Exclude everything
+# neither of them needs so the upload stays small.
 web
 mobile
 contracts
 docs
-engine
 ops
 **/node_modules
 **/target

@@ -1,0 +1,42 @@
+# Recourse agent attestor: the evidence host buyers publish to, and the daemon that
+# watches Arc for disputes against it. Testnet only (R7).
+#
+# Build context is the repo root so the image carries deployments/arc-testnet-agent.json,
+# from which the escrow address is read at runtime (R3, never hardcoded).
+#
+# Separate from the root Dockerfile on purpose: that image is the Rust indexer and read
+# API, and the two have no shared toolchain. They are different Railway services off the
+# same repo.
+
+# ---- Build stage ----
+FROM node:24-bookworm-slim AS builder
+WORKDIR /app/engine
+
+COPY engine/package.json engine/package-lock.json ./
+RUN npm ci
+
+COPY engine/src ./src
+COPY engine/scripts ./scripts
+# One self-contained module, viem bundled in. The runtime stage then carries no
+# node_modules at all, which is most of the image size.
+RUN npx esbuild scripts/attestor-service.ts \
+      --bundle --platform=node --format=esm \
+      --outfile=dist/attestor-service.mjs
+
+# ---- Runtime stage ----
+FROM node:24-bookworm-slim
+WORKDIR /app
+COPY --from=builder /app/engine/dist/attestor-service.mjs ./attestor-service.mjs
+# Contract addresses are read at runtime from the deployment file (R3).
+COPY deployments ./deployments
+
+# ATTESTOR_KEY and EVIDENCE_WRITE_TOKEN are set as service variables, never baked in.
+ENV ATTESTOR_DEPLOYMENT=/app/deployments/arc-testnet-agent.json \
+    ATTESTOR_RPC=https://arc-testnet.drpc.org \
+    EVIDENCE_DIR=/data/agent-evidence \
+    PORT=8080
+EXPOSE 8080
+
+# Stays root because EVIDENCE_DIR is a mounted volume and Railway mounts it root
+# owned; an unprivileged user cannot create the directory and the service crash loops.
+CMD ["node", "attestor-service.mjs"]

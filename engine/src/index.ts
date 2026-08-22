@@ -55,6 +55,17 @@ export {
   type UniswapV2VenueOptions,
 } from "./fx-uniswap-v2";
 export {
+  handleRequest,
+  publishSession,
+  canonicalPublication,
+  MemoryPublicationStore,
+  PublishError,
+  type PublicationStore,
+  type HostRequest,
+  type HostResponse,
+  type HostOptions,
+} from "./evidence-host";
+export {
   reviewSession,
   parsePublishedSession,
   type PublishedSession,

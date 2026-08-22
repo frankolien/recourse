@@ -1,4 +1,6 @@
-# Keep the build context small: only backend/ source and deployments/ are copied.
+# Keep the build context small. Two images build from this root: the backend
+# (backend/ plus deployments/) and the agent attestor (engine/src, engine/scripts
+# plus deployments/). Everything neither needs is excluded.
 **/target
 **/node_modules
 **/.next
@@ -8,7 +10,8 @@
 web
 ios
 docs
-engine
+engine/test
+engine/dist
 ops
 .git
 *.log

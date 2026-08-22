@@ -28,6 +28,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { agentServicePolicy, severity } from "../src/agent";
 import { SessionRecorder } from "../src/session";
 import { reviewSession } from "../src/attestor";
+import { publishSession } from "../src/evidence-host";
 import { sweepOnce } from "../src/attestor-daemon";
 import type { AttestorChain, AttestorDeps } from "../src/attestor-daemon";
 import { AgentClaimType, AgentEvidence, ATT_SLA_OUTCOME, SlaOutcome } from "../src/types";
@@ -68,6 +69,15 @@ const KEYS = {
   attestor: (process.env.DEMO_ATTESTOR_PK ??
     "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a") as Hex,
 } as const;
+
+// Publish to a deployed evidence host instead of an in-process one, and wait for
+// that deployment's daemon to attest rather than sweeping here. This is the only
+// way to demonstrate the thing that actually matters in production: that a dispute
+// is settled by a process nobody at the demo is running.
+const REMOTE_EVIDENCE = process.env.DEMO_EVIDENCE_URL?.replace(/\/$/, "");
+const REMOTE_TOKEN = process.env.DEMO_EVIDENCE_TOKEN;
+// How long to wait for that daemon to notice. Its poll interval plus a block.
+const REMOTE_TIMEOUT_MS = Number(process.env.DEMO_ATTEST_TIMEOUT_MS ?? 180_000);
 
 // Reuse an escrow and policy from an earlier run rather than deploying again.
 const EXISTING_ESCROW = process.env.DEMO_ESCROW as Address | undefined;
@@ -265,6 +275,7 @@ suite("agent buys from agent", () => {
 
     log(`  chain       ${CHAIN_ID}${LIVE ? " (live)" : " (anvil)"}`);
     log(`  escrow      ${escrow}`);
+    log(`  usdc        ${usdc}${EXISTING_USDC ? " (existing)" : ""}`);
     log(`  registry    ${registry}${EXISTING_REGISTRY ? " (existing)" : ""}`);
     log(`  adapter     ${adapter}${EXISTING_ADAPTER ? " (existing)" : ""}`);
     log(`  policy      ${policyId}, ladder of 8 rules, default 5000 bps`);
@@ -305,21 +316,36 @@ suite("agent buys from agent", () => {
     origin = `http://127.0.0.1:${typeof address === "object" && address ? address.port : 0}`;
     log(`  seller      ${origin}`);
 
-    evidenceServer = createServer((req, res) => {
-      const body = publishedSessions.get((req.url ?? "").replace("/session/", ""));
-      res.writeHead(body ? 200 : 404, { "content-type": "application/json" });
-      res.end(JSON.stringify(body ?? { error: "not published" }));
-    });
-    await new Promise<void>((resolve) => evidenceServer.listen(0, "127.0.0.1", resolve));
-    const evidenceAddress = evidenceServer.address();
-    evidenceOrigin = `http://127.0.0.1:${typeof evidenceAddress === "object" && evidenceAddress ? evidenceAddress.port : 0}`;
-    log(`  evidence    ${evidenceOrigin}`);
+    if (REMOTE_EVIDENCE) {
+      const health = await fetch(`${REMOTE_EVIDENCE}/health`);
+      if (!health.ok) throw new Error(`evidence host ${REMOTE_EVIDENCE} is not healthy`);
+      evidenceOrigin = REMOTE_EVIDENCE;
+      log(`  evidence    ${evidenceOrigin} (deployed, attests on its own)`);
+    } else {
+      evidenceServer = createServer((req, res) => {
+        const body = publishedSessions.get((req.url ?? "").replace("/session/", ""));
+        res.writeHead(body ? 200 : 404, { "content-type": "application/json" });
+        res.end(JSON.stringify(body ?? { error: "not published" }));
+      });
+      await new Promise<void>((resolve) => evidenceServer.listen(0, "127.0.0.1", resolve));
+      const evidenceAddress = evidenceServer.address();
+      evidenceOrigin = `http://127.0.0.1:${typeof evidenceAddress === "object" && evidenceAddress ? evidenceAddress.port : 0}`;
+      log(`  evidence    ${evidenceOrigin}`);
+    }
   }, 600_000);
 
   afterAll(() => {
     server?.close();
     evidenceServer?.close();
   });
+
+  // A deployed evidence host keeps publications immutable, so a rerun with a fixed
+  // session id would be refused as a rewrite of the previous run's log. Local runs
+  // keep the fixed ids because a fresh in-process host has nothing to collide with.
+  const sessionIdFor = (tag: string): Hex =>
+    REMOTE_EVIDENCE
+      ? keccak256(new TextEncoder().encode(`${tag}:${escrow}:${Date.now()}`))
+      : (`0x${tag.repeat(32)}` as Hex);
 
   // The buyer's side of A5 steps 1 to 8, shared by both scenarios.
   async function runSession(sessionId: Hex, calls: number) {
@@ -384,7 +410,7 @@ suite("agent buys from agent", () => {
       address: usdc, abi: usdcAbi, functionName: "balanceOf", args: [merchant.address],
     });
 
-    const { paymentId, recorder } = await runSession(`0x${"a1".repeat(32)}`, 5);
+    const { paymentId, recorder } = await runSession(sessionIdFor("a1"), 5);
     log(`  session     ${recorder.length} calls, ${recorder.failed} failed`);
     expect(recorder.failed).toBe(0);
     expect(severity(recorder.failed, recorder.length)).toBe(SlaOutcome.Clean);
@@ -414,7 +440,7 @@ suite("agent buys from agent", () => {
       address: usdc, abi: usdcAbi, functionName: "balanceOf", args: [buyer.address],
     });
 
-    const sessionId = `0x${"b2".repeat(32)}` as Hex;
+    const sessionId = sessionIdFor("b2");
     const { paymentId, recorder } = await runSession(sessionId, 20);
 
     const bucket = severity(recorder.failed, recorder.length);
@@ -434,7 +460,12 @@ suite("agent buys from agent", () => {
     await publicClient.waitForTransactionReceipt({ hash });
 
     // The buyer publishes its log so the dispute can be checked by anyone.
-    publishedSessions.set(sessionId, recorder.publish());
+    if (REMOTE_EVIDENCE) {
+      await publishSession(REMOTE_EVIDENCE, recorder.publish(), { token: REMOTE_TOKEN });
+      log(`  published   ${evidenceOrigin}/session/${sessionId}`);
+    } else {
+      publishedSessions.set(sessionId, recorder.publish());
+    }
 
     // From here the attestor has only two things: the URL, and the root already on
     // chain. It never touches `recorder`. Everything it signs it derived itself.
@@ -502,17 +533,35 @@ suite("agent buys from agent", () => {
       nowSeconds: async () => Number((await publicClient.getBlock()).timestamp),
     };
 
-    const sweep = await sweepOnce(attestorDeps);
-    expect(sweep.skipped).toEqual([]);
-    expect(sweep.attested).toHaveLength(1);
-    expect(sweep.attested[0]!.attValue).toBe(independent);
-    log(`  daemon      swept 1 dispute and submitted the attestation`);
+    if (REMOTE_EVIDENCE) {
+      // Nothing on this machine signs anything. The deployed daemon watches the same
+      // escrow, and all this run handed it was the published log; it found the
+      // dispute, refetched that log and derived the severity itself.
+      const started = Date.now();
+      let attested = onchain;
+      while (attested.attType === 0 && Date.now() - started < REMOTE_TIMEOUT_MS) {
+        await new Promise((resolve) => setTimeout(resolve, 5_000));
+        attested = await publicClient.readContract({
+          address: escrow, abi: escrowAbi, functionName: "getPayment", args: [paymentId],
+        });
+      }
+      const waited = Math.round((Date.now() - started) / 1000);
+      expect(attested.attType, `no attestation after ${waited}s`).toBe(ATT_SLA_OUTCOME);
+      expect(attested.attValue).toBe(independent);
+      log(`  daemon      ${REMOTE_EVIDENCE} attested severity ${attested.attValue} on its own, after ${waited}s`);
+    } else {
+      const sweep = await sweepOnce(attestorDeps);
+      expect(sweep.skipped).toEqual([]);
+      expect(sweep.attested).toHaveLength(1);
+      expect(sweep.attested[0]!.attValue).toBe(independent);
+      log(`  daemon      swept 1 dispute and submitted the attestation`);
 
-    // Running again must change nothing: an attestation is one-shot on chain.
-    const again = await sweepOnce(attestorDeps);
-    expect(again.attested).toEqual([]);
-    expect(again.skipped[0]!.reason).toBe("already attested");
-    log(`              a second sweep correctly does nothing`);
+      // Running again must change nothing: an attestation is one-shot on chain.
+      const again = await sweepOnce(attestorDeps);
+      expect(again.attested).toEqual([]);
+      expect(again.skipped[0]!.reason).toBe("already attested");
+      log(`              a second sweep correctly does nothing`);
+    }
 
     // Permissionless: the buyer settles its own dispute because anyone can.
     hash = await wallet(buyer).writeContract({
