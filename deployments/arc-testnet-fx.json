@@ -1,0 +1,21 @@
+{
+  "network": "arc-testnet",
+  "chainId": 5042002,
+  "note": "Testnet FX venue. Exists because Arc has nowhere honest to convert: the one DEX there holds under $600 and its USDC/EURC pool quotes 2.2x off the real rate. MiniRouter and MiniPair reimplement the UniswapV2 curve at Solidity 0.8, since Uniswap V2 itself is 0.5/0.6 and does not build in this repo. Testnet only. Mainnet points the FXVenue interface at a real venue and the app does not change.",
+  "router": "0x4a5eba7b9d01fe0b9ccdab968b51b78cfa9a4c3b",
+  "pair": "0xceFf43d8AA6d155edf564217d0b54cde082f8Ea8",
+  "usdc": "0x3600000000000000000000000000000000000000",
+  "eurc": "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a",
+  "seeded": {
+    "date": "2026-08-19",
+    "usdc": "23070000",
+    "eurc": "20000000",
+    "referenceRate": 0.867,
+    "note": "Faucet capped at 20 EURC, so this is the largest pool those balances allow. The ratio deposited is the price the pool trades at."
+  },
+  "verified": {
+    "maxSaneTradeUsdc": "400000",
+    "note": "The wallet's 200 bps deviation guard passes up to 0.40 USDC and refuses 1.00 USDC at 444 bps. A live swap of 0.40 USDC filled at 339855 EURC, exactly the quoted amount.",
+    "runner": "ops/seed-pool.sh"
+  }
+}

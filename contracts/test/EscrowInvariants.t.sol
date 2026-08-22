@@ -255,13 +255,35 @@ contract EscrowInvariantsTest is Test {
     }
 
     // Coverage guard. Every handler action swallows its reverts, so a handler that
-    // silently did nothing would satisfy all of the above vacuously. Foundry calls
-    // this once per completed run, which is where that shows up.
+    // silently did nothing would satisfy all of the above vacuously.
+    //
+    // Only that the handler moved at all is asserted here. Anything deeper needs a
+    // specific multi-step sequence, and whether a random walk finds one varies
+    // between runs: asserting disputes, attestations or settlements here made the
+    // suite fail intermittently on a codebase that had not changed. Reachability is
+    // a question for a driven test, not a fuzzed one, so it moved to
+    // test_handlerReachesSettlementAndAttestation below.
     function afterInvariant() public view {
         assertGt(escrow.paymentCount(), 0, "no payments were opened");
-        assertGt(handler.settledTotal(), 0, "no payment ever reached Settled");
-        assertGt(handler.disputesFiled(), 0, "no dispute was ever filed");
-        assertGt(handler.attestationsAccepted(), 0, "no attestation was ever accepted");
+    }
+
+    // The other half of the coverage guard, driven rather than fuzzed. If the
+    // handler can no longer reach settlement or get an attestation accepted, every
+    // invariant above is passing over a state space that never gets deep enough to
+    // be interesting.
+    function test_handlerReachesSettlementAndAttestation() public {
+        handler.pay(0, 0);
+        uint256 paymentId = escrow.paymentCount();
+        assertGt(paymentId, 0, "handler could not open a payment");
+
+        handler.fileDispute(paymentId, 0, type(uint256).max);
+        assertGt(handler.disputesFiled(), 0, "handler could not file a dispute");
+
+        handler.attest(paymentId, 0);
+        assertGt(handler.attestationsAccepted(), 0, "handler could not get an attestation accepted");
+
+        handler.resolve(paymentId);
+        assertGt(handler.settledTotal(), 0, "handler could not settle a payment");
     }
 
     // Adapter shares are only ever minted to the escrow, and a settlement burns
