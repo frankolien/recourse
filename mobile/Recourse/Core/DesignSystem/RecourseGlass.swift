@@ -56,11 +56,16 @@ extension View {
         modifier(RecourseGlassField(cornerRadius: cornerRadius))
     }
 
-    /// Groups nearby glass elements so they blend and separate as one system rather
-    /// than as unrelated panes. No effect before iOS 26, where there is no blending
-    /// to coordinate.
+    /// Groups glass elements so they sample and render as one system rather than as
+    /// unrelated panes. No effect before iOS 26.
+    ///
+    /// `spacing` is how close two glass shapes may come before they merge into a
+    /// single shape, so it must stay below the smallest real gap in the layout.
+    /// Setting it above one is not a stronger grouping, it deletes a control: a chip
+    /// 12 points under a field, in a container spaced 14, is absorbed into the field
+    /// and disappears on the next layout pass.
     @ViewBuilder
-    func recourseGlassGroup(spacing: CGFloat = 14) -> some View {
+    func recourseGlassGroup(spacing: CGFloat = 8) -> some View {
         if #available(iOS 26.0, *) {
             GlassEffectContainer(spacing: spacing) { self }
         } else {

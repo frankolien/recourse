@@ -36,14 +36,15 @@ struct ConvertView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                // Grouped so the field, the ceiling chip and the glyph blend as one
-                // system when they come near each other, rather than as three panes
-                // that happen to be adjacent.
+                // Grouped so the fields, the ceiling chip and the glyph sample as one
+                // system rather than as four unrelated panes. The spacing stays well
+                // under the 16 point gap below the field: at or above it the chip
+                // merges into the field and stops existing.
                 VStack(alignment: .leading, spacing: 0) {
                     converting
                     receiving
                 }
-                .recourseGlassGroup()
+                .recourseGlassGroup(spacing: 8)
 
                 if let problem {
                     refusal(problem)
@@ -90,6 +91,7 @@ struct ConvertView: View {
 
             if let ceiling {
                 ceilingChip(ceiling)
+                    .padding(.top, 4)
             }
         }
     }
