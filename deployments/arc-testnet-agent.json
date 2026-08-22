@@ -6,19 +6,23 @@
   "policyRegistry": "0x94f8551fbE43aB919D87c3951394b148c914430E",
   "yieldAdapter": "0x2336AaBE139b7F426aF63f713b9f93CD3FFC6204",
   "usdc": "0x3600000000000000000000000000000000000000",
-  "agentPolicyId": 9,
-  "policyAttestor": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+  "agentPolicyId": 10,
+  "policyAttestor": "0xcD57Afa3534D1519d9e547EF6825dD3f3e216532",
   "merchant": "0xD6c574461d96Ee708f58Fe553049aD4f48BB983A",
   "disputeWindow": 90,
   "resolveDelay": 60,
   "yieldFeeBps": 1000,
   "verified": {
-    "date": "2026-08-15",
+    "date": "2026-08-22",
     "payment5": "clean session, released to the merchant after the window closed",
     "payment6": "15 of 20 calls failed, attested SEVERE, resolved at 5000 bps",
-    "runner": "ops/agent-demo-arc.sh",
     "payment7": "clean session, released to the merchant",
     "payment8": "attestor fetched the published log, refused a tampered copy, resolved at 5000 bps",
-    "payment10": "attested by the daemon sweep rather than inline, resolved at 5000 bps"
-  }
+    "payment10": "attested by the daemon sweep rather than inline, resolved at 5000 bps",
+    "payment11": "policy 10, clean session, released to the merchant",
+    "payment12": "policy 10, published to attestorService over HTTP and attested by it 11 seconds later, with nothing signed locally. Resolved at 5000 bps",
+    "runner": "ops/agent-demo-arc.sh"
+  },
+  "attestorService": "https://recourse-attestor-production.up.railway.app",
+  "policyNote": "Policy 10 names the deployed attestor, so a dispute against it is settled by a process nobody running the demo controls. Policy 9 is the earlier one; its attestor is anvil account #2, whose key is public, and setPolicyAttestor is one shot so it cannot be rotated. Payments 5 to 10 were settled against it inline."
 }

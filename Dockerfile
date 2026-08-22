@@ -1,6 +1,10 @@
 # Recourse backend image (indexer + read API). Testnet only (R7).
 # Build context is the repo root so the runtime can bundle deployments/arc-testnet.json,
 # from which contract addresses are read at runtime (R3, never hardcoded).
+#
+# railway.json names only the builder, not this path: it is shared by every service in
+# the repo, so a dockerfilePath there would build the same image for all of them. Each
+# service names its own through the RAILWAY_DOCKERFILE_PATH variable instead.
 
 # ---- Build stage ----
 FROM rust:1-bookworm AS builder

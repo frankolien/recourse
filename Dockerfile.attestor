@@ -7,6 +7,10 @@
 # Separate from the root Dockerfile on purpose: that image is the Rust indexer and read
 # API, and the two have no shared toolchain. They are different Railway services off the
 # same repo.
+#
+# railway.json names only the builder, not this path: it is shared by every service in
+# the repo, so a dockerfilePath there would build the same image for all of them. Each
+# service names its own through the RAILWAY_DOCKERFILE_PATH variable instead.
 
 # ---- Build stage ----
 FROM node:24-bookworm-slim AS builder

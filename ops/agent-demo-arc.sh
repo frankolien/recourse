@@ -11,6 +11,16 @@
 # deliberately separate from arc-testnet.json so the app's escrow is untouched.
 # Unset DEMO_ESCROW and DEMO_POLICY_ID to deploy a fresh pair instead.
 #
+# Publishes to the deployed attestor and lets it settle the dispute, rather than
+# sweeping inline, because that is the only run that demonstrates what production
+# depends on: a dispute attested by a process nobody here is running. The URL is
+# attestorService in the deployment file; override DEMO_EVIDENCE_URL to point
+# somewhere else, or at a local ops/attestor-service.sh.
+#
+# DEMO_EVIDENCE_URL, DEMO_EVIDENCE_TOKEN and DEMO_ATTESTOR_PK are read straight from
+# this script's own environment rather than forwarded below, because forwarding a
+# secret through an expanded assignment prefix makes the shell echo it on error.
+#
 # The deployer key is read from backend/.env and never printed. The buyer and
 # attestor are well known anvil keys: on a testnet they guard nothing, and using
 # them creates no new secret. Note anvil account #1 is blacklisted on Arc USDC,
@@ -25,6 +35,25 @@ jqf() { python3 -c "import json,sys;print(json.load(open('$ROOT/deployments/arc-
 
 PK="$(grep '^ATTESTOR_PK=' "$ROOT/backend/.env" | cut -d= -f2)"
 [ -n "$PK" ] || { echo "ATTESTOR_PK not found in backend/.env"; exit 1; }
+
+# Default to the deployed attestor, because that is now what policy 10 names: without
+# these the inline sweep signs with the wrong key and the daemon declines the dispute.
+# Assignments, never expanded prefixes, so a failure cannot echo a key.
+if [ -z "${DEMO_EVIDENCE_URL:-}" ]; then
+  DEMO_EVIDENCE_URL="$(jqf attestorService)"
+  export DEMO_EVIDENCE_URL
+fi
+if [ -z "${DEMO_EVIDENCE_TOKEN:-}" ]; then
+  DEMO_EVIDENCE_TOKEN="$(grep '^AGENT_EVIDENCE_WRITE_TOKEN=' "$ROOT/backend/.env" | cut -d= -f2)"
+  export DEMO_EVIDENCE_TOKEN
+fi
+if [ -z "${DEMO_ATTESTOR_PK:-}" ]; then
+  # Only the address is load bearing here: the deployed service does the signing.
+  DEMO_ATTESTOR_PK="$(grep '^AGENT_ATTESTOR_PK=' "$ROOT/backend/.env" | cut -d= -f2)"
+  export DEMO_ATTESTOR_PK
+fi
+[ -n "$DEMO_EVIDENCE_TOKEN" ] || { echo "AGENT_EVIDENCE_WRITE_TOKEN not found in backend/.env"; exit 1; }
+[ -n "$DEMO_ATTESTOR_PK" ] || { echo "AGENT_ATTESTOR_PK not found in backend/.env"; exit 1; }
 
 cd "$ROOT/engine"
 DEMO_RPC="${DEMO_RPC:-https://arc-testnet.drpc.org}" \

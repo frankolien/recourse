@@ -438,12 +438,17 @@ Numbered so tests can cite them.
 | T1 | Merchant | attests CLEAN over a genuine failure | **closed by I8**: the merchant cannot be the attestor |
 | T2 | Buyer | fabricates a failure log and disputes | **closed for a doctored publication**: a log that does not reproduce the filed `evidenceRoot` is refused outright. A buyer that filed an honest root cannot later publish a worse log. Residual: a buyer that recorded dishonestly from the start, which the merchant rebuts with its own log |
 | T3 | Facilitator | replays or redirects an authorization | **closed by I7** plus EIP-3009 nonces |
-| T4 | Attestor | offline during the dispute window | **residual, but now operable**: `engine/src/attestor-daemon.ts` runs the sweep, and `ops/attestor.sh` runs the daemon. Downtime still falls through to `defaultRefundBps`, which A3 manages rather than eliminates |
+| T4 | Attestor | offline during the dispute window | **residual, but now deployed**: the daemon runs as a service against Arc, so a dispute no longer needs anyone at a terminal. Downtime still falls through to `defaultRefundBps`, which A3 manages rather than eliminates. See 5.6 |
 | T5 | Yield adapter | returns less than principal | contained by S4, loss falls on the beneficiary |
 | T6 | Buyer | reuses one paymentId beyond the escrowed budget | metering is the seller's responsibility, step 7. Not enforced on chain |
 
 T4 and T6 are the two live residuals. Both are operational rather than
 cryptographic, and both are stated so they are chosen rather than discovered.
+
+A third, added by deploying: the evidence host requires a write token, so for now
+Recourse decides who may publish a dispute log. That is a gatekeeper on a protocol
+whose whole claim is that it does not need one. It is recorded in section 8 with the
+fix, which is to gate admission on the chain rather than on a secret.
 
 #### 5.6 Running the attestor
 
@@ -468,6 +473,52 @@ attestation against `block.timestamp`, so a deadline computed from `Date.now()`
 is already expired anywhere the two drift. This showed up on anvil, where the
 demo warps time forward, and reverted with `AttestationExpired`. A skewed node
 clock would do the same on a live chain.
+
+#### 5.7 Where it runs, and what publishes to it
+
+A daemon still needs somewhere to fetch from. Until the evidence host existed the
+buyer's log lived in the demo's own memory, which meant the whole path only worked
+with both agents and the attestor on one machine. `engine/src/evidence-host.ts` is
+the missing half: buyers PUT their published session to it, the daemon GETs it back.
+
+**The host holds no authority, and that is the design.** `reviewSession` already
+checks what it serves against the root the buyer filed on chain, so a host that
+lies cannot produce a false attestation. It can only withhold, and a withheld log
+resolves the dispute at `defaultRefundBps`, which is the conservative answer. That
+property is what makes it safe to run the host and the attestor in one process, as
+`engine/scripts/attestor-service.ts` does. The daemon still fetches over HTTP
+rather than reaching into the store, so splitting them is a config change and not
+a rewrite.
+
+Two rules the host does enforce, neither of them about trust:
+
+- **Publications are immutable.** The chained hash check is what stops a buyer
+  drawing a better attestation by publishing a different log than it filed;
+  immutability is what keeps the record checkable afterwards by someone who was
+  not watching at the time.
+- **A republish of the same session is idempotent, not a conflict.** This needs
+  the bytes canonicalised first, because JSON key order is not stable across
+  serialisers and a retry must not look like an attack.
+
+Deployed on Railway from `Dockerfile.attestor`, alongside the Rust backend and
+separate from it: the two share no toolchain, and the attestor is TypeScript
+precisely so the severity ladder is not implemented a fourth time.
+
+Three things that only showed up in deployment:
+
+- **The daemon's memory is its lookback.** 9000 blocks is about 77 minutes of Arc,
+  measured, not assumed. The dispute window is 90 seconds, so the daemon can be
+  down for an hour and still catch every dispute it missed. Past that it cannot
+  see them, and they settle at the default.
+- **A shared `railway.json` decides the Dockerfile for every service in the repo.**
+  The first deploy of the attestor silently built the Rust backend and then failed
+  its healthcheck with no application logs at all, which reads as a crash rather
+  than as the wrong image. The build config now names only the builder, and each
+  service names its own Dockerfile through `RAILWAY_DOCKERFILE_PATH`.
+- **The signing key had to be new.** Policy 9's attestor is anvil account #2, whose
+  key is public, so anyone could have forged its attestations; `setPolicyAttestor`
+  is one shot, so it could not be rotated in place. Policy 10 was registered naming
+  a freshly generated attestor instead, which is what the service signs with.
 
 
 ## 5.5 Verification strategy
@@ -612,13 +663,40 @@ the demo:
   spent transacting, so a wallet delta cannot be asserted exactly on Arc the way it
   can on anvil. Assert the on chain verdict and bound the delta.
 
+The attestor has been running as a service since August 22, 2026, at the
+`attestorService` URL in the deployment file. `ops/agent-demo-arc.sh` now settles
+through it by default rather than sweeping inline, which is the only run that
+demonstrates the property production actually depends on: payment 12 was published
+over HTTP and attested eleven seconds later by a process the demo does not control,
+with nothing signed locally. Its own log records the sequence, including the sweep
+before publication that correctly declined:
+
+```
+[attestor] payment 12: published session unavailable: evidence host returned 404
+[evidence] stored /session/0x2e3f7d74...
+[attestor] payment 12: 15/20 failed, attested severity 3
+[attestor] payment 12: not disputed (status 3)
+```
+
+`ops/agent-demo-hosted.sh` is the same shape on anvil, and is the dry run the live
+one needs (R13).
+
 ## 8. Open questions
 
 - Whether `orderRef` should commit to the advertised contract (schema plus SLA)
   rather than only the session id, so the promise itself is pinned on chain.
   Leaning yes, it is free.
 - Who runs the neutral attestor in production. Recourse running it for the demo
-  is fine and is not a long term answer.
+  is fine and is not a long term answer. Now that it is deployed the question is
+  sharper rather than answered: the address in `policyAttestor` is one Recourse
+  generated and holds, and a buyer's only protection against it is that the
+  severity it signs is reproducible from published bytes by anyone.
+- How the evidence host admits a publication. It currently takes a write token,
+  which makes Recourse the gatekeeper for who may dispute. The fix is to drop the
+  token and admit only logs that reproduce an `evidenceRoot` already filed on
+  chain, which is the same check the attestor makes and needs no secret. It was
+  not done first because it couples the host to an RPC and bounds publication by
+  the log lookback, and both deserve deciding rather than defaulting.
 - Whether T6 metering should move on chain. It needs a call counter the seller
   increments, which costs a transaction per call and defeats session batching.
   Probably stays off chain permanently.
