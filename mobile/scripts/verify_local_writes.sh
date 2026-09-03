@@ -29,6 +29,7 @@ cleanup() {
       -u MOBILE_LOCAL_DEPLOYMENT \
       -u MOBILE_LOCAL_SEED \
       -u MOBILE_LOCAL_BUYER_PK \
+      -u MOBILE_LOCAL_CHEQUE_TOKEN \
       ruby scripts/generate_project.rb >/dev/null
   )
 }
@@ -56,11 +57,25 @@ cast block-number --rpc-url "${RPC_URL}" >/dev/null
 ARC_RPC_URL="${RPC_URL}" DEPLOYER_PK="${DEPLOYER_PK}" \
   node "${ROOT}/engine/scripts/seed.mjs" "${DEPLOYMENT}"
 
+# Cheques need a token that implements EIP-3009 under the exact EIP-712 domain the app
+# signs for, and TestUSDC is neither: it names itself "Test USD Coin" and only carries
+# receiveWithAuthorization. Deployed here rather than in Deploy.s.sol because it exists
+# only so this harness has something a cheque can be cashed against.
+CHEQUE_TOKEN="$(
+  cd "${ROOT}/contracts" && forge create src/MockEIP3009USDC.sol:MockEIP3009USDC \
+    --rpc-url "${RPC_URL}" --private-key "${DEPLOYER_PK}" --broadcast --json |
+    python3 -c 'import json,sys; print(json.load(sys.stdin)["deployedTo"])'
+)"
+BUYER_ADDRESS="$(cast wallet address --private-key "${BUYER_PK}")"
+cast send "${CHEQUE_TOKEN}" "mint(address,uint256)" "${BUYER_ADDRESS}" 100000000 \
+  --rpc-url "${RPC_URL}" --private-key "${DEPLOYER_PK}" >/dev/null
+
 export MOBILE_LOCAL_WRITE_TESTS=1
 export MOBILE_LOCAL_RPC_URL="${RPC_URL}"
 export MOBILE_LOCAL_DEPLOYMENT="${DEPLOYMENT}"
 export MOBILE_LOCAL_SEED="${SEED}"
 export MOBILE_LOCAL_BUYER_PK="${BUYER_PK}"
+export MOBILE_LOCAL_CHEQUE_TOKEN="${CHEQUE_TOKEN}"
 
 (
   cd "${ROOT}/mobile"

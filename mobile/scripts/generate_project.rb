@@ -229,6 +229,7 @@ if ENV["MOBILE_LOCAL_WRITE_TESTS"] == "1"
     MOBILE_LOCAL_DEPLOYMENT
     MOBILE_LOCAL_SEED
     MOBILE_LOCAL_BUYER_PK
+    MOBILE_LOCAL_CHEQUE_TOKEN
   ].map do |key|
     { :key => key, :value => ENV.fetch(key), :enabled => true }
   end
