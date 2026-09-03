@@ -109,7 +109,7 @@ struct ActivityView: View {
             reportScrollDirection(newOffset)
         }
         .background(RecourseColor.night)
-        .navigationTitle("Activity")
+        .navigationTitle("History")
         .refreshable {
             await reload(force: true)
         }

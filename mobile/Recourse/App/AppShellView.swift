@@ -5,22 +5,19 @@ import UIKit
 
 private enum AppTab: Hashable, CaseIterable {
     case home
-    case earn
-    case activity
+    case history
 
     var label: String {
         switch self {
         case .home: "Home"
-        case .earn: "Earn"
-        case .activity: "Activity"
+        case .history: "History"
         }
     }
 
     var icon: String {
         switch self {
         case .home: "house.fill"
-        case .earn: "chart.line.uptrend.xyaxis"
-        case .activity: "list.bullet"
+        case .history: "clock.arrow.circlepath"
         }
     }
 }
@@ -44,28 +41,22 @@ struct AppShellView: View {
         TabView(selection: $selection) {
             HomeView(
                 environment: environment,
-                onScrollTowardTopChanged: updateTabBarExpansion,
-                onEarnRequested: { selection = .earn },
-                onActivityRequested: { selection = .activity }
+                onScrollTowardTopChanged: updateTabBarExpansion
             )
                 .tag(AppTab.home)
                 .tabItem {
                     Label(AppTab.home.label, systemImage: AppTab.home.icon)
                 }
 
-            EarnView(environment: environment)
-                .tag(AppTab.earn)
-                .tabItem {
-                    Label(AppTab.earn.label, systemImage: AppTab.earn.icon)
-                }
-
+            // Earn left the bar for a card on Home. A tab is for something you check;
+            // the vault is something you put money in and leave.
             ActivityView(
                 environment: environment,
                 onScrollTowardTopChanged: updateTabBarExpansion
             )
-                .tag(AppTab.activity)
+                .tag(AppTab.history)
                 .tabItem {
-                    Label(AppTab.activity.label, systemImage: AppTab.activity.icon)
+                    Label(AppTab.history.label, systemImage: AppTab.history.icon)
                 }
         }
         .tint(RecourseColor.ledgerDeep)

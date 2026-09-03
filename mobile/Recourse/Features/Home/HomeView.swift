@@ -11,24 +11,21 @@ import SwiftUI
 struct HomeView: View {
     let environment: AppEnvironment
     let onScrollTowardTopChanged: (Bool) -> Void
-    let onEarnRequested: () -> Void
-    let onActivityRequested: () -> Void
     @Environment(\.colorScheme) private var colorScheme
     @State private var previousScrollOffset: CGFloat = 0
     @State private var showsReceive = false
     @State private var earnVaultState: VaultState?
     @AppStorage("recourse.hidesBalance") private var hidesBalance = false
+    // Once. A guide that reappears on every launch until the first transaction is a
+    // nag, and the person it nags is the one who has not decided to trust the app yet.
+    @AppStorage("recourse.dismissedGettingStarted") private var dismissedGettingStarted = false
 
     init(
         environment: AppEnvironment,
-        onScrollTowardTopChanged: @escaping (Bool) -> Void = { _ in },
-        onEarnRequested: @escaping () -> Void = {},
-        onActivityRequested: @escaping () -> Void = {}
+        onScrollTowardTopChanged: @escaping (Bool) -> Void = { _ in }
     ) {
         self.environment = environment
         self.onScrollTowardTopChanged = onScrollTowardTopChanged
-        self.onEarnRequested = onEarnRequested
-        self.onActivityRequested = onActivityRequested
     }
 
     // Profile names live on the account session (persisted via the backend profile
@@ -51,17 +48,15 @@ struct HomeView: View {
                 LazyVStack(alignment: .leading, spacing: 18) {
                     scrollPositionReader
                     balanceHero
-                    actionGrid
+                    primaryActions
+                    featureGrid
                     if book.cashableCount > 0 {
                         chequeLead
                     }
                     if !invoices.readyToCollect.isEmpty {
                         collectLead
                     }
-                    earnPreview
-                    // A fresh account gets one guided card, not a stack of empty
-                    // section shells.
-                    if isNewHere {
+                    if isNewHere && !dismissedGettingStarted {
                         firstStepsCard
                     }
                 }
@@ -283,57 +278,106 @@ struct HomeView: View {
         hidesBalance ? "$••••" : currency(amount)
     }
 
-    // Banking verbs in soft square tiles, one row. Send and Request sit next to each
-    // other because they are the same act in opposite directions, and that pairing is
-    // what people look for first.
-    private var actionGrid: some View {
-        HStack(spacing: 12) {
-            actionTile("plus", "Add money") {
+    // The two verbs a money app is opened for, as a pair the width of the screen.
+    // Five squares in a row spread the same two thin and made them equals of
+    // things people do once a month.
+    private var primaryActions: some View {
+        HStack(spacing: 10) {
+            Button {
                 showsReceive = true
+            } label: {
+                Label("Add money", systemImage: "plus")
+                    .font(.recourse(15, .semibold))
+                    .foregroundStyle(RecourseColor.nightText)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 52)
+                    .background(RecourseColor.nightChip, in: Capsule())
             }
-            actionTile("paperplane.fill", "Send", accent: true) {
+            .buttonStyle(.plain)
+
+            Button {
                 environment.router.push(.send)
+            } label: {
+                Label("Send", systemImage: "paperplane.fill")
+                    .font(.recourse(15, .semibold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 52)
+                    .background(RecourseColor.ledger, in: Capsule())
             }
-            actionTile("arrow.down.left", "Request") {
-                environment.router.push(.invoices)
-            }
-            actionTile("doc.text.fill", "Cheques") {
-                environment.router.push(.cheques)
-            }
+            .buttonStyle(.plain)
+        }
+        .padding(.top, 4)
+    }
+
+    // Everything else, two across, each with its own colour so the four read as four
+    // things rather than as a row of the same glyph in green.
+    private var featureGrid: some View {
+        LazyVGrid(
+            columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2),
+            spacing: 12
+        ) {
+            HomeFeatureCard(
+                icon: "doc.text.fill",
+                tint: RecourseColor.ledger,
+                title: "Cheques",
+                detail: chequesDetail
+            ) { environment.router.push(.cheques) }
+
+            HomeFeatureCard(
+                icon: "arrow.down.left",
+                tint: Color(red: 0.94, green: 0.46, blue: 0.23),
+                title: "Request",
+                detail: requestDetail
+            ) { environment.router.push(.invoices) }
+
             // Only where an FX venue is deployed. A chain without one has no
             // Convert rather than one that fails when tapped.
             if Deployment.fxRouter != nil {
-                actionTile("arrow.left.arrow.right", "Convert") {
-                    environment.router.push(.convert)
-                }
+                HomeFeatureCard(
+                    icon: "arrow.left.arrow.right",
+                    tint: Color(red: 0.23, green: 0.51, blue: 0.96),
+                    title: "Convert",
+                    detail: "USDC to EURC"
+                ) { environment.router.push(.convert) }
             }
+
+            HomeFeatureCard(
+                icon: "chart.bar.fill",
+                tint: Color(red: 0.55, green: 0.36, blue: 0.96),
+                title: "Earn",
+                detail: earnDetail
+            ) { environment.router.push(.earn) }
         }
     }
 
-    private func actionTile(
-        _ systemImage: String,
-        _ title: String,
-        accent: Bool = false,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            VStack(spacing: 8) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 19, weight: .semibold))
-                    .foregroundStyle(accent ? .white : RecourseColor.nightText)
-                    .frame(width: 58, height: 58)
-                    .background(
-                        accent ? RecourseColor.ledger : RecourseColor.nightChip,
-                        in: RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    )
-                Text(title)
-                    .font(.recourse(12, .medium))
-                    .foregroundStyle(RecourseColor.nightText)
-            }
-            .frame(maxWidth: .infinity)
+    /// Live where there is something live to say, otherwise what the thing is for.
+    private var chequesDetail: String {
+        if book.cashableCount > 0 {
+            return "\(currency(book.cashableTotal)) to cash"
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(title)
+        if book.liveWrittenCount > 0 {
+            return "\(currency(book.committed)) outstanding"
+        }
+        return "Write, cash or void"
+    }
+
+    private var requestDetail: String {
+        if !invoices.readyToCollect.isEmpty {
+            return "\(currency(invoices.readyToCollectTotal)) to collect"
+        }
+        if invoices.owedToYou.baseUnits > 0 {
+            return "\(currency(invoices.owedToYou)) owed to you"
+        }
+        return "Bill someone by name"
+    }
+
+    private var earnDetail: String {
+        guard let earnVaultState else { return "Yield on idle USDC" }
+        if earnVaultState.myShares > 0 {
+            return "\(currency(earnVaultState.myValue)) at work"
+        }
+        return "Yield on idle USDC"
     }
 
     // Someone has already promised this money; the only thing between it and the
@@ -408,54 +452,6 @@ struct HomeView: View {
         .buttonStyle(.plain)
     }
 
-    private var earnPreview: some View {
-        Button {
-            onEarnRequested()
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: "chart.line.uptrend.xyaxis")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(RecourseColor.nightText)
-                    .frame(width: 38, height: 38)
-                    .background(RecourseColor.nightChip, in: Circle())
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(earnPreviewTitle)
-                        .font(.recourse(13, .semibold))
-                        .foregroundStyle(RecourseColor.nightText)
-                    Text(earnPreviewDetail)
-                        .font(.recourse(11))
-                        .foregroundStyle(RecourseColor.nightMuted)
-                        .lineLimit(2)
-                }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(RecourseColor.nightMuted)
-            }
-            .padding(14)
-            .contentShape(Rectangle())
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var earnPreviewTitle: String {
-        if let earnVaultState, earnVaultState.myShares > 0 {
-            return "Your Earn position"
-        }
-        return "Earn on idle USDC"
-    }
-
-    private var earnPreviewDetail: String {
-        guard let earnVaultState else {
-            return "Put USDC to work and collect yield"
-        }
-        if earnVaultState.myShares > 0 {
-            return "\(currency(earnVaultState.myValue)) · share price \(String(format: "%.4f", earnVaultState.sharePrice))"
-        }
-        return "\(currency(earnVaultState.totalAssets)) in the vault · share price \(String(format: "%.4f", earnVaultState.sharePrice))"
-    }
-
     /// Nothing held, nothing written, nothing received. A balance alone is not enough
     /// to call someone settled in: money arrives before anything else can happen.
     private var isNewHere: Bool {
@@ -468,9 +464,23 @@ struct HomeView: View {
 
     private var firstStepsCard: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Getting started")
-                .font(.recourse(15, .semibold))
-                .foregroundStyle(RecourseColor.nightText)
+            HStack {
+                Text("Getting started")
+                    .font(.recourse(15, .semibold))
+                    .foregroundStyle(RecourseColor.nightText)
+                Spacer()
+                Button {
+                    withAnimation(.snappy(duration: 0.24)) { dismissedGettingStarted = true }
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(RecourseColor.nightMuted)
+                        .frame(width: 28, height: 28)
+                        .background(RecourseColor.nightChip, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Dismiss getting started")
+            }
             firstStep("at", "Claim your name", "People pay @you instead of a wallet address they have to copy.")
             firstStep("plus.circle.fill", "Add USDC", "Receive to your address. Fees are paid in USDC too, so there is no second token to hold.")
             firstStep("doc.text.fill", "Send, request or write a cheque", "A send is instant and final. A request bills someone on terms you fix. A cheque is theirs to collect whenever they like.")
@@ -503,6 +513,47 @@ struct HomeView: View {
     private func currency(_ amount: USDCAmount) -> String {
         let value = Double(amount.baseUnits) / Double(USDCAmount.base)
         return String(format: "$%.2f", value)
+    }
+}
+
+/// One of the four things on Home that are not sending or adding money.
+///
+/// The icon tile carries the colour, the way a home-screen icon does, so the four read
+/// at a glance; the detail line is live where there is something live to say.
+private struct HomeFeatureCard: View {
+    let icon: String
+    let tint: Color
+    let title: String
+    let detail: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 0) {
+                Image(systemName: icon)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 42, height: 42)
+                    .background(tint, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+
+                Spacer(minLength: 14)
+
+                Text(title)
+                    .font(.recourse(15, .semibold))
+                    .foregroundStyle(RecourseColor.nightText)
+                Text(detail)
+                    .font(.recourse(11.5, .medium))
+                    .foregroundStyle(RecourseColor.nightMuted)
+                    .lineLimit(1)
+                    .padding(.top, 3)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, minHeight: 126, alignment: .topLeading)
+            .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(title). \(detail)")
     }
 }
 
