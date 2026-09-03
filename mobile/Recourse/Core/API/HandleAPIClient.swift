@@ -12,6 +12,10 @@ enum HandleAPIError: Error, Equatable {
     /// Nobody has claimed this name. Both a failure when sending and a success when
     /// checking whether it is free, so the caller decides which it is.
     case unclaimed
+    /// The server answered 404 to the route itself, not to the name. That is a backend
+    /// running from before names existed, and the person tapping Claim can do nothing
+    /// about it except be told the truth.
+    case notOffered
     case rejected(status: Int, message: String)
 
     var message: String {
@@ -20,6 +24,8 @@ enum HandleAPIError: Error, Equatable {
             return "Could not reach the directory."
         case .unclaimed:
             return "No one is using that name."
+        case .notOffered:
+            return "Names are not switched on for this server yet."
         case .rejected(_, let message):
             return message
         }
@@ -126,7 +132,16 @@ actor HandleAPIClient: HandleAPI {
             throw HandleAPIError.invalidResponse
         }
         guard (200..<300).contains(httpResponse.statusCode) else {
-            if httpResponse.statusCode == 404 { throw HandleAPIError.unclaimed }
+            if httpResponse.statusCode == 404 {
+                // Our own handlers explain a 404 in JSON: "no such handle". The
+                // framework's 404 for a route that does not exist has no body at all,
+                // and the two mean opposite things. Reading the second as the first
+                // told someone claiming a name that nobody was using it, which was
+                // true, and useless.
+                throw Self.errorMessage(from: data) == nil
+                    ? HandleAPIError.notOffered
+                    : HandleAPIError.unclaimed
+            }
             throw HandleAPIError.rejected(
                 status: httpResponse.statusCode,
                 message: Self.errorMessage(from: data)

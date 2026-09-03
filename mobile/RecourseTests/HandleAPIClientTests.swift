@@ -108,6 +108,37 @@ final class HandleAPIClientTests: XCTestCase {
         XCTAssertNil(found["0x9965507d1a55bcc2695c58ba16fb37d819b0a4dc"])
     }
 
+    // MARK: Two kinds of 404
+
+    func testAFourOhFourWithOurOwnMessageMeansTheNameIsFree() async {
+        let stub = StubbedTransport()
+        stub.respond(json: #"{"error":"no such handle"}"#, status: 404)
+        let client = HandleAPIClient(baseURL: baseURL, session: stub.session)
+        do {
+            _ = try await client.resolve(handle: "frank")
+            XCTFail("expected unclaimed")
+        } catch HandleAPIError.unclaimed {
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+    }
+
+    func testAFourOhFourWithNoBodyMeansTheServerHasNoSuchRoute() async {
+        // What a backend deployed before names existed sends back, and what was being
+        // shown to the person as "No one is using that name."
+        let stub = StubbedTransport()
+        stub.respond(json: "", status: 404)
+        let client = HandleAPIClient(baseURL: baseURL, session: stub.session)
+        do {
+            _ = try await client.claim(handle: "frank", address: "0x0000000000000000000000000000000000000001", accessToken: "t")
+            XCTFail("expected notOffered")
+        } catch HandleAPIError.notOffered {
+            XCTAssertEqual(HandleAPIError.notOffered.message, "Names are not switched on for this server yet.")
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+    }
+
     private var baseURL: URL { URL(string: "https://example.invalid")! }
 }
 
@@ -130,8 +161,9 @@ private final class StubbedTransport: @unchecked Sendable {
         StubProtocol.reset()
     }
 
-    func respond(json: String) {
+    func respond(json: String, status: Int = 200) {
         StubProtocol.body = Data(json.utf8)
+        StubProtocol.status = status
     }
 
     var requestCount: Int { StubProtocol.requests.count }
@@ -148,10 +180,12 @@ private final class StubbedTransport: @unchecked Sendable {
 
 private final class StubProtocol: URLProtocol {
     nonisolated(unsafe) static var body = Data("[]".utf8)
+    nonisolated(unsafe) static var status = 200
     nonisolated(unsafe) static var requests: [Data] = []
 
     static func reset() {
         body = Data("[]".utf8)
+        status = 200
         requests = []
     }
 
@@ -179,7 +213,7 @@ private final class StubProtocol: URLProtocol {
 
         let response = HTTPURLResponse(
             url: request.url!,
-            statusCode: 200,
+            statusCode: Self.status,
             httpVersion: nil,
             headerFields: ["Content-Type": "application/json"]
         )!
