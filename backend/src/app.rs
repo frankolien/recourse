@@ -147,6 +147,7 @@ pub fn build_app(
                 .route("/cheques/outbox", web::get().to(handlers::cheques::outbox))
                 // Naming someone instead of addressing them. Resolution is public
                 // because a sender need not be a Recourse user; claiming is not.
+                .route("/handles/names", web::post().to(handlers::handles::names))
                 .route(
                     "/handles/{handle}",
                     web::get().to(handlers::handles::resolve_handle),

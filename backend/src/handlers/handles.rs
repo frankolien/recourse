@@ -34,6 +34,39 @@ pub async fn resolve_handle(pool: web::Data<PgPool>, path: web::Path<String>) ->
     }
 }
 
+/// A cap on one request, so a caller cannot ask the directory to scan itself.
+const MAX_NAME_LOOKUP: usize = 50;
+
+#[derive(Deserialize)]
+pub struct NamesRequest {
+    pub addresses: Vec<String>,
+}
+
+/// POST /api/handles/names - names for a batch of addresses.
+///
+/// A POST despite being a read, because the input is a list and a query string of
+/// fifty addresses is a URL nobody should have to debug.
+pub async fn names(pool: web::Data<PgPool>, body: web::Bytes) -> HttpResponse {
+    let request: NamesRequest = match serde_json::from_slice(&body) {
+        Ok(value) => value,
+        Err(error) => return error_response(400, &format!("invalid names body: {error}")),
+    };
+    if request.addresses.len() > MAX_NAME_LOOKUP {
+        return error_response(
+            400,
+            &format!("at most {MAX_NAME_LOOKUP} addresses per request"),
+        );
+    }
+
+    match handles::names_for(pool.get_ref(), &request.addresses).await {
+        Ok(found) => HttpResponse::Ok().json(found),
+        Err(error) => {
+            let (status, message) = error.parts();
+            error_response(status, &message)
+        }
+    }
+}
+
 /// PUT /api/me/handle - claim a handle, or point an existing one at a new address.
 ///
 /// The address is supplied by the caller rather than read from a session, because the

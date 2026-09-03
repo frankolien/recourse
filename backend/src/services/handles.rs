@@ -165,6 +165,40 @@ pub async fn resolve(pool: &PgPool, requested: &str) -> Result<Handle, AccountAu
     }
 }
 
+/// Names for a batch of addresses, so a list of payments can read as people.
+///
+/// Public for the same reason `resolve` is, and it exposes nothing new: anyone can
+/// already walk the directory forwards. Batched because the alternative is a request
+/// per row, which turns a screen of ten cheques into ten round trips.
+pub async fn names_for(
+    pool: &PgPool,
+    addresses: &[String],
+) -> Result<Vec<Handle>, AccountAuthError> {
+    if addresses.is_empty() {
+        return Ok(Vec::new());
+    }
+    let normalized: Vec<String> = addresses
+        .iter()
+        .filter_map(|address| normalize_address(address).ok())
+        .collect();
+    if normalized.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let rows: Vec<(String, String)> = sqlx::query_as(
+        "SELECT handle, wallet_address FROM account_handles WHERE wallet_address = ANY($1)",
+    )
+    .bind(&normalized)
+    .fetch_all(pool)
+    .await
+    .map_err(|error| AccountAuthError::Internal(format!("naming addresses: {error}")))?;
+
+    Ok(rows
+        .into_iter()
+        .map(|(handle, address)| Handle { handle, address })
+        .collect())
+}
+
 /// The signed-in account's own handle, if it has claimed one.
 pub async fn for_account(
     pool: &PgPool,

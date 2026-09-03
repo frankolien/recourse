@@ -29,6 +29,9 @@ enum HandleAPIError: Error, Equatable {
 protocol HandleAPI: Sendable {
     /// Public: a sender does not need an account to pay someone by name.
     func resolve(handle: String) async throws -> ResolvedHandle
+    /// The reverse: names for addresses the app already holds, so a list of cheques
+    /// reads as people rather than as hex. Addresses with no name are simply absent.
+    func names(for addresses: [String]) async throws -> [String: String]
     func myHandle(accessToken: String) async throws -> ResolvedHandle?
     func claim(handle: String, address: String, accessToken: String) async throws -> ResolvedHandle
 }
@@ -50,6 +53,23 @@ actor HandleAPIClient: HandleAPI {
             throw HandleAPIError.rejected(status: 400, message: "That is not a usable name.")
         }
         return try await send(path: "api/handles/\(encoded)", method: "GET")
+    }
+
+    func names(for addresses: [String]) async throws -> [String: String] {
+        let unique = Array(Set(addresses.map { $0.lowercased() })).prefix(50)
+        guard !unique.isEmpty else { return [:] }
+        struct Body: Encodable { let addresses: [String] }
+        let found: [ResolvedHandle] = try await send(
+            path: "api/handles/names",
+            method: "POST",
+            bodyData: try encoder.encode(Body(addresses: Array(unique)))
+        )
+        // Keyed lowercase because everything else in the app compares addresses that
+        // way, and a checksummed key would silently miss.
+        return Dictionary(
+            found.map { ($0.address.lowercased(), $0.handle) },
+            uniquingKeysWith: { first, _ in first }
+        )
     }
 
     func myHandle(accessToken: String) async throws -> ResolvedHandle? {
