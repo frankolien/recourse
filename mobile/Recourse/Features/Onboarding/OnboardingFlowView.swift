@@ -12,6 +12,7 @@ struct OnboardingFlowView: View {
     let accountSession: AccountSession
     let onComplete: (OnboardingRole) -> Void
     private let buyerSigner: any BuyerSigner
+    private let smartAccounts: SmartAccountStore?
     @State private var stage: OnboardingStage = .welcome
     @State private var selectedRole: OnboardingRole = .buyer
     @State private var walletAddress: EthereumAddress?
@@ -19,10 +20,12 @@ struct OnboardingFlowView: View {
     init(
         accountSession: AccountSession,
         buyerSigner: any BuyerSigner = TestnetLocalSigner(),
+        smartAccounts: SmartAccountStore? = nil,
         onComplete: @escaping (OnboardingRole) -> Void
     ) {
         self.accountSession = accountSession
         self.buyerSigner = buyerSigner
+        self.smartAccounts = smartAccounts
         self.onComplete = onComplete
     }
 
@@ -54,6 +57,7 @@ struct OnboardingFlowView: View {
                 case .wallet:
                     OnboardingWalletSetupView(
                         signer: buyerSigner,
+                        smartAccounts: smartAccounts,
                         onBack: { advance(to: .role) },
                         onContinue: { address in
                             walletAddress = address

@@ -22,6 +22,8 @@ enum OnboardingRole: String, CaseIterable, Codable, Sendable {
 
 struct OnboardingWalletSetupView: View {
     let signer: any BuyerSigner
+    /// Absent only in previews, where there is no server to provision against.
+    let smartAccounts: SmartAccountStore?
     let onBack: () -> Void
     let onContinue: (EthereumAddress) -> Void
 
@@ -38,10 +40,10 @@ struct OnboardingWalletSetupView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("BUYER WALLET")
                         .recourseEyebrow()
-                    Text("Your payment key stays on this iPhone.")
+                    Text("Two keys on this iPhone. One tap to pay.")
                         .font(RecourseTypography.display(size: compact ? 32 : 38))
                         .foregroundStyle(RecourseColor.ink)
-                    Text("Recourse creates a testnet wallet in Keychain. Face ID confirms every protected payment action.")
+                    Text("A Device Key in this iPhone's Secure Enclave and a Cloud Key in your iCloud sign every payment together. Neither works alone, and Recourse holds neither.")
                         .font(.recourse(15))
                         .foregroundStyle(RecourseColor.muted)
                         .lineSpacing(2)
@@ -74,7 +76,7 @@ struct OnboardingWalletSetupView: View {
                         ProgressView()
                             .tint(.white)
                     } else {
-                        Text("Continue with this wallet")
+                        Text("Continue")
                     }
                 }
                 .buttonStyle(RecoursePrimaryButtonStyle())
@@ -127,11 +129,11 @@ struct OnboardingWalletSetupView: View {
             }
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(walletAddress == nil ? "Preparing secure wallet" : "Wallet ready")
+                Text(walletAddress == nil ? "Setting up your account" : "Account ready")
                     .font(.recourse(16, .semibold))
                     .foregroundStyle(RecourseColor.ink)
                 HStack(spacing: 10) {
-                    Text(walletAddress.map(shortAddress) ?? "Generating your encrypted device key...")
+                    Text(walletAddress.map(shortAddress) ?? progressText)
                         .font(.system(size: 12, weight: .medium, design: .monospaced))
                         .foregroundStyle(RecourseColor.muted)
                         .contentTransition(.numericText())
@@ -152,7 +154,7 @@ struct OnboardingWalletSetupView: View {
 
             Divider()
 
-            Label("Encrypted in Keychain and unavailable to the Recourse server", systemImage: "checkmark.shield.fill")
+            Label("Made on this iPhone. Recourse never holds a spending key.", systemImage: "checkmark.shield.fill")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(RecourseColor.ledger)
         }
@@ -164,6 +166,13 @@ struct OnboardingWalletSetupView: View {
         }
     }
 
+    private var progressText: String {
+        if let smartAccounts, case .provisioning(let message) = smartAccounts.phase {
+            return message + "..."
+        }
+        return "Making your keys..."
+    }
+
     @MainActor
     private func prepareWallet() async {
         guard walletAddress == nil, !isPreparing else { return }
@@ -172,9 +181,17 @@ struct OnboardingWalletSetupView: View {
         defer { isPreparing = false }
 
         do {
-            walletAddress = try await signer.address()
+            if let smartAccounts {
+                // The account is the Safe; provisioning makes both keys, mints the
+                // recovery key and deploys it. Idempotent, so Try again is safe.
+                let record = try await smartAccounts.provision()
+                walletAddress = EthereumAddress(trusted: record.safe)
+            } else {
+                walletAddress = try await signer.address()
+            }
         } catch {
-            errorMessage = "Recourse could not create the local wallet. Please try again."
+            errorMessage = (error as? SmartAccountAPIError)?.message
+                ?? "Recourse could not set up your account. Please try again."
         }
     }
 

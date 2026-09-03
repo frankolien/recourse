@@ -50,7 +50,10 @@ struct RootView: View {
                 )
                 .transition(.opacity)
             case .onboarding:
-                OnboardingFlowView(accountSession: environment.accountSession) { role in
+                OnboardingFlowView(
+                    accountSession: environment.accountSession,
+                    smartAccounts: environment.smartAccounts
+                ) { role in
                     withAnimation(.easeInOut(duration: 0.35)) {
                         storedWorkspaceRole = role.rawValue
                         hasCompletedOnboarding = true
@@ -67,6 +70,7 @@ struct RootView: View {
         .preferredColorScheme(inAppColorScheme)
         .task {
             await environment.accountSession.restore()
+            await environment.smartAccounts.load()
         }
         .task {
             // Glyph beat, wordmark sweep, then a moment to read it.
@@ -110,6 +114,8 @@ struct RootView: View {
             AccountFoundationView(environment: environment)
         case .support:
             SupportView()
+        case .keys:
+            KeysView(environment: environment)
         }
     }
 

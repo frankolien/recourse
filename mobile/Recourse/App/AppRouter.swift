@@ -10,6 +10,7 @@ enum AppRoute: Hashable {
     case earn
     case account
     case support
+    case keys
 }
 
 @MainActor

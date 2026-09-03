@@ -110,12 +110,12 @@ struct AccountFoundationView: View {
                 settingsRowLabel("Your name", "at")
             }
             NavigationLink {
-                WalletRecoveryView(environment: environment)
+                KeysView(environment: environment)
             } label: {
-                settingsRowLabel("Recovery", "lock.rotation")
+                settingsRowLabel("Keys & recovery", "key.horizontal.fill")
             }
         } footer: {
-            Text("Pick a handle so people can pay you by name, and turn on recovery so your wallet follows your account instead of this phone.")
+            Text("Pick a handle so people can pay you by name. Your keys are what spend and what gets you back in on a new phone.")
         }
     }
 

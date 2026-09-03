@@ -23,7 +23,9 @@ final class AppEnvironment {
         router: AppRouter = AppRouter(),
         accountSession: AccountSession? = nil,
         buyerSigner: (any BuyerSigner)? = nil,
-        paymentStore: BuyerPaymentStore? = nil
+        paymentStore: BuyerPaymentStore? = nil,
+        smartAccountAPI: (any SmartAccountAPI)? = nil,
+        deviceKey: (any DeviceKeySigning)? = nil
     ) {
         self.configuration = configuration
         self.router = router
@@ -42,7 +44,8 @@ final class AppEnvironment {
             configuration: configuration,
             session: self.accountSession,
             signer: switchable,
-            api: SmartAccountAPIClient(baseURL: configuration.apiURL)
+            api: smartAccountAPI ?? SmartAccountAPIClient(baseURL: configuration.apiURL),
+            deviceKey: deviceKey ?? SecureEnclaveDeviceKey()
         )
         // Built last because it needs the session and the signer that were just
         // resolved, and it closes over makeContractGateway so it reads chain state

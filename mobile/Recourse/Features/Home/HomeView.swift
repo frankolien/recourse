@@ -14,6 +14,8 @@ struct HomeView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var previousScrollOffset: CGFloat = 0
     @State private var showsReceive = false
+    @State private var showsUpgrade = false
+    @State private var showsRestore = false
     @State private var earnVaultState: VaultState?
     @AppStorage("recourse.hidesBalance") private var hidesBalance = false
     // Once. A guide that reappears on every launch until the first transaction is a
@@ -57,6 +59,7 @@ struct HomeView: View {
                     if showsEarnPromo {
                         earnPromo
                     }
+                    accountLead
                     if book.cashableCount > 0 {
                         chequeLead
                     }
@@ -89,6 +92,12 @@ struct HomeView: View {
         .coordinateSpace(name: "recourse-home-scroll")
         .onPreferenceChange(RecourseScrollOffsetPreferenceKey.self) { newOffset in
             reportScrollDirection(newOffset)
+        }
+        .sheet(isPresented: $showsUpgrade) {
+            NavigationStack { UpgradeAccountView(environment: environment) }
+        }
+        .sheet(isPresented: $showsRestore) {
+            NavigationStack { RestoreDeviceView(environment: environment) }
         }
         .sheet(isPresented: $showsReceive) {
             DepositSheet(environment: environment)
@@ -477,6 +486,63 @@ struct HomeView: View {
 
     // Someone has already promised this money; the only thing between it and the
     // wallet is a tap. That earns a place above Earn.
+    // The account's keys, only while something about them needs doing: an older
+    // wallet that should move behind three keys, or a phone that is not the Device
+    // Key yet. Once the account is live there is nothing here.
+    @ViewBuilder
+    private var accountLead: some View {
+        switch environment.smartAccounts.phase {
+        case .none:
+            keyLead(
+                icon: "key.horizontal.fill",
+                title: "Put your money behind three keys",
+                detail: "Two on this phone to spend, one to get back in"
+            ) { showsUpgrade = true }
+        case .needsRestore:
+            keyLead(
+                icon: "iphone.and.arrow.forward",
+                title: "Restore this phone",
+                detail: "Your account is on another phone. Move it here with an emailed code"
+            ) { showsRestore = true }
+        case .failed:
+            keyLead(
+                icon: "exclamationmark.triangle.fill",
+                title: "Account setup did not finish",
+                detail: "Tap to try again"
+            ) { showsUpgrade = true }
+        default:
+            EmptyView()
+        }
+    }
+
+    private func keyLead(icon: String, title: String, detail: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(RecourseColor.ledger)
+                    .frame(width: 38, height: 38)
+                    .background(RecourseColor.nightChip, in: Circle())
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.recourse(13, .semibold))
+                        .foregroundStyle(RecourseColor.nightText)
+                    Text(detail)
+                        .font(.recourse(11))
+                        .foregroundStyle(RecourseColor.nightMuted)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(RecourseColor.nightMuted)
+            }
+            .padding(14)
+            .contentShape(Rectangle())
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
     private var chequeLead: some View {
         Button {
             environment.router.push(.cheques)
