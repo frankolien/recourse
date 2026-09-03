@@ -140,6 +140,11 @@ pub fn build_app(
                 .route("/auth/refresh", web::post().to(handlers::auth::refresh))
                 .route("/auth/logout", web::post().to(handlers::auth::logout))
                 .route("/me", web::get().to(handlers::auth::me))
+                // Cheques. The rows carry no authority: a cheque is not bearer, so
+                // this is delivery rather than custody of anything.
+                .route("/cheques", web::post().to(handlers::cheques::write_cheque))
+                .route("/cheques/inbox", web::get().to(handlers::cheques::inbox))
+                .route("/cheques/outbox", web::get().to(handlers::cheques::outbox))
                 // Naming someone instead of addressing them. Resolution is public
                 // because a sender need not be a Recourse user; claiming is not.
                 .route(
