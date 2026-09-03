@@ -114,9 +114,9 @@ struct OnboardingAuthenticationView: View {
                     .animation(.smooth(duration: 0.55), value: activeIndex)
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
             .padding(.horizontal, 40)
-            .padding(.top, 34)
+            .padding(.bottom, 4)
         }
         .accessibilityHidden(true)
     }
@@ -125,6 +125,11 @@ struct OnboardingAuthenticationView: View {
 
     private func hero(compact: Bool) -> some View {
         VStack(alignment: .leading, spacing: compact ? 10 : 13) {
+            // The screen's slack lives here, above the copy, where it joins the space
+            // under the close button and reads as header room. Put it between the copy
+            // and the buttons instead and it reads as a hole.
+            Spacer(minLength: 0)
+
             Label("USDC ON ARC", systemImage: "dollarsign.circle.fill")
                 .font(.system(size: 10, weight: .bold))
                 .tracking(0.8)
@@ -142,10 +147,8 @@ struct OnboardingAuthenticationView: View {
                 .lineLimit(3)
                 .fixedSize(horizontal: false, vertical: true)
 
-            // Everything above holds the top, the ways in hold the bottom.
-            Spacer(minLength: compact ? 14 : 24)
-
             appleButton
+                .padding(.top, compact ? 14 : 22)
             googleButton
             passkeyButton
 
@@ -167,7 +170,7 @@ struct OnboardingAuthenticationView: View {
         .padding(.horizontal, 24)
         .padding(.top, 12)
         .padding(.bottom, compact ? 12 : 18)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
         .disabled(accountSession.isAuthenticating)
         .overlay {
             if accountSession.isAuthenticating {
