@@ -40,6 +40,9 @@ struct DepositSheet: View {
         }
     }
 
+    // Two across rather than four stacked. A stack reads as a ranked list and buries
+    // the live option's siblings below the fold; a grid shows the whole shape of the
+    // answer at once, which matters when three of the four are not open yet.
     private var methods: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("DEPOSIT WITH")
@@ -47,44 +50,49 @@ struct DepositSheet: View {
                 .kerning(1.1)
                 .foregroundStyle(RecourseColor.nightMuted)
 
-            NavigationLink {
-                ReceiveAddressView(environment: environment)
-            } label: {
-                DepositRow(
-                    icon: "qrcode",
-                    title: "Crypto",
-                    detail: "Receive USDC to your Recourse QR or address",
-                    availability: .live
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2),
+                spacing: 12
+            ) {
+                NavigationLink {
+                    ReceiveAddressView(environment: environment)
+                } label: {
+                    DepositCard(
+                        icon: "qrcode",
+                        title: "Crypto",
+                        detail: "To your QR or address",
+                        availability: .live
+                    )
+                }
+                .buttonStyle(.plain)
+
+                // CCTP is Circle's own bridge and Arc supports it, so this is the next
+                // one to become real rather than a wish. Addresses are already recorded
+                // in deployments/arc-config.json.
+                DepositCard(
+                    icon: "arrow.left.arrow.right",
+                    title: "Another chain",
+                    detail: "Base, Solana and more",
+                    availability: .soon
+                )
+
+                // Both of these need a registered business before any provider will
+                // issue production keys, which is why they are dated by paperwork
+                // rather than by engineering.
+                DepositCard(
+                    icon: "creditcard",
+                    title: "Cash",
+                    detail: "Buy with your card",
+                    availability: .soon
+                )
+
+                DepositCard(
+                    icon: "building.columns",
+                    title: "Bank transfer",
+                    detail: "Not open yet",
+                    availability: .soon
                 )
             }
-            .buttonStyle(.plain)
-
-            // CCTP is Circle's own bridge and Arc supports it, so this is the next
-            // one to become real rather than a wish. Addresses are already recorded
-            // in deployments/arc-config.json.
-            DepositRow(
-                icon: "arrow.left.arrow.right",
-                title: "From another chain",
-                detail: "USDC from Base, Solana and more",
-                availability: .soon
-            )
-
-            // Both of these need a registered business before any provider will
-            // issue production keys, which is why they are dated by paperwork
-            // rather than by engineering.
-            DepositRow(
-                icon: "creditcard",
-                title: "Cash",
-                detail: "Buy USDC with your bank card",
-                availability: .soon
-            )
-
-            DepositRow(
-                icon: "building.columns",
-                title: "Bank transfer",
-                detail: "Not open yet, use Crypto for now",
-                availability: .soon
-            )
         }
     }
 
@@ -109,7 +117,7 @@ private enum DepositAvailability {
     case soon
 }
 
-private struct DepositRow: View {
+private struct DepositCard: View {
     let icon: String
     let title: String
     let detail: String
@@ -118,47 +126,60 @@ private struct DepositRow: View {
     private var dimmed: Bool { availability == .soon }
 
     var body: some View {
-        HStack(spacing: 14) {
+        VStack(alignment: .leading, spacing: 0) {
+            // Filled for the one that works, hollow for the ones that do not. The
+            // difference does the same job the word "Soon" does, a beat earlier.
             Image(systemName: icon)
-                .font(.system(size: 17, weight: .medium))
-                .foregroundStyle(dimmed ? RecourseColor.nightMuted : RecourseColor.ledger)
-                .frame(width: 46, height: 46)
-                .background(
-                    RecourseColor.night,
-                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-                )
-
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 8) {
-                    Text(title)
-                        .font(.recourse(16, .semibold))
-                        .foregroundStyle(dimmed ? RecourseColor.nightMuted : RecourseColor.nightText)
-                    if availability == .soon {
-                        Text("Soon")
-                            .font(.recourse(11, .medium))
-                            .foregroundStyle(RecourseColor.nightMuted.opacity(0.8))
-                    }
+                .font(.system(size: 20, weight: .medium))
+                .foregroundStyle(dimmed ? RecourseColor.nightMuted : .white)
+                .frame(width: 52, height: 52)
+                .background {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(dimmed ? RecourseColor.night : RecourseColor.ledger)
+                        .overlay {
+                            if dimmed {
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .stroke(RecourseColor.nightLine, lineWidth: 1)
+                            }
+                        }
                 }
-                Text(detail)
-                    .font(.recourse(12, .medium))
-                    .foregroundStyle(RecourseColor.nightMuted)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .multilineTextAlignment(.leading)
+
+            Spacer(minLength: 18)
+
+            HStack(spacing: 6) {
+                Text(title)
+                    .font(.recourse(15, .semibold))
+                    .foregroundStyle(dimmed ? RecourseColor.nightMuted : RecourseColor.nightText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+                if availability == .soon {
+                    Text("SOON")
+                        .font(.recourse(8, .semibold))
+                        .kerning(0.6)
+                        .foregroundStyle(RecourseColor.nightMuted)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(RecourseColor.night, in: Capsule())
+                }
             }
+            .padding(.bottom, 3)
 
-            Spacer(minLength: 0)
-
-            Image(systemName: "chevron.right")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(RecourseColor.nightMuted.opacity(dimmed ? 0.4 : 1))
+            Text(detail)
+                .font(.recourse(12, .medium))
+                .foregroundStyle(RecourseColor.nightMuted)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        // A floor rather than a fixed height: the grid equalises rows itself, and a
+        // fixed one would clip the second line of a detail at larger type sizes.
+        .frame(maxWidth: .infinity, minHeight: 168, alignment: .topLeading)
         .background(
             RecourseColor.nightChip.opacity(dimmed ? 0.5 : 1),
-            in: RoundedRectangle(cornerRadius: 20, style: .continuous)
+            in: RoundedRectangle(cornerRadius: 22, style: .continuous)
         )
-        .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .accessibilityElement(children: .combine)
         .accessibilityLabel(availability == .soon ? "\(title), coming soon. \(detail)" : "\(title). \(detail)")
     }

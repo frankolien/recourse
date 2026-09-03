@@ -89,7 +89,10 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showsReceive) {
             DepositSheet(environment: environment)
-                .presentationDetents([.medium, .large])
+                // Full height only: the grid needs both rows and the footnote on
+                // screen at once, and a medium detent clips the second row into a
+                // scroll nobody looks for.
+                .presentationDetents([.large])
         }
         .task {
             while !Task.isCancelled {
