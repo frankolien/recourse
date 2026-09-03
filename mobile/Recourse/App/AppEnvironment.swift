@@ -54,6 +54,10 @@ final class AppEnvironment {
         HandleAPIClient(baseURL: configuration.apiURL)
     }
 
+    func makeWalletBackupAPIClient() -> any WalletBackupAPI {
+        WalletBackupAPIClient(baseURL: configuration.apiURL)
+    }
+
     static func live() -> AppEnvironment {
         AppEnvironment(configuration: .live)
     }

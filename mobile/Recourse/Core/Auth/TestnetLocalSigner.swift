@@ -126,6 +126,35 @@ actor TestnetLocalSigner: BuyerSigner {
         }
     }
 
+    /// Whether this account already has a keystore on this device, checked without
+    /// creating one. Same question importPrivateKey asks before refusing, so the two
+    /// can never disagree about whether there is something here to lose.
+    func hasWallet() async -> Bool {
+        ((try? await store.load(account: keystoreAccount)) ?? nil) != nil
+    }
+
+    /// Install a recovered private key as this account's wallet.
+    ///
+    /// The counterpart of exportPrivateKey, and the last step of restoring a backup on
+    /// a new device. It refuses to run when a keystore already exists rather than
+    /// overwriting one: on a phone that has been used, the existing key may hold funds
+    /// nobody has a copy of, and silently replacing it would destroy them. Callers that
+    /// genuinely mean to replace a wallet call reset() first and say so on screen.
+    func importPrivateKey(_ privateKey: Data) async throws {
+        if try await store.load(account: keystoreAccount) != nil {
+            throw BuyerSignerError.walletAlreadyExists
+        }
+        let password = try makePassword()
+        guard let keystore = try EthereumKeystoreV3(privateKey: privateKey, password: password) else {
+            throw BuyerSignerError.keystoreCreationFailed
+        }
+        guard let serialized = try keystore.serialize() else {
+            throw BuyerSignerError.keystoreSerializationFailed
+        }
+        try await store.save(serialized, account: keystoreAccount)
+        try await store.save(Data(password.utf8), account: passwordAccount)
+    }
+
     func reset() async throws {
         try await store.delete(account: keystoreAccount)
         try await store.delete(account: passwordAccount)
