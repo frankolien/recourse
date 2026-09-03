@@ -29,3 +29,4 @@ argon2 = "0.5"
 # and finish requests; it is safe here because those rows are single-use and TTL-bound.
 webauthn-rs = { version = "0.5", features = ["danger-allow-state-serialisation"] }
 uuid = { version = "1", features = ["v4"] }
+aes-gcm = "0.10"

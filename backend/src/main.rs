@@ -17,6 +17,9 @@ use crate::services::evidence::EvidenceStore;
 use crate::services::google_auth::GoogleAuthService;
 use crate::services::orders::OrderStore;
 use crate::services::passkey::PasskeyService;
+use crate::services::recovery::{Mailer, RecoveryVault};
+use crate::services::safe::SafeClient;
+use crate::services::smart_accounts::SmartAccounts;
 use crate::services::AppConfig;
 
 #[actix_web::main]
@@ -98,6 +101,8 @@ async fn main() -> Result<()> {
         None => tracing::info!("cloudinary image mirror disabled (CLOUDINARY_URL not set)"),
     }
 
+    let smart_accounts = build_smart_accounts(&config)?;
+
     tracing::info!(
         "recourse-backend listening on :{} (Arc chain {})",
         config.port,
@@ -119,6 +124,7 @@ async fn main() -> Result<()> {
             evidence.clone(),
             orders.clone(),
             cloudinary.clone(),
+            smart_accounts.clone(),
         )
     })
     .bind(bind)?
@@ -156,4 +162,43 @@ async fn build_attestor(config: &AppConfig) -> Result<Option<AttestorClient>> {
             Ok(None)
         }
     }
+}
+
+// The account routes need three things that are each optional: a funded deployer key
+// with the contract addresses, the vault key, and a way to send mail. Each is reported
+// at boot so a missing one is a log line now rather than a 500 at enrolment.
+fn build_smart_accounts(config: &AppConfig) -> Result<SmartAccounts> {
+    let safe = match (&config.attestor_pk, config.p256_owner_factory, &config.safe) {
+        (Some(pk), Some(factory), Some(deployment)) => {
+            tracing::info!("smart accounts enabled (factory {factory:#x})");
+            Some(SafeClient::new(&config.rpc_url, pk, deployment.clone(), factory)?)
+        }
+        _ => {
+            tracing::warn!("smart accounts disabled (needs ATTESTOR_PK, p256OwnerFactory and safe in deployments)");
+            None
+        }
+    };
+    let vault = match &config.recovery_vault_key {
+        Some(key) => Some(RecoveryVault::from_base64(key).map_err(|message| anyhow::anyhow!(message))?),
+        None => {
+            tracing::warn!("recovery vault disabled (RECOVERY_VAULT_KEY not set)");
+            None
+        }
+    };
+    let mailer = match (&config.resend_api_key, &config.recovery_mail_from, config.recovery_mail_log) {
+        (Some(api_key), Some(from), _) => Some(Mailer::Resend {
+            client: reqwest::Client::new(),
+            api_key: api_key.clone(),
+            from: from.clone(),
+        }),
+        (_, _, true) => {
+            tracing::warn!("RECOVERY_MAIL=log: recovery codes will be printed to the log");
+            Some(Mailer::Log)
+        }
+        _ => {
+            tracing::warn!("recovery mail disabled (set RESEND_API_KEY and RECOVERY_MAIL_FROM)");
+            None
+        }
+    };
+    Ok(SmartAccounts { safe, vault, mailer })
 }

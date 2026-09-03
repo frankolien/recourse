@@ -11,6 +11,9 @@ pub mod handles;
 pub mod invoices;
 pub mod orders;
 pub mod passkey;
+pub mod recovery;
+pub mod safe;
+pub mod smart_accounts;
 pub mod wallet_backups;
 
 use alloy::primitives::Address;
@@ -34,6 +37,12 @@ pub struct Deployment {
     pub usdc: Address,
     #[serde(rename = "chainId")]
     pub chain_id: u64,
+    // Absent on a local deployment that predates smart accounts; the account routes
+    // then answer that accounts are not switched on rather than failing at boot.
+    #[serde(rename = "p256OwnerFactory", default)]
+    pub p256_owner_factory: Option<Address>,
+    #[serde(default)]
+    pub safe: Option<safe::SafeDeployment>,
 }
 
 #[derive(Debug, Clone)]
@@ -87,6 +96,18 @@ pub struct AppConfig {
     // https://<rp_id>. Both absent means the passkey endpoints stay disabled.
     pub webauthn_rp_id: Option<String>,
     pub webauthn_rp_origin: Option<String>,
+    // Smart accounts: the Device Key owner factory and the canonical Safe addresses,
+    // both from the deployment file. Absent means the account routes stay off.
+    pub p256_owner_factory: Option<Address>,
+    pub safe: Option<safe::SafeDeployment>,
+    // Wraps every Recovery Key at rest (32 random bytes, base64). Losing it loses every
+    // sealed key, so it is the one secret here with no vendor-side copy.
+    pub recovery_vault_key: Option<String>,
+    // Recovery codes go out through Resend. RECOVERY_MAIL=log prints them instead, for
+    // local work only.
+    pub resend_api_key: Option<String>,
+    pub recovery_mail_from: Option<String>,
+    pub recovery_mail_log: bool,
 }
 
 fn env_or(key: &str, default: &str) -> String {
@@ -155,6 +176,12 @@ impl AppConfig {
                 .unwrap_or_default(),
             webauthn_rp_id: optional_env("WEBAUTHN_RP_ID"),
             webauthn_rp_origin: optional_env("WEBAUTHN_RP_ORIGIN"),
+            p256_owner_factory: deployment.p256_owner_factory,
+            safe: deployment.safe,
+            recovery_vault_key: optional_env("RECOVERY_VAULT_KEY"),
+            resend_api_key: optional_env("RESEND_API_KEY"),
+            recovery_mail_from: optional_env("RECOVERY_MAIL_FROM"),
+            recovery_mail_log: optional_env("RECOVERY_MAIL").as_deref() == Some("log"),
         })
     }
 }

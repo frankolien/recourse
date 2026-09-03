@@ -2,10 +2,18 @@
   "attestor": "0xD6c574461d96Ee708f58Fe553049aD4f48BB983A",
   "chainId": 5042002,
   "escrow": "0x61Fd99789B28582882a3369E2024AeaE5b5D2DC0",
+  "p256OwnerFactory": "0xBb27F2339a48aE263527b3F2DD871ec12a7E7ce8",
   "policyRegistry": "0x94f8551fbE43aB919D87c3951394b148c914430E",
+  "safe": {
+    "entryPoint": "0x0000000071727De22E5E9d8BAf0edAc6f37da032",
+    "module4337": "0x75cf11467937ce3F2f357CE24ffc3DBF8fD5c226",
+    "moduleSetup": "0x2dd68b007B46fBe91B9A7c3EDa5A7a1063cB5b47",
+    "note": "Canonical Safe 1.4.1 (SafeL2) and Safe4337Module v0.3 for EntryPoint v0.7; verified on-chain 2026-09-03, see docs/keys-and-recovery.md",
+    "proxyFactory": "0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67",
+    "singleton": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762"
+  },
   "settlementVault": "0x5d8a3000866493f5D0B5B07a4Ad63ADE3B02054D",
   "treasury": "0xD6c574461d96Ee708f58Fe553049aD4f48BB983A",
   "usdc": "0x3600000000000000000000000000000000000000",
-  "yieldAdapter": "0x2336AaBE139b7F426aF63f713b9f93CD3FFC6204",
-  "p256OwnerFactory": "0xBb27F2339a48aE263527b3F2DD871ec12a7E7ce8"
+  "yieldAdapter": "0x2336AaBE139b7F426aF63f713b9f93CD3FFC6204"
 }

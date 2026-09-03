@@ -32,6 +32,7 @@ use crate::services::evidence::EvidenceStore;
 use crate::services::google_auth::GoogleAuthService;
 use crate::services::orders::OrderStore;
 use crate::services::passkey::PasskeyService;
+use crate::services::smart_accounts::SmartAccounts;
 use crate::services::AppConfig;
 
 // Assembles the actix app: CORS, shared state (one web::Data per dependency), and the
@@ -49,6 +50,7 @@ pub fn build_app(
     evidence: EvidenceStore,
     orders: OrderStore,
     cloudinary: Option<Cloudinary>,
+    smart_accounts: SmartAccounts,
 ) -> App<
     impl actix_web::dev::ServiceFactory<
         actix_web::dev::ServiceRequest,
@@ -70,6 +72,7 @@ pub fn build_app(
         .app_data(web::Data::new(evidence))
         .app_data(web::Data::new(orders))
         .app_data(web::Data::new(cloudinary))
+        .app_data(web::Data::new(smart_accounts))
         .route("/health", web::get().to(handlers::health::health_check))
         .service(
             web::scope("/api")
@@ -182,6 +185,14 @@ pub fn build_app(
                     web::delete().to(handlers::wallet_backup::delete_backup),
                 )
                 .route("/me/profile", web::put().to(handlers::auth::update_profile))
+                // The account's Safe and its keys. Provisioning and the device swap pay
+                // gas from the attestor key; nothing here can spend from the Safe.
+                .route("/me/account", web::get().to(handlers::accounts::current))
+                .route("/me/account/provision", web::post().to(handlers::accounts::provision))
+                .route("/me/account/recovery/code", web::post().to(handlers::accounts::recovery_code))
+                .route("/me/account/recovery/verify", web::post().to(handlers::accounts::recovery_verify))
+                .route("/me/account/device/prepare", web::post().to(handlers::accounts::device_prepare))
+                .route("/me/account/device/execute", web::post().to(handlers::accounts::device_execute))
                 // Verify + record a payment's evidence list against the onchain root.
                 .route(
                     "/evidence/manifest",

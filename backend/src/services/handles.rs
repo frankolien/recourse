@@ -145,6 +145,19 @@ pub async fn claim(
     Ok(Handle { handle, address })
 }
 
+/// Move an account's handle to a new address. A no-op for an account with no handle:
+/// the address lives on the handle, so there is nothing to move.
+pub async fn repoint(pool: &PgPool, account_id: i64, address: &str) -> Result<(), AccountAuthError> {
+    let address = normalize_address(address)?;
+    sqlx::query("UPDATE account_handles SET wallet_address = $2, updated_at = now() WHERE account_id = $1")
+        .bind(account_id)
+        .bind(&address)
+        .execute(pool)
+        .await
+        .map_err(|error| AccountAuthError::Internal(format!("moving handle: {error}")))?;
+    Ok(())
+}
+
 /// Resolve a handle to the address money should go to. Public: a sender does not have
 /// an account with us, and requiring one would make paying a Recourse user harder than
 /// paying anyone else.
