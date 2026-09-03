@@ -76,6 +76,7 @@ struct RestoreDeviceView: View {
             step("arrow.triangle.2.circlepath", "Your Cloud Key approves the swap", "Two keys sign it: the one in your iCloud and the recovery key the code unlocks.")
         }
         .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
@@ -95,6 +96,7 @@ struct RestoreDeviceView: View {
             .buttonStyle(.plain)
         }
         .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 

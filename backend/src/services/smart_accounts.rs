@@ -61,6 +61,10 @@ pub struct AccountView {
     pub safe: String,
     pub cloud_owner: String,
     pub device_owner: String,
+    /// The Device Key's coordinates, so a phone can tell whether the key it holds is
+    /// the one the account is bound to, without re-deriving the owner address.
+    pub device_x: String,
+    pub device_y: String,
     pub recovery_owner: String,
     pub threshold: i32,
     pub status: String,
@@ -92,6 +96,8 @@ struct Row {
     salt_nonce: String,
     cloud_owner: String,
     device_owner: String,
+    device_x: String,
+    device_y: String,
     recovery_owner: String,
     threshold: i32,
     status: String,
@@ -122,7 +128,8 @@ fn chain(error: anyhow::Error) -> AccountAuthError {
 
 async fn row(pool: &PgPool, account_id: i64) -> Result<Option<Row>, AccountAuthError> {
     sqlx::query_as::<_, Row>(
-        "SELECT safe_address, salt_nonce, cloud_owner, device_owner, recovery_owner, threshold, status \
+        "SELECT safe_address, salt_nonce, cloud_owner, device_owner, device_x, device_y, \
+                recovery_owner, threshold, status \
          FROM smart_accounts WHERE account_id = $1",
     )
     .bind(account_id)
@@ -136,6 +143,8 @@ fn view(row: &Row, safe: &SafeClient) -> AccountView {
         safe: row.safe_address.clone(),
         cloud_owner: row.cloud_owner.clone(),
         device_owner: row.device_owner.clone(),
+        device_x: row.device_x.clone(),
+        device_y: row.device_y.clone(),
         recovery_owner: row.recovery_owner.clone(),
         threshold: row.threshold,
         status: row.status.clone(),

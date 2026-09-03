@@ -62,6 +62,7 @@ struct UpgradeAccountView: View {
             step("arrow.right.circle.fill", "Your balance moves across", "One transfer, paid by the old key. Uncashed cheques stay behind until they clear.")
         }
         .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 

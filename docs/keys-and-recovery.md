@@ -4,8 +4,9 @@ How a Recourse account holds its money once the wallet stops being one key on on
 phone. Written 2026-09-03 against the code as it stands, after reading Fuse's key
 model, Xend's decision record for the same problem, and probing Arc testnet directly.
 
-Status: decided, not built. Supersedes the passkey-PRF plan in
-`wallet-architecture.md` as the primary mechanism; PRF stays a later convenience.
+Status: built on 2026-09-03 and proven on Arc testnet; see "What shipped" at the end.
+Supersedes the passkey-PRF plan in `wallet-architecture.md` as the primary mechanism;
+PRF stays a later convenience.
 
 ## The problem
 
@@ -282,3 +283,38 @@ chain id 5042 appears only as a placeholder in Circle's iOS SDK. Launch needs:
   chains; Circle Modular Wallets supported blockchains and passkey recovery pages;
   safe-deployments v1.4.1 (`5042002: canonical`).
 - Safe 1.4.1 and Safe4337Module v0.3 sources for message and SafeOp hashing.
+
+## What shipped
+
+Built the same day as the decision, in this order, each step proven before the next.
+
+**Contracts.** `P256Owner` and `P256OwnerFactory` (`contracts/src`), Foundry tests
+against a real P-256 verifier, deployed to Arc testnet at
+`0xBb27F2339a48aE263527b3F2DD871ec12a7E7ce8` and recorded in the address book. A 2-of-3
+Safe whose owners are an EOA, a `P256Owner` and a second EOA executed a user
+operation signed by the EOA and the P-256 key through Pimlico
+(`0x93B5497A85be58436E6667140C9AaC7Fac9E5304`), and a cheque signed by that Safe
+simulates as cashable.
+
+**Backend.** Migration `0012_smart_accounts.sql`; `services/safe.rs` (deploy the
+owner contract and the Safe, relay the swap), `services/recovery.rs` (seal and open
+the Recovery Key, emailed codes), `services/smart_accounts.rs` (the rules), routes
+under `/api/me/account`. Run end to end against a local Postgres and Arc testnet:
+provision in 12 seconds, a device swap in 2, a foreign device key refused, a wrong
+code counted, a wrong Cloud Key signature refused before anything is unsealed, the
+grant spent after one use. New environment: `RECOVERY_VAULT_KEY`, `RESEND_API_KEY`,
+`RECOVERY_MAIL_FROM`, and `RECOVERY_MAIL=log` for local work.
+
+**Mobile.** `SafeSigning` (hashes pinned to values the live Safe returned),
+`DeviceKey` (Secure Enclave, `.userPresence`), `BundlerClient`, `SafeAccountSigner`,
+`SafeSubmitter`, `SwitchableSigner`, `SmartAccountStore`, `SmartAccountAPIClient`;
+`ArcContractWriter` writes through a submitter and cashes cheques with the `bytes`
+overload; onboarding provisions the account; Home shows a lead to upgrade an older
+wallet or restore a phone; Account has a Keys screen with the three explainers, a
+Restore-this-phone flow and an Upgrade flow.
+
+**Not yet.** The security delay on a device swap (needs a Safe module). Mainnet
+addresses. Evidence uploads for protected checkouts still sign with a plain key and
+will not verify for a Safe account. The enclave itself has only been exercised
+through the simulator's software stand-in; the first run on a phone is the real test.
+
