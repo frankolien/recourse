@@ -14,7 +14,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "44E9F444A81C215E42A66C8CD8D8C95D"
+               BlueprintIdentifier = "685AF334CC3AF2A59C0B3A29FAC78DF5"
                BuildableName = "Recourse.app"
                BlueprintName = "Recourse"
                ReferencedContainer = "container:Recourse.xcodeproj">
@@ -30,7 +30,7 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "44E9F444A81C215E42A66C8CD8D8C95D"
+            BlueprintIdentifier = "685AF334CC3AF2A59C0B3A29FAC78DF5"
             BuildableName = "Recourse.app"
             BlueprintName = "Recourse"
             ReferencedContainer = "container:Recourse.xcodeproj">
@@ -63,7 +63,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "44E9F444A81C215E42A66C8CD8D8C95D"
+            BlueprintIdentifier = "685AF334CC3AF2A59C0B3A29FAC78DF5"
             BuildableName = "Recourse.app"
             BlueprintName = "Recourse"
             ReferencedContainer = "container:Recourse.xcodeproj">
@@ -80,7 +80,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "44E9F444A81C215E42A66C8CD8D8C95D"
+            BlueprintIdentifier = "685AF334CC3AF2A59C0B3A29FAC78DF5"
             BuildableName = "Recourse.app"
             BlueprintName = "Recourse"
             ReferencedContainer = "container:Recourse.xcodeproj">

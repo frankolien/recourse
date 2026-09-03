@@ -13,14 +13,14 @@ struct DepositSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 26) {
+                VStack(alignment: .leading, spacing: 18) {
                     header
                     methods
                     footnote
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 12)
-                .padding(.bottom, 32)
+                .padding(.top, 10)
+                .padding(.bottom, 24)
             }
             .scrollIndicators(.hidden)
             .background(RecourseColor.night)
@@ -32,7 +32,7 @@ struct DepositSheet: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Deposit")
-                .font(.recourse(28, .bold))
+                .font(.recourse(24, .bold))
                 .foregroundStyle(RecourseColor.nightText)
             Text("Add money to your Recourse wallet.")
                 .font(.recourse(13, .medium))
@@ -60,7 +60,8 @@ struct DepositSheet: View {
                     DepositCard(
                         icon: "qrcode",
                         title: "Crypto",
-                        detail: "To your QR or address",
+                        detail: "USDC on Arc, to your QR or address",
+                        marks: [.usdc, .arc],
                         availability: .live
                     )
                 }
@@ -72,7 +73,8 @@ struct DepositSheet: View {
                 DepositCard(
                     icon: "arrow.left.arrow.right",
                     title: "Another chain",
-                    detail: "Base, Solana and more",
+                    detail: "USDC from Base, Solana or Ethereum",
+                    marks: [.base, .solana, .ethereum],
                     availability: .soon
                 )
 
@@ -82,14 +84,16 @@ struct DepositSheet: View {
                 DepositCard(
                     icon: "creditcard",
                     title: "Cash",
-                    detail: "Buy with your card",
+                    detail: "Buy with a card or Apple Pay",
+                    marks: [.visa, .mastercard, .applePay],
                     availability: .soon
                 )
 
                 DepositCard(
                     icon: "building.columns",
                     title: "Bank transfer",
-                    detail: "Not open yet",
+                    detail: "Dollars, euros or pounds from your bank",
+                    marks: [.currency("$"), .currency("€"), .currency("£")],
                     availability: .soon
                 )
             }
@@ -120,67 +124,67 @@ private enum DepositAvailability {
 private struct DepositCard: View {
     let icon: String
     let title: String
+    /// Spoken, not shown. The marks carry the meaning on screen; this is what VoiceOver
+    /// says instead of reading out three logos.
     let detail: String
+    let marks: [BrandMark]
     let availability: DepositAvailability
 
     private var dimmed: Bool { availability == .soon }
+    private var fill: Color { RecourseColor.nightChip.opacity(dimmed ? 0.5 : 1) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Filled for the one that works, hollow for the ones that do not. The
-            // difference does the same job the word "Soon" does, a beat earlier.
-            Image(systemName: icon)
-                .font(.system(size: 20, weight: .medium))
-                .foregroundStyle(dimmed ? RecourseColor.nightMuted : .white)
-                .frame(width: 52, height: 52)
-                .background {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(dimmed ? RecourseColor.night : RecourseColor.ledger)
-                        .overlay {
-                            if dimmed {
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .stroke(RecourseColor.nightLine, lineWidth: 1)
+            HStack(alignment: .top) {
+                // Filled for the one that works, hollow for the ones that do not. The
+                // difference does the same job the SOON badge does, a beat earlier.
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(dimmed ? RecourseColor.nightMuted : .white)
+                    .frame(width: 40, height: 40)
+                    .background {
+                        RoundedRectangle(cornerRadius: 13, style: .continuous)
+                            .fill(dimmed ? RecourseColor.night : RecourseColor.ledger)
+                            .overlay {
+                                if dimmed {
+                                    RoundedRectangle(cornerRadius: 13, style: .continuous)
+                                        .stroke(RecourseColor.nightLine, lineWidth: 1)
+                                }
                             }
-                        }
-                }
+                    }
 
-            Spacer(minLength: 18)
+                Spacer(minLength: 6)
 
-            HStack(spacing: 6) {
-                Text(title)
-                    .font(.recourse(15, .semibold))
-                    .foregroundStyle(dimmed ? RecourseColor.nightMuted : RecourseColor.nightText)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
                 if availability == .soon {
                     Text("SOON")
                         .font(.recourse(8, .semibold))
                         .kerning(0.6)
                         .foregroundStyle(RecourseColor.nightMuted)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
                         .background(RecourseColor.night, in: Capsule())
                 }
             }
-            .padding(.bottom, 3)
 
-            Text(detail)
-                .font(.recourse(12, .medium))
-                .foregroundStyle(RecourseColor.nightMuted)
-                .lineLimit(2)
-                .multilineTextAlignment(.leading)
-                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 12)
+
+            Text(title)
+                .font(.recourse(14, .semibold))
+                .foregroundStyle(dimmed ? RecourseColor.nightMuted : RecourseColor.nightText)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+
+            BrandMarkRow(marks: marks, height: 20, ring: fill)
+                .opacity(dimmed ? 0.7 : 1)
+                .padding(.top, 8)
         }
-        .padding(16)
-        // A floor rather than a fixed height: the grid equalises rows itself, and a
-        // fixed one would clip the second line of a detail at larger type sizes.
-        .frame(maxWidth: .infinity, minHeight: 168, alignment: .topLeading)
-        .background(
-            RecourseColor.nightChip.opacity(dimmed ? 0.5 : 1),
-            in: RoundedRectangle(cornerRadius: 22, style: .continuous)
-        )
-        .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .accessibilityElement(children: .combine)
+        .padding(13)
+        // Small enough that both rows and the footnote sit inside the sheet's medium
+        // detent; a floor rather than a fixed height so larger type still fits.
+        .frame(maxWidth: .infinity, minHeight: 124, alignment: .topLeading)
+        .background(fill, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(availability == .soon ? "\(title), coming soon. \(detail)" : "\(title). \(detail)")
     }
 }

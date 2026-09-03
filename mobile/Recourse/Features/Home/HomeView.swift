@@ -89,10 +89,9 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showsReceive) {
             DepositSheet(environment: environment)
-                // Full height only: the grid needs both rows and the footnote on
-                // screen at once, and a medium detent clips the second row into a
-                // scroll nobody looks for.
-                .presentationDetents([.large])
+                // Opens as a drop-down over Home. The cards are sized so both rows and
+                // the footnote fit at medium; large is there for anyone who pulls.
+                .presentationDetents([.medium, .large])
         }
         .task {
             while !Task.isCancelled {
