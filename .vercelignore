@@ -3,7 +3,10 @@
 backend
 contracts
 mobile
-docs
+# docs/* rather than docs: /litepaper renders docs/litepaper.md at build time, and a
+# directory excluded outright cannot have one file let back in. This shape can.
+docs/*
+!docs/litepaper.md
 ops
 **/target
 **/.next
