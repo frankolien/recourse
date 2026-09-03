@@ -19,7 +19,9 @@ struct DepositSheet: View {
                     footnote
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 10)
+                // Clear of the grabber. At ten points the title sat on the sheet's
+                // edge and read as cut off rather than as the top of something.
+                .padding(.top, 30)
                 .padding(.bottom, 24)
             }
             .scrollIndicators(.hidden)

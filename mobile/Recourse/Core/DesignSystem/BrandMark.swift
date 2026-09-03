@@ -8,6 +8,7 @@ import SwiftUI
 /// are drawn: the simplest shape that still reads as itself at 22 points.
 enum BrandMark: Identifiable, Hashable {
     case usdc
+    case eurc
     case arc
     case base
     case solana
@@ -35,6 +36,7 @@ enum BrandMark: Identifiable, Hashable {
     var accessibilityName: String {
         switch self {
         case .usdc: "USDC"
+        case .eurc: "EURC"
         case .arc: "Arc"
         case .base: "Base"
         case .solana: "Solana"
@@ -57,6 +59,7 @@ struct BrandMarkView: View {
         Group {
             switch mark {
             case .usdc: usdc
+            case .eurc: eurc
             case .arc: arc
             case .base: base
             case .solana: solana
@@ -77,6 +80,15 @@ struct BrandMarkView: View {
     // beside the asset catalog). Unaltered, as their owners ask.
     private var usdc: some View {
         Image("USDCMark").resizable().scaledToFit()
+    }
+
+    private var eurc: some View {
+        // Not in the CC0 set, so drawn in the same idiom as its sibling: the coin, the ring, the sign.
+        ZStack {
+            Circle().fill(Color(red: 0.153, green: 0.459, blue: 0.792))
+            Circle().stroke(.white, lineWidth: height * 0.08).padding(height * 0.16)
+            Text("€").font(.system(size: height * 0.5, weight: .bold, design: .rounded)).foregroundStyle(.white)
+        }
     }
 
     private var arc: some View {

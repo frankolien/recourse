@@ -32,6 +32,7 @@ struct ActivityView: View {
     }
 
     private var history: TransferHistory { environment.transferHistory }
+    private var usdcAddress: String { environment.configuration.usdcAddress.value.lowercased() }
 
     private var entries: [HistoryEntry] {
         history.entries(
@@ -167,18 +168,28 @@ struct ActivityView: View {
 
     private func row(_ entry: HistoryEntry) -> some View {
         HStack(spacing: 13) {
-            Image(systemName: entry.kind.symbol)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(entry.incoming ? RecourseColor.ledger : RecourseColor.nightText)
-                .frame(width: 42, height: 42)
-                .background(RecourseColor.nightChip, in: Circle())
+            // The coin first, because the first question about a row is "which money",
+            // and the direction rides on it as a badge the way a home-screen icon
+            // carries a count.
+            BrandMarkView(mark: entry.transfer.token == usdcAddress ? .usdc : .eurc, height: 42)
+                .overlay(alignment: .bottomTrailing) {
+                    Image(systemName: entry.kind.symbol)
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(entry.incoming ? RecourseColor.ledger : RecourseColor.nightText)
+                        .frame(width: 18, height: 18)
+                        .background(RecourseColor.nightChip, in: Circle())
+                        .overlay(Circle().stroke(RecourseColor.night, lineWidth: 2))
+                        .offset(x: 3, y: 3)
+                }
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(name(for: entry))
                     .font(.recourse(14, .semibold))
                     .foregroundStyle(RecourseColor.nightText)
                     .lineLimit(1)
-                Text("\(entry.kind.title) · \(entry.transfer.timestamp.formatted(date: .abbreviated, time: .shortened))")
+                // Month, day and time, no year: a six decimal amount on the right needs
+                // the width, and the year is the one part of a date nobody reads here.
+                Text("\(entry.kind.title) · \(entry.transfer.timestamp.formatted(.dateTime.month(.abbreviated).day().hour().minute()))")
                     .font(.recourse(11, .medium))
                     .foregroundStyle(RecourseColor.nightMuted)
                     .lineLimit(1)
