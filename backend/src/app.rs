@@ -148,6 +148,20 @@ pub fn build_app(
                 )
                 .route("/me/handle", web::get().to(handlers::handles::my_handle))
                 .route("/me/handle", web::put().to(handlers::handles::claim_handle))
+                // The wallet key, sealed by the device. The server stores ciphertext
+                // and holds no PIN, so these routes are storage rather than custody.
+                .route(
+                    "/me/wallet-backup",
+                    web::get().to(handlers::wallet_backup::get_backup),
+                )
+                .route(
+                    "/me/wallet-backup",
+                    web::put().to(handlers::wallet_backup::put_backup),
+                )
+                .route(
+                    "/me/wallet-backup",
+                    web::delete().to(handlers::wallet_backup::delete_backup),
+                )
                 .route("/me/profile", web::put().to(handlers::auth::update_profile))
                 // Verify + record a payment's evidence list against the onchain root.
                 .route(

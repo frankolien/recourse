@@ -7,3 +7,4 @@ pub mod health;
 pub mod orders;
 pub mod payments;
 pub mod policies;
+pub mod wallet_backup;

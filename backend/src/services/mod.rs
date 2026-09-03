@@ -9,6 +9,7 @@ pub mod google_auth;
 pub mod handles;
 pub mod orders;
 pub mod passkey;
+pub mod wallet_backups;
 
 use alloy::primitives::Address;
 use anyhow::{Context, Result};
