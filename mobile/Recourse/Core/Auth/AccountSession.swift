@@ -76,6 +76,10 @@ final class AppleCredentialStateChecker: AppleCredentialStateChecking {
     }
 }
 
+enum AccountSessionError: Error {
+    case signedOut
+}
+
 @MainActor
 @Observable
 final class AccountSession {
@@ -254,6 +258,34 @@ final class AccountSession {
         } catch {
             errorMessage = "Google sign-in could not be completed. Please try again."
         }
+    }
+
+    /// Runs a call that needs the account's access token, refreshing once if the token
+    /// has expired.
+    ///
+    /// Extracted because updateProfile did this by hand and every authenticated feature
+    /// after it needs the same thing. A 15 minute access token means the retry is the
+    /// common path, not the edge case.
+    func withAccessToken<T>(_ work: (String) async throws -> T) async throws -> T {
+        guard let grant else { throw AccountSessionError.signedOut }
+        do {
+            return try await work(grant.accessToken)
+        } catch {
+            guard Self.isUnauthorized(error) else { throw error }
+            let refreshed = try await api.refresh(refreshToken: grant.refreshToken)
+            try await accept(refreshed)
+            return try await work(refreshed.accessToken)
+        }
+    }
+
+    /// Recognises the 401 from either client, since the retry above is what makes an
+    /// expired token invisible rather than an error the user has to act on.
+    private static func isUnauthorized(_ error: Error) -> Bool {
+        if let error = error as? AccountAPIError { return error.isUnauthorized }
+        if let error = error as? HandleAPIError, case .rejected(let status, _) = error {
+            return status == 401
+        }
+        return false
     }
 
     // Persists the profile on the backend and refreshes the local account from the

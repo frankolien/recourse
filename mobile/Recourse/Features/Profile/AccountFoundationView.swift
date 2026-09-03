@@ -33,6 +33,7 @@ struct AccountFoundationView: View {
     var body: some View {
         List {
             identitySection
+            handleSection
             appearanceSection
             securitySection
             generalSection
@@ -101,6 +102,18 @@ struct AccountFoundationView: View {
 
     // Applies to the in-app screens only; onboarding stays white and green
     // regardless of this choice.
+    private var handleSection: some View {
+        Section {
+            NavigationLink {
+                ClaimHandleView(environment: environment)
+            } label: {
+                settingsRowLabel("Your name", "at")
+            }
+        } footer: {
+            Text("Pick a handle so people can pay you by name instead of by address.")
+        }
+    }
+
     private var appearanceSection: some View {
         Section("Appearance") {
             Picker("Theme", selection: $appearanceRaw) {

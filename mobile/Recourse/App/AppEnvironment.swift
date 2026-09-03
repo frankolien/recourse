@@ -50,6 +50,10 @@ final class AppEnvironment {
         OrderAPIClient(baseURL: configuration.apiURL)
     }
 
+    func makeHandleAPIClient() -> any HandleAPI {
+        HandleAPIClient(baseURL: configuration.apiURL)
+    }
+
     static func live() -> AppEnvironment {
         AppEnvironment(configuration: .live)
     }

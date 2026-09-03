@@ -16,6 +16,11 @@ struct SendMoneyView: View {
     @State private var sent: SendResult?
     @State private var showsAddressBook = false
     @State private var showsSaveRecipient = false
+    // A typed name is resolved against the directory rather than parsed, so this
+    // cannot be a computed property the way an address can.
+    @State private var resolvedHandle: ResolvedHandle?
+    @State private var resolvingHandle = false
+    @State private var handleProblem: String?
     @AppStorage(BuyerSettingKey.paymentLimitBaseUnits) private var limitBaseUnits = 0
     @AppStorage(BuyerSettingKey.confirmPaymentsWithBiometrics) private var confirmWithBiometrics = true
 
@@ -39,6 +44,9 @@ struct SendMoneyView: View {
         .background(RecourseColor.night)
         .navigationTitle("Send USDC")
         .navigationBarTitleDisplayMode(.inline)
+        .task(id: recipientText) {
+            await resolveRecipient()
+        }
         .safeAreaInset(edge: .bottom) {
             sendActionBar
         }
@@ -92,10 +100,22 @@ struct SendMoneyView: View {
                 .font(.recourse(16, .bold))
                 .foregroundStyle(RecourseColor.nightText)
             HStack(spacing: 10) {
-                TextField("Wallet address (0x…)", text: $recipientText)
-                    .font(.system(size: 13, weight: .medium, design: .monospaced))
+                // Monospaced only while it looks like an address: it makes hex
+                // checkable character by character and makes a name look like a
+                // serial number.
+                TextField("@name or wallet address", text: $recipientText)
+                    .font(
+                        looksLikeAddress
+                            ? .system(size: 13, weight: .medium, design: .monospaced)
+                            : .recourse(15, .medium)
+                    )
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+                if resolvingHandle {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(RecourseColor.nightMuted)
+                }
                 if !environment.addressBook.recipients.isEmpty {
                     Button {
                         showsAddressBook = true
@@ -122,10 +142,24 @@ struct SendMoneyView: View {
             .padding(.horizontal, 15)
             .frame(height: 52)
             .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 16))
-            if !recipientText.isEmpty, recipient == nil {
-                Text("That is not a valid wallet address.")
+            if let handleProblem, recipient == nil {
+                Text(handleProblem)
                     .font(.recourse(11, .medium))
                     .foregroundStyle(RecourseColor.ledger)
+            } else if !recipientText.isEmpty, recipient == nil, !resolvingHandle {
+                Text("Enter a @name or a wallet address.")
+                    .font(.recourse(11, .medium))
+                    .foregroundStyle(RecourseColor.ledger)
+            }
+            if let resolvedHandle, recipient != nil {
+                // The name as its owner capitalised it, and the address it currently
+                // points at, because the sender is entitled to see where money goes.
+                Label(
+                    "@\(resolvedHandle.handle) · \(EthereumAddress(trusted: resolvedHandle.address).shortened)",
+                    systemImage: "at.circle.fill"
+                )
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(RecourseColor.ledger)
             }
             if let recipient {
                 if let saved = environment.addressBook.recipient(for: recipient.value) {
@@ -165,8 +199,48 @@ struct SendMoneyView: View {
         .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
+    private var trimmedRecipient: String {
+        recipientText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var looksLikeAddress: Bool {
+        trimmedRecipient.hasPrefix("0x") || trimmedRecipient.hasPrefix("0X")
+    }
+
+    /// A literal address wins, so paying one is exactly as it was. A name only
+    /// resolves through the directory, and only after it comes back.
     private var recipient: EthereumAddress? {
-        try? EthereumAddress(recipientText.trimmingCharacters(in: .whitespacesAndNewlines))
+        if let direct = try? EthereumAddress(trimmedRecipient) { return direct }
+        guard let resolvedHandle else { return nil }
+        return try? EthereumAddress(resolvedHandle.address)
+    }
+
+    /// Debounced because the field runs this on every keystroke and each pass is a
+    /// network read. Anything that parses as an address is never looked up at all.
+    private func resolveRecipient() async {
+        resolvedHandle = nil
+        handleProblem = nil
+
+        let typed = trimmedRecipient
+        guard !typed.isEmpty, (try? EthereumAddress(typed)) == nil, !looksLikeAddress else { return }
+
+        try? await Task.sleep(for: .milliseconds(350))
+        if Task.isCancelled { return }
+
+        resolvingHandle = true
+        defer { resolvingHandle = false }
+        do {
+            let found = try await environment.makeHandleAPIClient().resolve(handle: typed)
+            // The field may have moved on while the lookup was in flight.
+            guard typed == trimmedRecipient else { return }
+            resolvedHandle = found
+        } catch let error as HandleAPIError {
+            guard typed == trimmedRecipient else { return }
+            handleProblem = error.message
+        } catch {
+            guard typed == trimmedRecipient else { return }
+            handleProblem = "Could not reach the directory."
+        }
     }
 
     private var amount: USDCAmount? {
