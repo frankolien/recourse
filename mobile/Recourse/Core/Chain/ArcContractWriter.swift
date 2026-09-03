@@ -18,6 +18,7 @@ actor ArcContractWriter: ContractWriting {
     private let configuration: AppConfiguration
     private let signer: any BuyerSigner
     private let transport: any ArcTransactionTransport
+    private let submitter: any ArcSubmitter
     private let pollClock: any TransactionPollClock
     private let maximumReceiptPolls: Int
     private let erc20: EthereumContract
@@ -29,6 +30,7 @@ actor ArcContractWriter: ContractWriting {
         configuration: AppConfiguration,
         signer: any BuyerSigner,
         transport: any ArcTransactionTransport,
+        submitter: (any ArcSubmitter)? = nil,
         pollClock: any TransactionPollClock = OneSecondTransactionPollClock(),
         maximumReceiptPolls: Int = 90,
         bundle: Bundle = .main
@@ -36,6 +38,8 @@ actor ArcContractWriter: ContractWriting {
         self.configuration = configuration
         self.signer = signer
         self.transport = transport
+        // Without a Safe the key signs and pays as it always did.
+        self.submitter = submitter ?? KeySubmitter(signer: signer, transport: transport, chainID: configuration.chainID)
         self.pollClock = pollClock
         self.maximumReceiptPolls = maximumReceiptPolls
         erc20 = try Self.makeContract(
@@ -84,11 +88,13 @@ actor ArcContractWriter: ContractWriting {
     /// Anyone can submit this, which is what makes a cheque a cheque. The token checks
     /// the signature against `from`, so the person cashing it pays the gas but cannot
     /// change a single term: not the amount, not the recipient, not the expiry.
+    ///
+    /// The `bytes` overload takes a signature of any shape: 65 bytes from a plain key,
+    /// or a Safe's packed owner signatures, which the token checks through EIP-1271.
     func cashCheque(_ cheque: Cheque, signature: Data) async throws -> ChainHash {
-        let (v, r, s) = try Self.split(signature: signature)
         let data = try encode(
             contract: erc20,
-            method: "transferWithAuthorization",
+            method: "transferWithAuthorization(address,address,uint256,uint256,uint256,bytes32,bytes)",
             parameters: [
                 try web3Address(cheque.from),
                 try web3Address(cheque.to),
@@ -96,9 +102,7 @@ actor ArcContractWriter: ContractWriting {
                 BigUInt(cheque.validAfter),
                 BigUInt(cheque.validBefore),
                 cheque.nonce,
-                v,
-                r,
-                s,
+                Self.normalized(signature),
             ]
         )
         return try await submit(to: configuration.usdcAddress, data: data)
@@ -107,13 +111,23 @@ actor ArcContractWriter: ContractWriting {
     /// Void an uncashed cheque by burning its nonce. Only the writer can sign this, and
     /// once it lands the authorization can never be used.
     func voidCheque(nonce: Data, cancellationSignature: Data) async throws -> ChainHash {
-        let (v, r, s) = try Self.split(signature: cancellationSignature)
         let data = try encode(
             contract: erc20,
-            method: "cancelAuthorization",
-            parameters: [try web3Address(try await signer.address()), nonce, v, r, s]
+            method: "cancelAuthorization(address,bytes32,bytes)",
+            parameters: [try web3Address(try await signer.address()), nonce, Self.normalized(cancellationSignature)]
         )
         return try await submit(to: configuration.usdcAddress, data: data)
+    }
+
+    /// A 65 byte key signature with its recovery id as the token wants it. Libraries
+    /// disagree about emitting 0/1 or 27/28, so the low form is lifted. Anything that
+    /// is not 65 bytes is a contract signature and passes through untouched.
+    static func normalized(_ signature: Data) -> Data {
+        guard signature.count == 65 else { return signature }
+        var fixed = signature
+        let last = fixed.index(before: fixed.endIndex)
+        if fixed[last] < 27 { fixed[last] += 27 }
+        return fixed
     }
 
     /// A 65 byte signature as the token wants it. The recovery id is stored as 0 or 1
@@ -245,15 +259,7 @@ actor ArcContractWriter: ContractWriting {
     }
 
     private func submit(to address: EthereumAddress, data: Data) async throws -> ChainHash {
-        let signerAddress = try await signer.address()
-        let transaction = try await transport.prepareTransaction(
-            from: signerAddress,
-            to: address,
-            data: data,
-            chainID: configuration.chainID
-        )
-        let rawTransaction = try await signer.sign(transaction)
-        return try await transport.send(rawTransaction: rawTransaction)
+        try await submitter.submit(to: address, data: data)
     }
 
     private func encode(

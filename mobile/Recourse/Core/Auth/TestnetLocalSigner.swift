@@ -100,6 +100,29 @@ actor TestnetLocalSigner: BuyerSigner {
         }
     }
 
+    func signHash(_ digest: Data) async throws -> Data {
+        guard digest.count == 32 else { throw BuyerSignerError.signingFailed }
+        let (keystore, password) = try await loadCredentials()
+        guard let account = keystore.addresses?.first else {
+            throw BuyerSignerError.invalidAccount
+        }
+        let privateKey: Data
+        do {
+            privateKey = try keystore.UNSAFE_getPrivateKeyData(password: password, account: account)
+        } catch {
+            throw BuyerSignerError.signingFailed
+        }
+        defer { _ = privateKey }
+        let (serialized, _) = SECP256K1.signForRecovery(hash: digest, privateKey: privateKey)
+        guard var signature = serialized, signature.count == 65 else {
+            throw BuyerSignerError.signingFailed
+        }
+        // secp256k1 hands back the recovery id as 0 or 1; the Safe reads 27 or 28.
+        let last = signature.index(before: signature.endIndex)
+        if signature[last] < 27 { signature[last] += 27 }
+        return signature
+    }
+
     /// The escape hatch. Hands back the raw signing key so a wallet created here can
     /// be moved somewhere else, or recovered if this app goes away.
     ///

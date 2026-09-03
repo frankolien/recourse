@@ -9,6 +9,9 @@ final class AppEnvironment {
     let router: AppRouter
     let accountSession: AccountSession
     let buyerSigner: any BuyerSigner
+    /// The same signer, typed for the one thing only it can do: switch to the Safe.
+    let switchableSigner: SwitchableSigner
+    let smartAccounts: SmartAccountStore
     let paymentStore: BuyerPaymentStore
     let addressBook = AddressBookStore()
     private(set) var chequeBook: ChequeBook!
@@ -24,7 +27,10 @@ final class AppEnvironment {
     ) {
         self.configuration = configuration
         self.router = router
-        self.buyerSigner = buyerSigner ?? TestnetLocalSigner()
+        // Whatever key is handed in is the Cloud Key; the Safe wraps it once it exists.
+        let switchable = SwitchableSigner(cloud: buyerSigner ?? TestnetLocalSigner())
+        self.switchableSigner = switchable
+        self.buyerSigner = switchable
         self.paymentStore = paymentStore ?? BuyerPaymentStore(
             configuration: configuration,
             signer: self.buyerSigner
@@ -32,11 +38,18 @@ final class AppEnvironment {
         self.accountSession = accountSession ?? AccountSession(
             api: AccountAPIClient(baseURL: configuration.apiURL)
         )
+        self.smartAccounts = SmartAccountStore(
+            configuration: configuration,
+            session: self.accountSession,
+            signer: switchable,
+            api: SmartAccountAPIClient(baseURL: configuration.apiURL)
+        )
         // Built last because it needs the session and the signer that were just
         // resolved, and it closes over makeContractGateway so it reads chain state
         // through the same path every other screen does.
-        let gateway = { [configuration, signer = self.buyerSigner] in
-            try ArcContractGateway.live(configuration: configuration, signer: signer)
+        let gateway = { [weak self] () throws -> any ContractGateway in
+            guard let self else { throw AccountSessionError.signedOut }
+            return try self.makeContractGateway()
         }
         chequeBook = ChequeBook(
             configuration: configuration,
@@ -56,11 +69,30 @@ final class AppEnvironment {
         )
     }
 
+    /// Reads through the same transport either way; writes go through the Safe once
+    /// it is live and through the key before that.
     func makeContractGateway() throws -> any ContractGateway {
         try ArcContractGateway.live(
             configuration: configuration,
-            signer: buyerSigner
+            signer: buyerSigner,
+            submitter: makeSubmitter()
         )
+    }
+
+    private func makeSubmitter() -> (any ArcSubmitter)? {
+        guard let safeSigner = smartAccounts.safeSigner else { return nil }
+        return SafeSubmitter(
+            signer: safeSigner,
+            bundler: HTTPBundlerClient(url: AppConfiguration.bundlerURL),
+            rpc: HTTPArcRPCTransport(rpcURL: configuration.rpcURL),
+            chainID: configuration.chainID
+        )
+    }
+
+    /// A gateway that writes from the Cloud Key itself, which after the Safe is live
+    /// is only ever the sweep that moves its old balance across.
+    func makeCloudKeyGateway() throws -> any ContractGateway {
+        try ArcContractGateway.live(configuration: configuration, signer: switchableSigner.cloud)
     }
 
     func makeEvidenceRepository() -> any EvidenceRepository {

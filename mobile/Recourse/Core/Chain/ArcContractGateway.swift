@@ -12,7 +12,8 @@ struct ArcContractGateway: ContractGateway {
 
     static func live(
         configuration: AppConfiguration = .live,
-        signer: any BuyerSigner = TestnetLocalSigner()
+        signer: any BuyerSigner = TestnetLocalSigner(),
+        submitter: (any ArcSubmitter)? = nil
     ) throws -> ArcContractGateway {
         let transport = HTTPArcRPCTransport(rpcURL: configuration.rpcURL)
         return try ArcContractGateway(
@@ -20,7 +21,8 @@ struct ArcContractGateway: ContractGateway {
             writer: ArcContractWriter(
                 configuration: configuration,
                 signer: signer,
-                transport: transport
+                transport: transport,
+                submitter: submitter
             )
         )
     }

@@ -87,6 +87,12 @@ struct AppConfiguration: Sendable {
             ?? "https://testnet.arcscan.app"
     )!
 
+    /// The bundler that carries the account's operations. Pimlico's public endpoint on
+    /// testnet; a keyed endpoint on mainnet.
+    static let bundlerURL = URL(
+        string: ProcessInfo.processInfo.environment["RECOURSE_BUNDLER_URL"] ?? "https://public.pimlico.io/v2/5042002/rpc"
+    )!
+
     // Same inbox the web support page publishes; the settings screen builds
     // mailto links from it.
     static let supportEmail = "gkenny896@gmail.com"

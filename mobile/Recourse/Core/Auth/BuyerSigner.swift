@@ -19,6 +19,16 @@ extension BuyerSigner {
         throw BuyerSignerError.invalidAccount
     }
 
+    /// Sign a 32-byte digest as-is: 65 bytes, recovery id 27 or 28.
+    ///
+    /// The Safe asks its owners for exactly this, over hashes it has already framed
+    /// in its own domain, so no prefix and no second hash belong here. Only the
+    /// on-device key can do it; it is not gated by the payment authorizer because the
+    /// Device Key prompts for Face ID on the same signature, and one prompt is enough.
+    func signHash(_ digest: Data) async throws -> Data {
+        throw BuyerSignerError.invalidAccount
+    }
+
     /// Whether this device already holds a wallet, asked without creating one.
     ///
     /// `address()` mints a keystore when none exists, which is right for every other
