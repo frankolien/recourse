@@ -74,38 +74,6 @@ final class BuyerSettingsTests: XCTestCase {
         XCTAssertTrue(AddressBookStore(defaults: defaults).recipients.isEmpty)
     }
 
-    // MARK: Dispute reminder timing
-
-    func testReminderFiresSixHoursBeforeTheWindowCloses() {
-        let now = Date(timeIntervalSince1970: 1_000_000)
-        let closes = now.addingTimeInterval(48 * 3600)
-        XCTAssertEqual(
-            DisputeReminderScheduler.reminderDate(protectionEnds: closes, now: now),
-            closes.addingTimeInterval(-6 * 3600)
-        )
-    }
-
-    func testReminderForAnImminentWindowFiresAlmostImmediately() {
-        let now = Date(timeIntervalSince1970: 1_000_000)
-        let closes = now.addingTimeInterval(2 * 3600)
-        XCTAssertEqual(
-            DisputeReminderScheduler.reminderDate(protectionEnds: closes, now: now),
-            now.addingTimeInterval(60)
-        )
-    }
-
-    func testNoReminderWhenTheWindowIsEffectivelyClosed() {
-        let now = Date(timeIntervalSince1970: 1_000_000)
-        XCTAssertNil(DisputeReminderScheduler.reminderDate(
-            protectionEnds: now.addingTimeInterval(10 * 60),
-            now: now
-        ))
-        XCTAssertNil(DisputeReminderScheduler.reminderDate(
-            protectionEnds: now.addingTimeInterval(-3600),
-            now: now
-        ))
-    }
-
     // MARK: Biometric preference
 
     func testAuthorizerSkipsBiometricsWhenTurnedOff() async throws {

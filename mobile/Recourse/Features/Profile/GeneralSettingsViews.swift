@@ -2,13 +2,16 @@ import SwiftUI
 import UIKit
 import UserNotifications
 
-/// Real notification state, not a wall of dead toggles: the permission row
-/// reflects the system setting, and the reminders listed below are the actual
-/// pending requests scheduled from this device's protected payments.
+/// Real notification state, not a wall of dead toggles: the permission row reflects the
+/// system setting, and anything listed below is an actual pending request on this
+/// device.
+///
+/// There is nothing to schedule yet. Dispute deadline reminders went with the protected
+/// checkout, and the honest thing is to say so rather than keep a toggle that controls
+/// nothing. Cheque expiry reminders are the natural replacement.
 struct NotificationsSettingsView: View {
     let paymentStore: BuyerPaymentStore
 
-    @AppStorage(BuyerSettingKey.disputeDeadlineReminders) private var remindersEnabled = true
     @State private var authorizationStatus: UNAuthorizationStatus?
     @State private var pendingReminders: [PendingReminder] = []
     @Environment(\.openURL) private var openURL
@@ -23,15 +26,15 @@ struct NotificationsSettingsView: View {
         List {
             permissionSection
 
-            Section {
-                Toggle("Dispute deadline reminders", isOn: $remindersEnabled)
-                    .tint(RecourseColor.ledger)
-                    .disabled(authorizationStatus == .denied)
-            } footer: {
-                Text("A reminder fires about six hours before a protected payment's dispute window closes, while filing a claim is still possible. Scheduled on this iPhone from public chain data; nothing is pushed from a server.")
-            }
-
-            if remindersEnabled, !pendingReminders.isEmpty {
+            if pendingReminders.isEmpty {
+                Section {
+                    Text("Nothing scheduled")
+                        .font(.recourse(13, .medium))
+                        .foregroundStyle(RecourseColor.nightMuted)
+                } footer: {
+                    Text("Anything Recourse reminds you about is scheduled on this iPhone. Nothing is pushed from a server, so no reminder can leak what you hold.")
+                }
+            } else {
                 Section("Scheduled") {
                     ForEach(pendingReminders) { reminder in
                         VStack(alignment: .leading, spacing: 3) {
@@ -57,9 +60,6 @@ struct NotificationsSettingsView: View {
         .task {
             await paymentStore.refreshBuyer()
             await refreshState()
-        }
-        .onChange(of: remindersEnabled) {
-            Task { await refreshState() }
         }
     }
 
@@ -117,13 +117,8 @@ struct NotificationsSettingsView: View {
     private func refreshState() async {
         let center = UNUserNotificationCenter.current()
         authorizationStatus = await center.notificationSettings().authorizationStatus
-        await DisputeReminderScheduler.sync(
-            payments: paymentStore.payments,
-            enabled: remindersEnabled
-        )
         let now = Date()
         pendingReminders = await center.pendingNotificationRequests()
-            .filter { $0.identifier.hasPrefix(DisputeReminderScheduler.identifierPrefix) }
             .map { request in
                 let interval = (request.trigger as? UNTimeIntervalNotificationTrigger)?.timeInterval
                 return PendingReminder(

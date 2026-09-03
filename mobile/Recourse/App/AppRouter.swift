@@ -1,10 +1,6 @@
 import Observation
 
 enum AppRoute: Hashable {
-    case checkout(PaymentRequest)
-    case payment(UInt64)
-    case dispute(UInt64)
-    case verdict(UInt64)
     case send
     case convert
     case cheques

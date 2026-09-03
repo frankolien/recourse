@@ -6,13 +6,13 @@ import UIKit
 private enum AppTab: Hashable, CaseIterable {
     case home
     case earn
-    case receipts
+    case activity
 
     var label: String {
         switch self {
         case .home: "Home"
         case .earn: "Earn"
-        case .receipts: "Receipts"
+        case .activity: "Activity"
         }
     }
 
@@ -20,10 +20,7 @@ private enum AppTab: Hashable, CaseIterable {
         switch self {
         case .home: "house.fill"
         case .earn: "chart.line.uptrend.xyaxis"
-        case .receipts:
-            // wallet.bifold does not exist before iOS 18; an unknown symbol
-            // name renders as a blank tab icon rather than failing loudly.
-            if #available(iOS 18.0, *) { "wallet.bifold.fill" } else { "wallet.pass.fill" }
+        case .activity: "list.bullet"
         }
     }
 }
@@ -31,7 +28,6 @@ private enum AppTab: Hashable, CaseIterable {
 struct AppShellView: View {
     let environment: AppEnvironment
     @State private var selection: AppTab = .home
-    @State private var showsScanner = false
     @State private var keepsTabBarExpanded = false
 
     @ViewBuilder
@@ -49,40 +45,30 @@ struct AppShellView: View {
             HomeView(
                 environment: environment,
                 onScrollTowardTopChanged: updateTabBarExpansion,
-                onScanRequested: { showsScanner = true },
-                onEarnRequested: { selection = .earn }
+                onEarnRequested: { selection = .earn },
+                onActivityRequested: { selection = .activity }
             )
                 .tag(AppTab.home)
                 .tabItem {
                     Label(AppTab.home.label, systemImage: AppTab.home.icon)
                 }
 
-            // The vault earns a first-class tab; paying stays one tap away on
-            // the home hero tile, so scanning no longer needs a fake tab slot.
             EarnView(environment: environment)
                 .tag(AppTab.earn)
                 .tabItem {
                     Label(AppTab.earn.label, systemImage: AppTab.earn.icon)
                 }
 
-            ReceiptsFoundationView(
+            ActivityView(
                 environment: environment,
                 onScrollTowardTopChanged: updateTabBarExpansion
             )
-                .tag(AppTab.receipts)
+                .tag(AppTab.activity)
                 .tabItem {
-                    Label(AppTab.receipts.label, systemImage: AppTab.receipts.icon)
+                    Label(AppTab.activity.label, systemImage: AppTab.activity.icon)
                 }
         }
         .tint(RecourseColor.ledgerDeep)
-        .fullScreenCover(isPresented: $showsScanner) {
-            ScannerFoundationView(configuration: environment.configuration) { request in
-                showsScanner = false
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                    environment.router.push(.checkout(request))
-                }
-            }
-        }
     }
 
     private func updateTabBarExpansion(_ isScrollingTowardTop: Bool) {

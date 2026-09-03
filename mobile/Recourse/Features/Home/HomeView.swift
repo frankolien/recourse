@@ -1,13 +1,20 @@
 import SwiftUI
 
+/// The screen that decides whether someone keeps the app.
+///
+/// It used to lead with "Nothing protected yet", which was the first line a new account
+/// read and described a feature this app no longer has. What replaces it is the only
+/// pair of numbers a money app owes you on sight: what you hold, and what is in motion.
+/// Money in motion is cheques written to you that you have not taken, and cheques you
+/// have written that nobody has cashed. Neither is visible on chain, which is exactly
+/// why the app has to say it.
 struct HomeView: View {
     let environment: AppEnvironment
     let onScrollTowardTopChanged: (Bool) -> Void
-    let onScanRequested: () -> Void
     let onEarnRequested: () -> Void
+    let onActivityRequested: () -> Void
     @Environment(\.colorScheme) private var colorScheme
     @State private var previousScrollOffset: CGFloat = 0
-    @State private var hidesAttention = false
     @State private var showsReceive = false
     @State private var earnVaultState: VaultState?
     @AppStorage("recourse.hidesBalance") private var hidesBalance = false
@@ -15,13 +22,13 @@ struct HomeView: View {
     init(
         environment: AppEnvironment,
         onScrollTowardTopChanged: @escaping (Bool) -> Void = { _ in },
-        onScanRequested: @escaping () -> Void = {},
-        onEarnRequested: @escaping () -> Void = {}
+        onEarnRequested: @escaping () -> Void = {},
+        onActivityRequested: @escaping () -> Void = {}
     ) {
         self.environment = environment
         self.onScrollTowardTopChanged = onScrollTowardTopChanged
-        self.onScanRequested = onScanRequested
         self.onEarnRequested = onEarnRequested
+        self.onActivityRequested = onActivityRequested
     }
 
     // Profile names live on the account session (persisted via the backend profile
@@ -32,29 +39,7 @@ struct HomeView: View {
             ?? "there"
     }
 
-    private var activePayments: [DemoPayment] {
-        allPayments.filter { $0.state == .protected || $0.state == .underReview }
-    }
-
-    private var settledPayments: [DemoPayment] {
-        allPayments.filter { $0.state == .refunded || $0.state == .released }
-    }
-
-    private var allPayments: [DemoPayment] {
-        environment.paymentStore.payments
-    }
-
-    private var attentionPayment: DemoPayment? {
-        allPayments.first { $0.state == .actionNeeded }
-    }
-
-    private var protectedTotal: USDCAmount {
-        USDCAmount(
-            baseUnits: activePayments.reduce(into: 0) { total, payment in
-                total = total.addingReportingOverflow(payment.amount.baseUnits).partialValue
-            }
-        )
-    }
+    private var book: ChequeBook { environment.chequeBook }
 
     var body: some View {
         ZStack {
@@ -64,25 +49,16 @@ struct HomeView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 18) {
                     scrollPositionReader
-                    protectionHero
+                    balanceHero
                     actionGrid
-                    if attentionPayment != nil && !hidesAttention {
-                        attentionLead
-                    }
-                    if environment.chequeBook.cashableCount > 0 {
+                    if book.cashableCount > 0 {
                         chequeLead
                     }
                     earnPreview
                     // A fresh account gets one guided card, not a stack of empty
-                    // section shells; sections appear as soon as they have content.
-                    if allPayments.isEmpty {
+                    // section shells.
+                    if isNewHere {
                         firstStepsCard
-                    }
-                    if !activePayments.isEmpty {
-                        protectedNow
-                    }
-                    if !settledPayments.isEmpty {
-                        receiptsAndOutcomes
                     }
                 }
                 .padding(.horizontal, 20)
@@ -92,6 +68,7 @@ struct HomeView: View {
             .scrollIndicators(.hidden)
             .refreshable {
                 await environment.paymentStore.refreshBuyer()
+                await book.refresh(force: true)
             }
         }
         .safeAreaInset(edge: .top, spacing: 0) {
@@ -114,14 +91,8 @@ struct HomeView: View {
                 await environment.paymentStore.refreshBuyer()
                 // Polled alongside the balance so a cheque someone writes you appears
                 // without opening the screen, which is the whole point of an inbox.
-                await environment.chequeBook.refresh()
-                // Reminders track the refreshed list so settled payments drop
-                // theirs and new protected payments gain one, no screen visit needed.
-                await DisputeReminderScheduler.sync(
-                    payments: environment.paymentStore.payments,
-                    enabled: UserDefaults.standard.object(forKey: BuyerSettingKey.disputeDeadlineReminders) == nil
-                        || UserDefaults.standard.bool(forKey: BuyerSettingKey.disputeDeadlineReminders)
-                )
+                await book.refresh()
+                environment.publishWalletSnapshot()
                 try? await Task.sleep(for: .seconds(10))
             }
         }
@@ -189,7 +160,7 @@ struct HomeView: View {
                         .resizable()
                         .scaledToFit()
                         .frame(height: 10)
-                    Text("Protected on Arc Testnet")
+                    Text("USDC on Arc Testnet")
                         .font(.recourse(10, .medium))
                         .foregroundStyle(RecourseColor.nightMuted)
                 }
@@ -200,17 +171,10 @@ struct HomeView: View {
             Button {
                 environment.router.push(.support)
             } label: {
-                ZStack(alignment: .topTrailing) {
-                    headerAction(title: "Alerts", systemImage: "bell")
-                    Circle()
-                        .fill(RecourseColor.ledger)
-                        .frame(width: 7, height: 7)
-                        .overlay(Circle().stroke(RecourseColor.night, lineWidth: 1.5))
-                        .offset(x: -5, y: 1)
-                }
+                headerAction(title: "Help", systemImage: "questionmark.circle")
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Notifications")
+            .accessibilityLabel("Help")
         }
     }
 
@@ -226,88 +190,20 @@ struct HomeView: View {
         .foregroundStyle(RecourseColor.nightText)
     }
 
-    private var attentionLead: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Needs your attention")
-                    .font(.recourse(16, .semibold))
-                    .foregroundStyle(RecourseColor.nightText)
-                Spacer()
-                Text("1 action")
-                    .font(.recourse(10, .semibold))
-                    .foregroundStyle(RecourseColor.ledger)
-            }
-            attentionCard
-        }
-    }
-
-    private var attentionCard: some View {
-        HStack(spacing: 12) {
-            if let payment = attentionPayment {
-                MerchantArtwork(
-                    payment: payment,
-                    size: 58,
-                    cornerRadius: 15
-                )
-            }
-
-            Button {
-                if let payment = attentionPayment {
-                    environment.router.push(.dispute(payment.id))
-                }
-            } label: {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Evidence requested")
-                        .font(.recourse(14, .semibold))
-                        .foregroundStyle(RecourseColor.nightText)
-                    Text(attentionPayment.map {
-                        "\($0.merchant) · \($0.orderReference)"
-                    } ?? "A protected payment needs you")
-                        .font(.recourse(11, .medium))
-                        .foregroundStyle(RecourseColor.nightMuted)
-                        .lineLimit(2)
-                    Label("Add evidence", systemImage: "arrow.right")
-                        .labelStyle(.titleAndIcon)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(RecourseColor.ledger)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-
-            Button {
-                hidesAttention = true
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(RecourseColor.nightMuted)
-                    .frame(width: 28, height: 58, alignment: .top)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Dismiss attention item")
-        }
-        .padding(12)
-        .modifier(HomeFloatingSurface(cornerRadius: 21))
-    }
-
-    // Bank-app hierarchy: the balance owns the screen and the protection line
-    // sits where other money apps put the daily delta, in the brand green when
-    // money is actually protected. Tapping the block toggles balance privacy,
-    // and the number swaps through a blur so hiding feels like a shutter, not
-    // a flicker; the choice persists because glancing in public is a habit.
-    private var protectionHero: some View {
+    // The balance owns the screen, and the line under it is money in motion rather
+    // than a daily delta: a wallet whose only movement is deliberate has no market to
+    // report. Tapping toggles privacy, and the number swaps through a blur so hiding
+    // feels like a shutter rather than a flicker.
+    private var balanceHero: some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            // Slow on purpose: the number should dissolve like a slide fading
-            // over, not snap like a checkbox.
             withAnimation(.smooth(duration: 0.75)) {
                 hidesBalance.toggle()
             }
         } label: {
             VStack(spacing: 7) {
                 HStack(spacing: 5) {
-                    Text("USDC · Arc Testnet")
+                    Text("Balance")
                     Image(systemName: hidesBalance ? "eye.slash.fill" : "eye.fill")
                         .font(.system(size: 10, weight: .semibold))
                 }
@@ -328,10 +224,11 @@ struct HomeView: View {
                 .minimumScaleFactor(0.55)
                 .lineLimit(1)
 
-                Text(heroSubtitle)
+                Text(motionSubtitle)
                     .font(.recourse(13, .medium))
-                    .foregroundStyle(activePayments.isEmpty ? RecourseColor.nightMuted : RecourseColor.ledger)
+                    .foregroundStyle(book.cashableCount > 0 ? RecourseColor.ledger : RecourseColor.nightMuted)
                     .contentTransition(.opacity)
+                    .multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
@@ -346,26 +243,37 @@ struct HomeView: View {
         return currency(balance)
     }
 
-    private var heroSubtitle: String {
-        if activePayments.isEmpty {
-            return "Nothing protected yet"
+    /// What is moving, in the order it matters: money waiting for you first, because
+    /// that is the one with something to do about it.
+    private var motionSubtitle: String {
+        let waiting = book.cashableTotal
+        let promised = book.committed
+        if waiting.baseUnits > 0 {
+            return "\(hidden(waiting)) waiting for you to cash"
         }
-        // Privacy covers every amount on the hero, not just the headline.
-        let amount = hidesBalance ? "$••••" : currency(protectedTotal)
-        return "\(amount) protected · \(activePayments.count) active"
+        if promised.baseUnits > 0 {
+            return "\(hidden(promised)) promised in cheques you wrote"
+        }
+        return "Nothing in motion"
     }
 
-    // Banking verbs in soft square tiles, one row, with Pay carrying the
-    // accent the way top money apps color their hero verb. Pay is the only
-    // scan entry in the app, so no icon appears twice on this screen; Earn
-    // lives in the tab bar.
+    private func hidden(_ amount: USDCAmount) -> String {
+        hidesBalance ? "$••••" : currency(amount)
+    }
+
+    // Banking verbs in soft square tiles, one row. Four rather than five now that
+    // scanning a merchant checkout is gone: the tiles are the things this app
+    // actually does.
     private var actionGrid: some View {
         HStack(spacing: 12) {
             actionTile("plus", "Add money") {
                 showsReceive = true
             }
-            actionTile("paperplane.fill", "Send") {
+            actionTile("paperplane.fill", "Send", accent: true) {
                 environment.router.push(.send)
+            }
+            actionTile("doc.text.fill", "Cheques") {
+                environment.router.push(.cheques)
             }
             // Only where an FX venue is deployed. A chain without one has no
             // Convert rather than one that fails when tapped.
@@ -374,10 +282,6 @@ struct HomeView: View {
                     environment.router.push(.convert)
                 }
             }
-            actionTile("doc.text.fill", "Cheques") {
-                environment.router.push(.cheques)
-            }
-            actionTile("qrcode.viewfinder", "Pay", accent: true, action: onScanRequested)
         }
     }
 
@@ -404,7 +308,7 @@ struct HomeView: View {
             .frame(maxWidth: .infinity)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(accent ? "Pay with protection" : title)
+        .accessibilityLabel(title)
     }
 
     // Someone has already promised this money; the only thing between it and the
@@ -421,13 +325,13 @@ struct HomeView: View {
                     .background(RecourseColor.nightChip, in: Circle())
                 VStack(alignment: .leading, spacing: 3) {
                     Text(
-                        environment.chequeBook.cashableCount == 1
+                        book.cashableCount == 1
                             ? "A cheque is waiting for you"
-                            : "\(environment.chequeBook.cashableCount) cheques are waiting for you"
+                            : "\(book.cashableCount) cheques are waiting for you"
                     )
                     .font(.recourse(13, .semibold))
                     .foregroundStyle(RecourseColor.nightText)
-                    Text("\(currency(environment.chequeBook.cashableTotal)) ready to cash")
+                    Text("\(currency(book.cashableTotal)) ready to cash")
                         .font(.recourse(11))
                         .foregroundStyle(RecourseColor.nightMuted)
                 }
@@ -438,7 +342,7 @@ struct HomeView: View {
             }
             .padding(14)
             .contentShape(Rectangle())
-            .modifier(HomeFloatingSurface(cornerRadius: 20))
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -469,7 +373,7 @@ struct HomeView: View {
             }
             .padding(14)
             .contentShape(Rectangle())
-            .modifier(HomeFloatingSurface(cornerRadius: 20))
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -483,7 +387,7 @@ struct HomeView: View {
 
     private var earnPreviewDetail: String {
         guard let earnVaultState else {
-            return "Fund instant merchant settlements, collect fees and yield"
+            return "Put USDC to work and collect yield"
         }
         if earnVaultState.myShares > 0 {
             return "\(currency(earnVaultState.myValue)) · share price \(String(format: "%.4f", earnVaultState.sharePrice))"
@@ -491,18 +395,26 @@ struct HomeView: View {
         return "\(currency(earnVaultState.totalAssets)) in the vault · share price \(String(format: "%.4f", earnVaultState.sharePrice))"
     }
 
+    /// Nothing held, nothing written, nothing received. A balance alone is not enough
+    /// to call someone settled in: money arrives before anything else can happen.
+    private var isNewHere: Bool {
+        (environment.paymentStore.balance?.baseUnits ?? 0) == 0
+            && book.received.isEmpty
+            && book.written.isEmpty
+    }
+
     private var firstStepsCard: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("How your first payment works")
+            Text("Getting started")
                 .font(.recourse(15, .semibold))
                 .foregroundStyle(RecourseColor.nightText)
-            firstStep("qrcode.viewfinder", "Scan a merchant checkout", "Recourse QRs open here, straight from the Camera app too.")
-            firstStep("lock.shield.fill", "USDC escrows under the policy", "Refund rules are locked onchain before any funds move.")
-            firstStep("checkmark.seal.fill", "Every outcome is provable", "Refunds compute from evidence, and you can verify the result yourself.")
+            firstStep("at", "Claim your name", "People pay @you instead of a wallet address they have to copy.")
+            firstStep("plus.circle.fill", "Add USDC", "Receive to your address. Fees are paid in USDC too, so there is no second token to hold.")
+            firstStep("doc.text.fill", "Send or write a cheque", "A send is instant and final. A cheque is theirs to collect, expires on its own, and you can void it.")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(18)
-        .modifier(HomeFloatingSurface(cornerRadius: 21))
+        .clipShape(RoundedRectangle(cornerRadius: 21, style: .continuous))
     }
 
     private func firstStep(_ icon: String, _ title: String, _ detail: String) -> some View {
@@ -525,131 +437,14 @@ struct HomeView: View {
         }
     }
 
-    private var protectedNow: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            sectionTitle("Protected now", trailing: "\(activePayments.count) active")
-            VStack(spacing: 8) {
-                ForEach(activePayments) { payment in
-                    Button {
-                        environment.router.push(.payment(payment.id))
-                    } label: {
-                        protectedRow(payment)
-                            .padding(.horizontal, 14)
-                            .modifier(HomeFloatingSurface(cornerRadius: 19))
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-    }
-
-    private func protectedRow(_ payment: DemoPayment) -> some View {
-        HStack(spacing: 12) {
-            MerchantArtwork(payment: payment, size: 38, cornerRadius: 11)
-            VStack(alignment: .leading, spacing: 5) {
-                Text(payment.merchant)
-                    .font(.recourse(13, .semibold))
-                    .foregroundStyle(RecourseColor.nightText)
-                Text(payment.item)
-                    .font(.recourse(10))
-                    .foregroundStyle(RecourseColor.nightMuted)
-                    .lineLimit(1)
-            }
-            Spacer()
-            VStack(alignment: .trailing, spacing: 5) {
-                Text("$\(payment.amountText.replacingOccurrences(of: " USDC", with: "")) protected")
-                    .font(.recourse(11, .semibold))
-                    .foregroundStyle(RecourseColor.nightText)
-                Text(timeLeft(for: payment))
-                    .font(.recourse(10, .medium))
-                    .foregroundStyle(RecourseColor.nightMuted)
-            }
-        }
-        .padding(.vertical, 11)
-    }
-
-    private func timeLeft(for payment: DemoPayment) -> String {
-        let days = max(1, Calendar.current.dateComponents([.day], from: Date(), to: payment.protectionEnds).day ?? 1)
-        return "\(days) days left"
-    }
-
-    private var receiptsAndOutcomes: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            sectionTitle("Receipts & outcomes", trailing: "Provable")
-            VStack(spacing: 0) {
-                ForEach(Array(settledPayments.enumerated()), id: \.element.id) { index, payment in
-                    outcomeRow(payment)
-                    if index < settledPayments.count - 1 {
-                        Divider().padding(.leading, 52)
-                    }
-                }
-            }
-        }
-    }
-
-    private func outcomeRow(_ payment: DemoPayment) -> some View {
-        HStack(spacing: 13) {
-            Image(systemName: payment.state == .refunded ? "arrow.uturn.backward.circle.fill" : "checkmark.seal.fill")
-                .font(.system(size: 17))
-                // Green only when money came back; a completed sale is a neutral fact.
-                .foregroundStyle(payment.state == .refunded ? RecourseColor.ledger : RecourseColor.nightText)
-                .frame(width: 40, height: 40)
-                .background(RecourseColor.nightChip, in: Circle())
-            Button {
-                environment.router.push(.payment(payment.id))
-            } label: {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(payment.merchant)
-                        .font(.recourse(14, .semibold))
-                        .foregroundStyle(RecourseColor.nightText)
-                    Text("\(payment.state.rawValue) · \(payment.amountText)")
-                        .font(.recourse(11))
-                        .foregroundStyle(RecourseColor.nightMuted)
-                }
-            }
-            .buttonStyle(.plain)
-            Spacer()
-            Button("Recompute") {
-                environment.router.push(.verdict(payment.id))
-            }
-            .font(.recourse(11, .semibold))
-            .foregroundStyle(RecourseColor.ledger)
-            .buttonStyle(.plain)
-        }
-        .padding(.vertical, 12)
-    }
-
-    private func sectionTitle(_ title: String, trailing: String) -> some View {
-        HStack {
-            Text(title)
-                .font(.recourse(16, .semibold))
-                .foregroundStyle(RecourseColor.nightText)
-            Spacer()
-            Text(trailing)
-                .font(.recourse(11, .medium))
-                .foregroundStyle(RecourseColor.nightMuted)
-        }
-    }
-
     private func currency(_ amount: USDCAmount) -> String {
         let value = Double(amount.baseUnits) / Double(USDCAmount.base)
         return String(format: "$%.2f", value)
     }
 }
 
-// Sections sit directly on the black ground; the old floating box is gone on
-// purpose, so this only keeps the corner clip for tap highlights.
-private struct HomeFloatingSurface: ViewModifier {
-    let cornerRadius: CGFloat
-
-    func body(content: Content) -> some View {
-        content
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-    }
-}
-
 #if DEBUG
-#Preview("Buyer protection home") {
+#Preview("Home") {
     NavigationStack {
         AppShellView(environment: .preview())
     }

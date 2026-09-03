@@ -75,17 +75,6 @@ struct RootView: View {
                 isHoldingSplash = false
             }
         }
-        // A checkout QR scanned with the Camera app arrives here: as a universal link
-        // (https://<web>/pay?request=...) or via the recourse:// scheme from the web
-        // fallback page. Both decode to the same request the in-app scanner produces.
-        .onOpenURL { url in
-            openIncomingCheckout(url)
-        }
-        .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
-            if let url = activity.webpageURL {
-                openIncomingCheckout(url)
-            }
-        }
     }
 
     private var inAppColorScheme: ColorScheme {
@@ -98,38 +87,9 @@ struct RootView: View {
         storedWorkspaceRole = ""
     }
 
-    private func openIncomingCheckout(_ url: URL) {
-        guard let request = try? PaymentRequestDecoder(configuration: environment.configuration)
-            .decode(scanned: url.absoluteString) else { return }
-        // Land on the review screen directly; whatever was mid-navigation is stale next
-        // to a checkout the user just pointed their camera at.
-        environment.router.reset()
-        environment.router.push(.checkout(request))
-    }
-
     @ViewBuilder
     private func destination(for route: AppRoute) -> some View {
         switch route {
-        case .checkout(let request):
-            CheckoutReviewView(request: request, environment: environment)
-        case .payment(let paymentID):
-            if let payment = environment.paymentStore.payment(id: paymentID) {
-                PaymentDetailView(payment: payment, router: environment.router)
-            } else {
-                missingPayment(paymentID)
-            }
-        case .dispute(let paymentID):
-            if let payment = environment.paymentStore.payment(id: paymentID) {
-                DisputeFilingView(payment: payment, environment: environment)
-            } else {
-                missingPayment(paymentID)
-            }
-        case .verdict(let paymentID):
-            if let payment = environment.paymentStore.payment(id: paymentID) {
-                VerdictDetailView(payment: payment, environment: environment)
-            } else {
-                missingPayment(paymentID)
-            }
         case .send:
             SendMoneyView(environment: environment)
         case .convert:
@@ -149,16 +109,6 @@ struct RootView: View {
         }
     }
 
-    private func missingPayment(_ paymentID: UInt64) -> some View {
-        ContentUnavailableView(
-            "Payment not indexed yet",
-            systemImage: "arrow.trianglehead.2.clockwise.rotate.90",
-            description: Text("Payment #\(paymentID) is not available from the live Arc indexer.")
-        )
-        .task {
-            await environment.paymentStore.refreshBuyer()
-        }
-    }
 }
 
 enum WorkspaceDestination: Equatable {

@@ -7,7 +7,6 @@ import Observation
 enum BuyerSettingKey {
     static let paymentLimitBaseUnits = "recourse.paymentLimitBaseUnits"
     static let confirmPaymentsWithBiometrics = "recourse.confirmPaymentsWithBiometrics"
-    static let disputeDeadlineReminders = "recourse.disputeDeadlineReminders"
     static let addressBook = "recourse.addressBook"
 }
 
