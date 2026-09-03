@@ -2,6 +2,7 @@ pub mod auth;
 pub mod demo;
 pub mod disputes;
 pub mod evidence;
+pub mod handles;
 pub mod health;
 pub mod orders;
 pub mod payments;

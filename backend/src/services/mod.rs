@@ -6,6 +6,7 @@ pub mod chain;
 pub mod cloudinary;
 pub mod evidence;
 pub mod google_auth;
+pub mod handles;
 pub mod orders;
 pub mod passkey;
 

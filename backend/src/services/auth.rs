@@ -173,8 +173,10 @@ pub async fn verify_buyer(
     let mut chain_err = None;
     for attempt in 0..3u32 {
         if attempt > 0 {
-            tokio::time::sleep(std::time::Duration::from_millis(250 * 2u64.pow(attempt - 1)))
-                .await;
+            tokio::time::sleep(std::time::Duration::from_millis(
+                250 * 2u64.pow(attempt - 1),
+            ))
+            .await;
         }
         match chain.get_payment(envelope.payment_id as u64).await {
             Ok(p) => {

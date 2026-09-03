@@ -48,7 +48,9 @@ impl Cloudinary {
             .split_once(':')
             .ok_or_else(|| anyhow!("missing api_key:api_secret"))?;
         if api_key.is_empty() || api_secret.is_empty() || cloud_name.is_empty() {
-            return Err(anyhow!("api_key, api_secret, and cloud_name are all required"));
+            return Err(anyhow!(
+                "api_key, api_secret, and cloud_name are all required"
+            ));
         }
         Ok(Self {
             cloud_name: cloud_name.to_string(),

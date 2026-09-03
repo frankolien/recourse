@@ -591,7 +591,7 @@ pub fn require_admin(req: &HttpRequest, config: &AppConfig) -> Result<(), (u16, 
     }
 }
 
-fn bearer_token(req: &HttpRequest) -> Result<&str, (u16, String)> {
+pub(crate) fn bearer_token(req: &HttpRequest) -> Result<&str, (u16, String)> {
     req.headers()
         .get(header::AUTHORIZATION)
         .and_then(|value| value.to_str().ok())
@@ -630,7 +630,7 @@ fn display_name(given: Option<&str>, family: Option<&str>, email: &str) -> Strin
     }
 }
 
-fn account_error_response(
+pub(crate) fn account_error_response(
     operation: &str,
     error: account_sessions::AccountAuthError,
 ) -> HttpResponse {
