@@ -130,10 +130,15 @@ struct OnboardingAuthenticationView: View {
             // and the buttons instead and it reads as a hole.
             Spacer(minLength: 0)
 
-            Label("USDC ON ARC", systemImage: "dollarsign.circle.fill")
-                .font(.system(size: 10, weight: .bold))
-                .tracking(0.8)
-                .foregroundStyle(RecourseColor.ledger)
+            // The mark, not a strapline. This is the screen that introduces the app,
+            // and the one thing a strapline could add here is a sentence between the
+            // logo and the promise underneath it.
+            Image("LaunchMark")
+                .resizable()
+                .scaledToFit()
+                .frame(height: compact ? 32 : 38)
+                .accessibilityLabel("Recourse")
+                .padding(.bottom, 4)
 
             Text("Your dollars,\non your phone.")
                 .font(RecourseTypography.display(size: compact ? 25 : 28))
