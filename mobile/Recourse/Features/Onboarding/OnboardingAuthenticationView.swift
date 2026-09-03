@@ -37,7 +37,7 @@ struct OnboardingAuthenticationView: View {
 
             VStack(spacing: 0) {
                 carousel(compact: compact)
-                    .frame(height: proxy.size.height * (compact ? 0.30 : 0.34))
+                    .frame(height: proxy.size.height * (compact ? 0.34 : 0.38))
 
                 hero(compact: compact)
                     .frame(maxHeight: .infinity)
@@ -93,24 +93,24 @@ struct OnboardingAuthenticationView: View {
             .padding(.horizontal, 20)
             .padding(.top, 20)
 
-            VStack(alignment: .leading, spacing: compact ? 6 : 9) {
+            VStack(alignment: .leading, spacing: compact ? 8 : 11) {
                 ForEach(items) { item in
                     let isActive = item.id == activeIndex
 
                     HStack(spacing: 13) {
                         if isActive {
                             Image(systemName: item.icon)
-                                .font(.system(size: compact ? 16 : 19, weight: .semibold))
+                                .font(.system(size: compact ? 20 : 23, weight: .semibold))
                                 .foregroundStyle(RecourseColor.ledger)
-                                .frame(width: 28)
+                                .frame(width: 34)
                                 .transition(.move(edge: .leading).combined(with: .opacity).combined(with: .scale))
                         }
 
                         Text(item.title)
-                            .font(.system(size: isActive ? (compact ? 26 : 30) : (compact ? 18 : 21), weight: .semibold))
+                            .font(.system(size: isActive ? (compact ? 32 : 38) : (compact ? 22 : 26), weight: .semibold))
                             .foregroundStyle(isActive ? RecourseColor.ink : RecourseColor.ink.opacity(0.14))
                     }
-                    .frame(height: compact ? 33 : 38, alignment: .leading)
+                    .frame(height: compact ? 42 : 48, alignment: .leading)
                     .animation(.smooth(duration: 0.55), value: activeIndex)
                 }
             }
