@@ -2,23 +2,28 @@ import CoreImage.CIFilterBuiltins
 import SwiftUI
 import UIKit
 
-// "Add money" in banking terms, an address QR in chain terms: the sheet keeps
-// the friendly verb up top and the raw address below, so any wallet's scanner
-// can still read it while the app never asks the user to think in 0x strings.
-struct ReceiveSheet: View {
+/// The address QR, one level down from Deposit rather than the whole of it.
+///
+/// It keeps the friendly verb up top and the raw address below, so any wallet's
+/// scanner can still read it while the app never asks someone to think in 0x
+/// strings. It is no longer the first thing a new user sees, because for anyone
+/// who does not already hold USDC an address is a dead end.
+struct ReceiveAddressView: View {
     let environment: AppEnvironment
 
-    @Environment(\.dismiss) private var dismiss
     @State private var address: String?
     @State private var copied = false
     @State private var showsFaucet = false
 
     var body: some View {
         ScrollView {
-            sheetContent
+            content
         }
         .scrollIndicators(.hidden)
         .background(RecourseColor.night)
+        .navigationTitle("Receive USDC")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
         .task {
             address = try? await environment.buyerSigner.address().value
         }
@@ -28,14 +33,8 @@ struct ReceiveSheet: View {
         }
     }
 
-    // Scrollable so the medium detent clips nothing, with explicit headroom so
-    // the title clears the sheet's drag indicator instead of colliding with it.
-    private var sheetContent: some View {
+    private var content: some View {
         VStack(spacing: 20) {
-            Text("Add money")
-                .font(.recourse(20, .bold))
-                .foregroundStyle(RecourseColor.nightText)
-
             Text("Send USDC to this address and it lands in your balance.")
                 .font(.recourse(12, .medium))
                 .foregroundStyle(RecourseColor.nightMuted)
@@ -79,9 +78,8 @@ struct ReceiveSheet: View {
                 .padding(.horizontal, 26)
 
                 // Circle's official faucet funds any Arc testnet address, so a
-                // fresh install can self-serve from zero to a first protected
-                // payment. Copying first saves a hop: the faucet form's only
-                // input is the address already on this screen.
+                // fresh install can self-serve from zero. Copying first saves a
+                // hop: the faucet form's only input is the address already here.
                 Button {
                     UIPasteboard.general.string = address
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -114,7 +112,7 @@ struct ReceiveSheet: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 30)
         }
-        .padding(.top, 40)
+        .padding(.top, 16)
         .padding(.bottom, 26)
         .frame(maxWidth: .infinity)
     }

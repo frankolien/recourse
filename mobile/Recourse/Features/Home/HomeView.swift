@@ -103,7 +103,7 @@ struct HomeView: View {
             reportScrollDirection(newOffset)
         }
         .sheet(isPresented: $showsReceive) {
-            ReceiveSheet(environment: environment)
+            DepositSheet(environment: environment)
                 .presentationDetents([.medium, .large])
         }
         .task {
