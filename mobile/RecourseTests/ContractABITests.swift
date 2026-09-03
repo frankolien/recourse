@@ -3,9 +3,16 @@ import XCTest
 
 final class ContractABITests: XCTestCase {
     func testReviewedABIsExposeOnlyRequiredReadMethods() throws {
+        // The three EIP-3009 entries are what cheques run on: the writer signs an
+        // authorization offline, anyone submits it with transferWithAuthorization, the
+        // writer can burn the nonce with cancelAuthorization, and authorizationState
+        // says whether either has already happened.
         XCTAssertEqual(
             try functionNames(in: .erc20),
-            ["allowance", "approve", "balanceOf", "transfer"]
+            [
+                "allowance", "approve", "authorizationState", "balanceOf",
+                "cancelAuthorization", "transfer", "transferWithAuthorization",
+            ]
         )
         // registerPolicy is the one reviewed write here: the merchant workspace
         // publishes its starter protection policy on-chain through it.

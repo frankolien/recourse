@@ -122,6 +122,25 @@ final class ChequeTests: XCTestCase {
         XCTAssertEqual(ChequeAuthorization.digest(for: other, token: usdc, chainID: chainID), base)
     }
 
+    func testSignatureSplitNormalizesBothRecoveryIdConventions() throws {
+        var signature = Data(repeating: 0xAB, count: 64)
+        signature.append(0x00)
+        // Libraries disagree about whether v is 0/1 or 27/28, and the token only
+        // accepts the latter. Getting this wrong is a cheque that cannot be cashed.
+        let (v, r, s) = try ArcContractWriter.split(signature: signature)
+        XCTAssertEqual(v, 27)
+        XCTAssertEqual(r.count, 32)
+        XCTAssertEqual(s.count, 32)
+
+        var already27 = Data(repeating: 0xAB, count: 64)
+        already27.append(28)
+        XCTAssertEqual(try ArcContractWriter.split(signature: already27).0, 28)
+    }
+
+    func testAMalformedSignatureIsRefusedRatherThanTruncated() {
+        XCTAssertThrowsError(try ArcContractWriter.split(signature: Data(repeating: 0xAB, count: 64)))
+    }
+
     func testADifferentChainCannotReuseTheSameSignature() {
         // The domain binds the chain, so a cheque written for Arc is not a cheque
         // anywhere else even though the token address may be identical.

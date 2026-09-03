@@ -32,7 +32,6 @@
 		2E8D4835B21A421BDFDD98F4D083C1E5 /* PolicyRegistry.abi.json in Resources */ = {isa = PBXBuildFile; fileRef = 73CEF3DAF92D8958BDC8D6421E92AF4E /* PolicyRegistry.abi.json */; };
 		3026727CA5968FD3615C123D5EAAAF10 /* PaymentShareCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5987CD8F777C5B3EA04A427ADFBCD43F /* PaymentShareCard.swift */; };
 		310970E04228BC5A5CDD4664C579C646 /* EvidenceAuthorization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E3C2F243954C5214736C073D641E178 /* EvidenceAuthorization.swift */; };
-		33967ACBAE364B49CD3B4B610D011BF1 /* ProtectionSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D98739560113EC47A2745EA5B0C50C5 /* ProtectionSnapshot.swift */; };
 		37E0E6CE03BB2B2DA75E661CC58B7F7C /* PaymentRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A36F4E8658C275B554AC81B2700C158 /* PaymentRequest.swift */; };
 		39A77B04F80EA8475C1A3423809F48F9 /* TransactionAuthorizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A040549CC3A159AB9A3C2810792E914 /* TransactionAuthorizer.swift */; };
 		3BCF080614183ABD0B77BFEAEF7F0DAD /* RecourseTypography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9311DEE4E37EA06EB4328FA6CCF6D5AF /* RecourseTypography.swift */; };
@@ -66,7 +65,6 @@
 		817FCB7D0C12A28DBF267BDC61623044 /* ArcContractReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AC472DA268599F5219B2665DD3174C6 /* ArcContractReader.swift */; };
 		84ACB072DFEE9A2067FF32C87A05F41B /* AppRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C94D8A9D8C4D0AB85BBBA15EEFA61915 /* AppRouter.swift */; };
 		882623B696E1F711215EE587989B7C2D /* EvidenceAPIClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA3C0E34F276E45EC78884CE8D9354A4 /* EvidenceAPIClientTests.swift */; };
-		89FFC90E8DD4FDB1D880FE2FCB483E7B /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 461E2A2E3C422B764B056DAFBD485F46 /* Foundation.framework */; };
 		8AC772036D4508F464E869530A5D78E7 /* AccountSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD61BE28ABC87B5A958EE98B5CD2E830 /* AccountSessionTests.swift */; };
 		8F04A10C9AAA793D105B6534F4F2A316 /* SecuritySettingsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00F90F58B3D69D537C2C471EB00D1EAE /* SecuritySettingsViews.swift */; };
 		8FC45E935D1817E0D38BD76F433088CF /* Geist-SemiBold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 526520348982E396E8ECEC47E9068E44 /* Geist-SemiBold.otf */; };
@@ -105,6 +103,7 @@
 		CC9B2448FD6E7027F19180021549BE96 /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2154FDDE832A16ED12208B03D922947 /* AppEnvironment.swift */; };
 		CE3E73F686BCA769C2DAEF66A20B3F60 /* AccountSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3D37B0B2EA1CE1F6D30554B17617839 /* AccountSession.swift */; };
 		CFFF079FCABE67E004F9DCC6E9C091D6 /* EvidenceAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CA3D09AA0298A7302B23E6B9EEC36FF /* EvidenceAPIClient.swift */; };
+		D1DD18BF94A2C9BD4337762D9B69CC9C /* RecourseWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13877B90709387D5BEA1FCFB64290C80 /* RecourseWidgetsBundle.swift */; };
 		D2E61EFC6BD527FA7C58EE37B992B7ED /* ArcContractReaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 147454960725BFBF0B8187A680C4205F /* ArcContractReaderTests.swift */; };
 		D47252975ADCA025E52BC00E5B9ADC3E /* OnboardingWelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 755EAAD457C8CC3AD375D2940E0B0253 /* OnboardingWelcomeView.swift */; };
 		D4BF87F1F6B2114E7042BA4B003D5BA9 /* SendMoneyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F7B06FC81799E841B3660C7712D2C5A /* SendMoneyView.swift */; };
@@ -116,34 +115,35 @@
 		D86B52A5D2942DFADC6160A6E7B3AD4F /* RecourseAnimatedStoryBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD324038A22D9D765725AF686C2A4DE1 /* RecourseAnimatedStoryBackground.swift */; };
 		DC475DA8CFCAC9C5286F88306FD34577 /* Deployment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75D43B344366B473983007A0C0BE76AC /* Deployment.swift */; };
 		E271FBAE24C953C0931E57E9EA9F82C3 /* RecourseApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BB04C08B17201EBA434E8A972998C40 /* RecourseApp.swift */; };
-		E4BADADED6AC3A27113BE8ED89BF824E /* RecourseWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13877B90709387D5BEA1FCFB64290C80 /* RecourseWidgetsBundle.swift */; };
 		E6BAC60FAD1FD7DB8449644BCCB5D63B /* GoogleSignInCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEC07B71FAD9753D27075D2BC594C9FE /* GoogleSignInCoordinator.swift */; };
 		E95397D44BFA886DD7AF94A21F921A8B /* EvidenceAPITransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F0160638D828A6116272C1799ACEE40 /* EvidenceAPITransport.swift */; };
 		E99A35867B870B2C16CD62AD5EBD6F5C /* ArcRPCTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1D2BBC5EDE8586740129C888D3BB416 /* ArcRPCTransport.swift */; };
 		EB54EA607B56425E365CCFB2F1DB7478 /* OrderAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E9A4B0E311BC3287CF29B282D80E692 /* OrderAPIClient.swift */; };
+		ECA4D3467D1391B7929293FD8E1F1EB9 /* ProtectionSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D98739560113EC47A2745EA5B0C50C5 /* ProtectionSnapshot.swift */; };
 		EDD88DD2C875AE5357F66ABEE12FF291 /* ClaimHandleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42AC6E1B5D246AC9200DF719093629B3 /* ClaimHandleView.swift */; };
 		EF67980047A5364080E65F355F2AC9E0 /* SendWorkflowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD3691725258B99F00963D2E05F6FA03 /* SendWorkflowTests.swift */; };
 		EFC32C63F85B7FB691A2A3DEF2B53EA1 /* OnboardingSignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3239C8851DEB5B792B3D0866624D3D3 /* OnboardingSignInView.swift */; };
 		F1BC396BB36CF8151D79184502D0D8C3 /* SettlementVault.abi.json in Resources */ = {isa = PBXBuildFile; fileRef = 2C333AA1FF8486A769B1B097E541244D /* SettlementVault.abi.json */; };
 		F8A549B13D592CA1E3AA655BFBBD4717 /* IERC20.abi.json in Resources */ = {isa = PBXBuildFile; fileRef = 3D7171C12A4BC4AC1BCF95138EEF7B7F /* IERC20.abi.json */; };
+		FA86A42ED88E82CB7A9E7A820887811E /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 461E2A2E3C422B764B056DAFBD485F46 /* Foundation.framework */; };
 		FEC3FD8F401380A7B437A167216DDF9C /* AccountFoundationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F3C1E667431409B27B7D2320A61EB61 /* AccountFoundationView.swift */; };
 		FEFF2C370FEA4EF8399F0E88A9EFE2D3 /* ActiveAccount.swift in Sources */ = {isa = PBXBuildFile; fileRef = 548F43D5DE107FB627876FBEAFF082AA /* ActiveAccount.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		161F33E0F14DDE0D9E072754DF0480FF /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 498DC937A1FC09EEF0292161E8444EBB /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B05682144B71A22FE290889BED755004;
+			remoteInfo = RecourseWidgets;
+		};
 		C1C1C1C1C1C1C1C1C1C1C1C1 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 498DC937A1FC09EEF0292161E8444EBB /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 232E0C03269131C5021917B225E69CC9;
 			remoteInfo = Recourse;
-		};
-		E01FB3794159AAF62E6685EAA33E9A3A /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 498DC937A1FC09EEF0292161E8444EBB /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 15C8A6DD2F0262745CFB1586E43B44F8;
-			remoteInfo = RecourseWidgets;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -303,11 +303,11 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		BFCD3DB2CE66421EC9303749D4D64AAF /* Frameworks */ = {
+		F075A780175E12A6EC422F36486CB3D4 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				89FFC90E8DD4FDB1D880FE2FCB483E7B /* Foundation.framework in Frameworks */,
+				FA86A42ED88E82CB7A9E7A820887811E /* Foundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -783,23 +783,6 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		15C8A6DD2F0262745CFB1586E43B44F8 /* RecourseWidgets */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 119983A29759DC29BC1D8915EBE55B5B /* Build configuration list for PBXNativeTarget "RecourseWidgets" */;
-			buildPhases = (
-				2970FF24C7BFF00B226175120D9A686D /* Sources */,
-				BFCD3DB2CE66421EC9303749D4D64AAF /* Frameworks */,
-				39949E7A7F008A0CD80D47BCD1FC32CF /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = RecourseWidgets;
-			productName = RecourseWidgets;
-			productReference = CA417CFEB155592DD1161BE451E9EA6D /* RecourseWidgets.appex */;
-			productType = "com.apple.product-type.app-extension";
-		};
 		232E0C03269131C5021917B225E69CC9 /* Recourse */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = E46B312EFE09F5630F4E161A9797AB37 /* Build configuration list for PBXNativeTarget "Recourse" */;
@@ -813,7 +796,7 @@
 			buildRules = (
 			);
 			dependencies = (
-				E3000E13159F5A57781EF178FC77D251 /* PBXTargetDependency */,
+				42EF5003D3EF10AF587E901446578ECF /* PBXTargetDependency */,
 			);
 			name = Recourse;
 			packageProductDependencies = (
@@ -822,6 +805,23 @@
 			productName = Recourse;
 			productReference = 9EDC479DAD68EE70FB9E0D62A9589143 /* Recourse.app */;
 			productType = "com.apple.product-type.application";
+		};
+		B05682144B71A22FE290889BED755004 /* RecourseWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F44283AEFB2D42F24F1E2E4D606F549F /* Build configuration list for PBXNativeTarget "RecourseWidgets" */;
+			buildPhases = (
+				073C795549056843A2D4788BC15E1B66 /* Sources */,
+				F075A780175E12A6EC422F36486CB3D4 /* Frameworks */,
+				AB576536BE348CA086A1E56CD815658B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = RecourseWidgets;
+			productName = RecourseWidgets;
+			productReference = CA417CFEB155592DD1161BE451E9EA6D /* RecourseWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 		D665026EAE2B03D80D6A5F8FF9DDA488 /* RecourseTests */ = {
 			isa = PBXNativeTarget;
@@ -850,19 +850,19 @@
 				LastSwiftUpdateCheck = 2640;
 				LastUpgradeCheck = 2640;
 				TargetAttributes = {
-					15C8A6DD2F0262745CFB1586E43B44F8 = {
-						SystemCapabilities = {
-							com.apple.ApplicationGroups.iOS = {
-								enabled = 1;
-							};
-						};
-					};
 					232E0C03269131C5021917B225E69CC9 = {
 						SystemCapabilities = {
 							com.apple.ApplicationGroups.iOS = {
 								enabled = 1;
 							};
 							com.apple.SignInWithApple = {
+								enabled = 1;
+							};
+						};
+					};
+					B05682144B71A22FE290889BED755004 = {
+						SystemCapabilities = {
+							com.apple.ApplicationGroups.iOS = {
 								enabled = 1;
 							};
 						};
@@ -889,7 +889,7 @@
 			targets = (
 				232E0C03269131C5021917B225E69CC9 /* Recourse */,
 				D665026EAE2B03D80D6A5F8FF9DDA488 /* RecourseTests */,
-				15C8A6DD2F0262745CFB1586E43B44F8 /* RecourseWidgets */,
+				B05682144B71A22FE290889BED755004 /* RecourseWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -902,7 +902,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		39949E7A7F008A0CD80D47BCD1FC32CF /* Resources */ = {
+		AB576536BE348CA086A1E56CD815658B /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -956,12 +956,12 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		2970FF24C7BFF00B226175120D9A686D /* Sources */ = {
+		073C795549056843A2D4788BC15E1B66 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				E4BADADED6AC3A27113BE8ED89BF824E /* RecourseWidgetsBundle.swift in Sources */,
-				33967ACBAE364B49CD3B4B610D011BF1 /* ProtectionSnapshot.swift in Sources */,
+				D1DD18BF94A2C9BD4337762D9B69CC9C /* RecourseWidgetsBundle.swift in Sources */,
+				ECA4D3467D1391B7929293FD8E1F1EB9 /* ProtectionSnapshot.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1084,17 +1084,17 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		42EF5003D3EF10AF587E901446578ECF /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = RecourseWidgets;
+			target = B05682144B71A22FE290889BED755004 /* RecourseWidgets */;
+			targetProxy = 161F33E0F14DDE0D9E072754DF0480FF /* PBXContainerItemProxy */;
+		};
 		D1D1D1D1D1D1D1D1D1D1D1D1 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			name = Recourse;
 			target = 232E0C03269131C5021917B225E69CC9 /* Recourse */;
 			targetProxy = C1C1C1C1C1C1C1C1C1C1C1C1 /* PBXContainerItemProxy */;
-		};
-		E3000E13159F5A57781EF178FC77D251 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			name = RecourseWidgets;
-			target = 15C8A6DD2F0262745CFB1586E43B44F8 /* RecourseWidgets */;
-			targetProxy = E01FB3794159AAF62E6685EAA33E9A3A /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -1112,6 +1112,32 @@
 				SWIFT_STRICT_CONCURRENCY = complete;
 				TARGETED_DEVICE_FAMILY = 1;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Recourse.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Recourse";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		1441ADF8ECF3EF647150DA1F36B3BBEE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = RecourseWidgets/RecourseWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = YCKKUWB4WD;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RecourseWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Recourse;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.recourse.buyer.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				TARGETED_DEVICE_FAMILY = 1;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
@@ -1178,31 +1204,6 @@
 			};
 			name = Debug;
 		};
-		32AC5ACA99DE388052B705A10B6DA28F /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CLANG_ENABLE_OBJC_WEAK = NO;
-				CODE_SIGN_ENTITLEMENTS = RecourseWidgets/RecourseWidgets.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = YCKKUWB4WD;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = RecourseWidgets/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Recourse;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.recourse.buyer.widgets;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_STRICT_CONCURRENCY = complete;
-				TARGETED_DEVICE_FAMILY = 1;
-			};
-			name = Debug;
-		};
 		3FEB5A2FE26CD3861C2B193C01302ECA /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1256,7 +1257,7 @@
 			};
 			name = Release;
 		};
-		A0C2D488586AA81CE93E28E42A786142 /* Release */ = {
+		9C757F210B5C0DB685F41BF62D3D5094 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CLANG_ENABLE_OBJC_WEAK = NO;
@@ -1278,9 +1279,8 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				TARGETED_DEVICE_FAMILY = 1;
-				VALIDATE_PRODUCT = YES;
 			};
-			name = Release;
+			name = Debug;
 		};
 		AAEA9C150F07A67617E2733D261CF24D /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -1376,15 +1376,6 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		119983A29759DC29BC1D8915EBE55B5B /* Build configuration list for PBXNativeTarget "RecourseWidgets" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				A0C2D488586AA81CE93E28E42A786142 /* Release */,
-				32AC5ACA99DE388052B705A10B6DA28F /* Debug */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		5C5C9B24AA1947513D21CB3E97DBE971 /* Build configuration list for PBXNativeTarget "RecourseTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -1408,6 +1399,15 @@
 			buildConfigurations = (
 				9269EA2CD5428270BA952102AF77E2F5 /* Release */,
 				DBFDF60FBAB6D4C075C4FB6913620A96 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F44283AEFB2D42F24F1E2E4D606F549F /* Build configuration list for PBXNativeTarget "RecourseWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1441ADF8ECF3EF647150DA1F36B3BBEE /* Release */,
+				9C757F210B5C0DB685F41BF62D3D5094 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

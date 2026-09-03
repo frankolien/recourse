@@ -78,6 +78,56 @@ actor ArcContractWriter: ContractWriting {
         return try await submit(to: configuration.usdcAddress, data: data)
     }
 
+    /// Cash a cheque: submit the writer's authorization and move their USDC to the
+    /// recipient.
+    ///
+    /// Anyone can submit this, which is what makes a cheque a cheque. The token checks
+    /// the signature against `from`, so the person cashing it pays the gas but cannot
+    /// change a single term: not the amount, not the recipient, not the expiry.
+    func cashCheque(_ cheque: Cheque, signature: Data) async throws -> ChainHash {
+        let (v, r, s) = try Self.split(signature: signature)
+        let data = try encode(
+            contract: erc20,
+            method: "transferWithAuthorization",
+            parameters: [
+                try web3Address(cheque.from),
+                try web3Address(cheque.to),
+                BigUInt(cheque.amount.baseUnits),
+                BigUInt(cheque.validAfter),
+                BigUInt(cheque.validBefore),
+                cheque.nonce,
+                v,
+                r,
+                s,
+            ]
+        )
+        return try await submit(to: configuration.usdcAddress, data: data)
+    }
+
+    /// Void an uncashed cheque by burning its nonce. Only the writer can sign this, and
+    /// once it lands the authorization can never be used.
+    func voidCheque(nonce: Data, cancellationSignature: Data) async throws -> ChainHash {
+        let (v, r, s) = try Self.split(signature: cancellationSignature)
+        let data = try encode(
+            contract: erc20,
+            method: "cancelAuthorization",
+            parameters: [try web3Address(try await signer.address()), nonce, v, r, s]
+        )
+        return try await submit(to: configuration.usdcAddress, data: data)
+    }
+
+    /// A 65 byte signature as the token wants it. The recovery id is stored as 0 or 1
+    /// and the token expects 27 or 28, and libraries disagree about which they emit, so
+    /// both are accepted and normalized rather than assumed.
+    static func split(signature: Data) throws -> (BigUInt, Data, Data) {
+        guard signature.count == 65 else { throw BuyerSignerError.signingFailed }
+        let r = signature.prefix(32)
+        let s = signature.dropFirst(32).prefix(32)
+        let raw = signature[signature.index(signature.startIndex, offsetBy: 64)]
+        let v = raw < 27 ? BigUInt(raw) + 27 : BigUInt(raw)
+        return (v, Data(r), Data(s))
+    }
+
     func registerStarterPolicy() async throws -> ChainHash {
         let day = 24 * 60 * 60
         let rules: [[Any]] = [
