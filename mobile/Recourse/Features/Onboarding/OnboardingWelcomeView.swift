@@ -64,9 +64,9 @@ struct OnboardingWelcomeView: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 Spacer()
-                Text("Pay with confidence.")
+                Text("Money that moves like a message.")
                     .font(.recourse(16, .semibold))
-                Text("Know the terms before money moves.")
+                Text("Dollars on your phone, sent by name.")
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.78))
             }
@@ -82,13 +82,13 @@ struct OnboardingWelcomeView: View {
     private func content(compact: Bool) -> some View {
         VStack(alignment: .leading, spacing: compact ? 12 : 16) {
             VStack(alignment: .leading, spacing: compact ? 6 : 8) {
-                Text("Payments should come\nwith protection.")
+                Text("Send dollars\nlike a text.")
                     .font(RecourseTypography.display(size: compact ? 28 : 32))
                     .foregroundStyle(RecourseColor.ink)
                     .lineSpacing(-1)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text("Clear refund terms, verifiable outcomes, and no wallet complexity up front.")
+                Text("Hold real dollars, pay anyone by name, and never touch a second token for fees.")
                     .font(.system(size: compact ? 13 : 14))
                     .foregroundStyle(RecourseColor.muted)
                     .lineSpacing(2)
@@ -100,9 +100,9 @@ struct OnboardingWelcomeView: View {
                 columns: Array(repeating: GridItem(.flexible(), alignment: .leading), count: 3),
                 spacing: 12
             ) {
-                trustItem(icon: "doc.text", label: "Terms first")
-                trustItem(icon: "checkmark.shield", label: "Proof onchain")
-                trustItem(icon: "bolt", label: "Fast settlement")
+                trustItem(icon: "at", label: "Pay by name")
+                trustItem(icon: "doc.text", label: "Cheques")
+                trustItem(icon: "bolt", label: "Seconds, not days")
             }
 
             Spacer(minLength: compact ? 4 : 8)
@@ -114,7 +114,7 @@ struct OnboardingWelcomeView: View {
 
     private func actions(bottomInset: CGFloat) -> some View {
         VStack(spacing: 9) {
-            Button("Get protected", action: onGetStarted)
+            Button("Get started", action: onGetStarted)
                 .buttonStyle(RecoursePrimaryButtonStyle())
 
             Button("I already have an account", action: onSignIn)

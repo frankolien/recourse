@@ -195,7 +195,7 @@ struct OnboardingSignInView: View {
     var body: some View {
         GeometryReader { proxy in
             let compact = proxy.size.height < 760
-            let heroHeight = proxy.size.height * (compact ? 0.34 : 0.39)
+            let heroHeight = proxy.size.height * (compact ? 0.30 : 0.34)
 
             VStack(spacing: 0) {
                 authenticationHero(width: proxy.size.width, height: heroHeight)
@@ -346,9 +346,10 @@ struct OnboardingSignInView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            // The ways in belong together at the bottom, where a thumb is, rather than
-            // stacked under the heading with dead space beneath them.
-            Spacer(minLength: compact ? 10 : 18)
+            // Everything between the heading and the buttons is give. The heading holds
+            // the top of the sheet, the ways in hold the bottom, and this is the only
+            // thing that stretches, so the buttons sit under a thumb on every size.
+            Spacer(minLength: compact ? 24 : 40)
 
             SignInWithAppleButton(
                 .continue,
@@ -442,8 +443,8 @@ struct OnboardingSignInView: View {
         }
         .padding(.horizontal, 22)
         .padding(.top, compact ? 14 : 18)
-        .padding(.bottom, compact ? 10 : 16)
-        .frame(maxHeight: .infinity, alignment: .bottom)
+        .padding(.bottom, compact ? 6 : 10)
+        .frame(maxHeight: .infinity, alignment: .top)
         .disabled(accountSession.isAuthenticating)
         .overlay {
             if accountSession.isAuthenticating {
