@@ -2,7 +2,6 @@ import SwiftUI
 
 struct OnboardingWelcomeView: View {
     let onGetStarted: () -> Void
-    let onSignIn: () -> Void
 
     var body: some View {
         GeometryReader { proxy in
@@ -114,11 +113,11 @@ struct OnboardingWelcomeView: View {
 
     private func actions(bottomInset: CGFloat) -> some View {
         VStack(spacing: 9) {
+            // One button, because both used to lead to a screen that asked which one
+            // you meant, and that screen is gone. The next one signs you in or signs
+            // you up from the same three taps.
             Button("Get started", action: onGetStarted)
                 .buttonStyle(RecoursePrimaryButtonStyle())
-
-            Button("I already have an account", action: onSignIn)
-                .buttonStyle(RecourseSecondaryButtonStyle())
         }
         .padding(.horizontal, 22)
         .padding(.top, 12)
@@ -145,7 +144,6 @@ struct OnboardingWelcomeView: View {
 #Preview("Welcome") {
     OnboardingWelcomeView(
         onGetStarted: {},
-        onSignIn: {}
     )
 }
 #endif

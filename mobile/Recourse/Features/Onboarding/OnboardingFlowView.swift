@@ -2,7 +2,6 @@ import SwiftUI
 
 private enum OnboardingStage: Int {
     case welcome
-    case signupStory
     case authentication
     case role
     case wallet
@@ -14,8 +13,6 @@ struct OnboardingFlowView: View {
     let onComplete: (OnboardingRole) -> Void
     private let buyerSigner: any BuyerSigner
     @State private var stage: OnboardingStage = .welcome
-    @State private var authenticationMode: OnboardingAuthenticationMode = .signUp
-    @State private var authenticationBackTarget: OnboardingStage = .welcome
     @State private var selectedRole: OnboardingRole = .buyer
     @State private var walletAddress: EthereumAddress?
 
@@ -37,20 +34,12 @@ struct OnboardingFlowView: View {
                 switch stage {
                 case .welcome:
                     OnboardingWelcomeView(
-                        onGetStarted: { advance(to: .signupStory) },
-                        onSignIn: { openAuthentication(mode: .signIn, backTo: .welcome) }
-                    )
-                case .signupStory:
-                    OnboardingSignupStoryView(
-                        onBack: { advance(to: .welcome) },
-                        onCreateAccount: { openAuthentication(mode: .signUp, backTo: .signupStory) },
-                        onSignIn: { openAuthentication(mode: .signIn, backTo: .signupStory) }
+                        onGetStarted: { advance(to: .authentication) }
                     )
                 case .authentication:
-                    OnboardingSignInView(
-                        mode: authenticationMode,
+                    OnboardingAuthenticationView(
                         accountSession: accountSession,
-                        onBack: { advance(to: authenticationBackTarget) },
+                        onBack: { advance(to: .welcome) },
                         onAuthenticated: { advance(to: .role) }
                     )
                 case .role:
@@ -93,9 +82,4 @@ struct OnboardingFlowView: View {
         stage = newStage
     }
 
-    private func openAuthentication(mode: OnboardingAuthenticationMode, backTo target: OnboardingStage) {
-        authenticationMode = mode
-        authenticationBackTarget = target
-        advance(to: .authentication)
-    }
 }

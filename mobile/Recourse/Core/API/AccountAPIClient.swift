@@ -55,6 +55,16 @@ enum AccountAPIError: Error, Equatable {
         }
         return false
     }
+
+    /// Nothing registered under that name yet. A failure for a caller trying to sign in
+    /// and a starting point for one offering to create something, so it is the caller's
+    /// to interpret rather than a hard error.
+    var isNotFound: Bool {
+        if case .rejected(let status, _) = self {
+            return status == 404
+        }
+        return false
+    }
 }
 
 protocol AccountAPI: Sendable {

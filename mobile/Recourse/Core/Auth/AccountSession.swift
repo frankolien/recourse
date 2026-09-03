@@ -260,12 +260,18 @@ final class AccountSession {
         }
     }
 
-    /// Sign in with a passkey, or create one, depending on why we are here.
+    /// Sign in with a passkey, creating one if this email has none.
     ///
-    /// Both ceremonies need an email because the server looks the account up by it: this
-    /// is not usernameless WebAuthn, and pretending otherwise would mean a button that
-    /// can only ever fail.
-    func continueWithPasskey(email: String, creating: Bool) async {
+    /// The ceremony is chosen from the server's answer rather than from a question put
+    /// to the user. Login start returns 404 when no passkey is registered for an email,
+    /// which is exactly the signal that this person is new, so the fallback is
+    /// registration. Asking "new or returning" first would be asking someone to tell us
+    /// something we can look up.
+    ///
+    /// Either way an email is required, because the server looks the account up by one.
+    /// This is not usernameless WebAuthn, and pretending otherwise would mean a button
+    /// that can only ever fail.
+    func continueWithPasskey(email: String) async {
         guard !isAuthenticating else { return }
         let address = email.trimmingCharacters(in: .whitespacesAndNewlines)
         guard address.contains("@"), !address.hasPrefix("@"), !address.hasSuffix("@") else {
@@ -279,9 +285,12 @@ final class AccountSession {
 
         let coordinator = PasskeyCoordinator(relyingParty: AppConfiguration.passkeyRelyingParty)
         do {
-            let grant = creating
-                ? try await register(address, with: coordinator)
-                : try await authenticate(address, with: coordinator)
+            let grant: AccountSessionGrant
+            do {
+                grant = try await authenticate(address, with: coordinator)
+            } catch let error as AccountAPIError where error.isNotFound {
+                grant = try await register(address, with: coordinator)
+            }
             try await accept(grant)
         } catch PasskeyCoordinator.Failure.cancelled {
             // The user dismissed the system sheet; not worth a banner.
