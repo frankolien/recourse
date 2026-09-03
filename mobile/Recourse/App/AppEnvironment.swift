@@ -11,6 +11,7 @@ final class AppEnvironment {
     let buyerSigner: any BuyerSigner
     let paymentStore: BuyerPaymentStore
     let addressBook = AddressBookStore()
+    private(set) var chequeBook: ChequeBook!
 
     init(
         configuration: AppConfiguration,
@@ -28,6 +29,17 @@ final class AppEnvironment {
         )
         self.accountSession = accountSession ?? AccountSession(
             api: AccountAPIClient(baseURL: configuration.apiURL)
+        )
+        // Built last because it needs the session and the signer that were just
+        // resolved, and it closes over makeContractGateway so it reads chain state
+        // through the same path every other screen does.
+        chequeBook = ChequeBook(
+            configuration: configuration,
+            accountSession: self.accountSession,
+            api: ChequeAPIClient(baseURL: configuration.apiURL),
+            makeGateway: { [configuration, signer = self.buyerSigner] in
+                try ArcContractGateway.live(configuration: configuration, signer: signer)
+            }
         )
     }
 
@@ -56,6 +68,19 @@ final class AppEnvironment {
 
     func makeWalletBackupAPIClient() -> any WalletBackupAPI {
         WalletBackupAPIClient(baseURL: configuration.apiURL)
+    }
+
+    func makeChequeAPIClient() -> any ChequeAPI {
+        ChequeAPIClient(baseURL: configuration.apiURL)
+    }
+
+    func makeChequeWorkflow() throws -> ChequeWorkflow {
+        ChequeWorkflow(
+            gateway: try makeContractGateway(),
+            signer: buyerSigner,
+            api: makeChequeAPIClient(),
+            configuration: configuration
+        )
     }
 
     static func live() -> AppEnvironment {

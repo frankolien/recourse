@@ -7,6 +7,8 @@ enum AppRoute: Hashable {
     case verdict(UInt64)
     case send
     case convert
+    case cheques
+    case writeCheque
     case earn
     case account
     case support

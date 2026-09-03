@@ -69,6 +69,9 @@ struct HomeView: View {
                     if attentionPayment != nil && !hidesAttention {
                         attentionLead
                     }
+                    if environment.chequeBook.cashableCount > 0 {
+                        chequeLead
+                    }
                     earnPreview
                     // A fresh account gets one guided card, not a stack of empty
                     // section shells; sections appear as soon as they have content.
@@ -109,6 +112,9 @@ struct HomeView: View {
         .task {
             while !Task.isCancelled {
                 await environment.paymentStore.refreshBuyer()
+                // Polled alongside the balance so a cheque someone writes you appears
+                // without opening the screen, which is the whole point of an inbox.
+                await environment.chequeBook.refresh()
                 // Reminders track the refreshed list so settled payments drop
                 // theirs and new protected payments gain one, no screen visit needed.
                 await DisputeReminderScheduler.sync(
@@ -352,7 +358,7 @@ struct HomeView: View {
     // Banking verbs in soft square tiles, one row, with Pay carrying the
     // accent the way top money apps color their hero verb. Pay is the only
     // scan entry in the app, so no icon appears twice on this screen; Earn
-    // lives in the tab bar now and Verify takes its tile back.
+    // lives in the tab bar.
     private var actionGrid: some View {
         HStack(spacing: 12) {
             actionTile("plus", "Add money") {
@@ -368,10 +374,8 @@ struct HomeView: View {
                     environment.router.push(.convert)
                 }
             }
-            actionTile("checkmark.seal.fill", "Verify") {
-                if let paymentID = settledPayments.first?.id ?? allPayments.first?.id {
-                    environment.router.push(.verdict(paymentID))
-                }
+            actionTile("doc.text.fill", "Cheques") {
+                environment.router.push(.cheques)
             }
             actionTile("qrcode.viewfinder", "Pay", accent: true, action: onScanRequested)
         }
@@ -401,6 +405,42 @@ struct HomeView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(accent ? "Pay with protection" : title)
+    }
+
+    // Someone has already promised this money; the only thing between it and the
+    // wallet is a tap. That earns a place above Earn.
+    private var chequeLead: some View {
+        Button {
+            environment.router.push(.cheques)
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "doc.text.fill")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(RecourseColor.ledger)
+                    .frame(width: 38, height: 38)
+                    .background(RecourseColor.nightChip, in: Circle())
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(
+                        environment.chequeBook.cashableCount == 1
+                            ? "A cheque is waiting for you"
+                            : "\(environment.chequeBook.cashableCount) cheques are waiting for you"
+                    )
+                    .font(.recourse(13, .semibold))
+                    .foregroundStyle(RecourseColor.nightText)
+                    Text("\(currency(environment.chequeBook.cashableTotal)) ready to cash")
+                        .font(.recourse(11))
+                        .foregroundStyle(RecourseColor.nightMuted)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(RecourseColor.nightMuted)
+            }
+            .padding(14)
+            .contentShape(Rectangle())
+            .modifier(HomeFloatingSurface(cornerRadius: 20))
+        }
+        .buttonStyle(.plain)
     }
 
     private var earnPreview: some View {

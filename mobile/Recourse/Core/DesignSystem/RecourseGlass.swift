@@ -77,6 +77,22 @@ extension View {
         modifier(RecourseGlassBar())
     }
 
+    /// The ground under a bottom action bar, faded rather than cut.
+    ///
+    /// A hard fill draws a line across the screen and tells you the list ended there.
+    /// Fading it lets content pass under the bar, which is what makes a floating action
+    /// look like it is floating.
+    func recourseBottomFade() -> some View {
+        background {
+            LinearGradient(
+                colors: [RecourseColor.night.opacity(0), RecourseColor.night, RecourseColor.night],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+        }
+    }
+
     func recourseKeyboardDismissal() -> some View {
         modifier(RecourseKeyboardDismissal())
     }
