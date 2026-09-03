@@ -19,6 +19,8 @@ struct HomeView: View {
     // Once. A guide that reappears on every launch until the first transaction is a
     // nag, and the person it nags is the one who has not decided to trust the app yet.
     @AppStorage("recourse.dismissedGettingStarted") private var dismissedGettingStarted = false
+    @AppStorage("recourse.dismissedEarnPromo") private var dismissedEarnPromo = false
+    @State private var range: HistoryRange = .week
 
     init(
         environment: AppEnvironment,
@@ -38,6 +40,7 @@ struct HomeView: View {
 
     private var book: ChequeBook { environment.chequeBook }
     private var invoices: InvoiceBook { environment.invoiceBook }
+    private var history: TransferHistory { environment.transferHistory }
 
     var body: some View {
         ZStack {
@@ -48,8 +51,12 @@ struct HomeView: View {
                 LazyVStack(alignment: .leading, spacing: 18) {
                     scrollPositionReader
                     balanceHero
+                    balanceChart
                     primaryActions
                     featureGrid
+                    if showsEarnPromo {
+                        earnPromo
+                    }
                     if book.cashableCount > 0 {
                         chequeLead
                     }
@@ -69,6 +76,7 @@ struct HomeView: View {
                 await environment.paymentStore.refreshBuyer()
                 await book.refresh(force: true)
                 await invoices.refresh(force: true)
+                await history.refresh(force: true)
             }
         }
         .safeAreaInset(edge: .top, spacing: 0) {
@@ -95,6 +103,7 @@ struct HomeView: View {
                 // without opening the screen, which is the whole point of an inbox.
                 await book.refresh()
                 await invoices.refresh()
+                await history.refresh()
                 environment.publishWalletSnapshot()
                 try? await Task.sleep(for: .seconds(10))
             }
@@ -216,14 +225,22 @@ struct HomeView: View {
                 ZStack {
                     if hidesBalance {
                         Text("$••••")
+                            .foregroundStyle(RecourseColor.nightText)
                             .transition(.blurReplace)
                     } else {
-                        Text(balanceHeadline)
-                            .transition(.blurReplace)
+                        // Cents dimmed. The dollars are the number; the cents are the
+                        // precision, and a wallet that shouts its cents reads as fussier
+                        // than it is.
+                        HStack(alignment: .firstTextBaseline, spacing: 0) {
+                            Text(balanceWhole)
+                                .foregroundStyle(RecourseColor.nightText)
+                            Text(balanceCents)
+                                .foregroundStyle(RecourseColor.nightMuted)
+                        }
+                        .transition(.blurReplace)
                     }
                 }
                 .font(.system(size: 56, weight: .semibold, design: .rounded))
-                .foregroundStyle(RecourseColor.nightText)
                 .minimumScaleFactor(0.55)
                 .lineLimit(1)
 
@@ -241,9 +258,48 @@ struct HomeView: View {
         .padding(.bottom, 2)
     }
 
-    private var balanceHeadline: String {
-        guard let balance = environment.paymentStore.balance else { return "$—" }
-        return currency(balance)
+    private var balanceWhole: String {
+        guard let balance = environment.paymentStore.balance else { return "$" }
+        return "$\(balance.baseUnits / USDCAmount.base)"
+    }
+
+    private var balanceCents: String {
+        guard let balance = environment.paymentStore.balance else { return "0.00" }
+        return String(format: ".%02llu", (balance.baseUnits % USDCAmount.base) / 10_000)
+    }
+
+    // The balance as it was over the chosen range, worked back from the balance as it
+    // is. Bars rather than a line because a wallet's balance is a staircase: it holds
+    // still and then steps, and a line would draw slopes that never happened.
+    private var balanceChart: some View {
+        VStack(spacing: 14) {
+            BalanceBars(samples: history.balanceSamples(current: environment.paymentStore.balance, range: range, count: 44))
+                .frame(height: 84)
+                .animation(.snappy(duration: 0.3), value: range)
+
+            HStack(spacing: 6) {
+                ForEach(HistoryRange.allCases) { option in
+                    Button {
+                        guard range != option else { return }
+                        UISelectionFeedbackGenerator().selectionChanged()
+                        range = option
+                    } label: {
+                        Text(option.rawValue)
+                            .font(.recourse(12, .semibold))
+                            .foregroundStyle(range == option ? RecourseColor.nightText : RecourseColor.nightMuted)
+                            .frame(width: 44, height: 30)
+                            .background {
+                                if range == option {
+                                    Capsule().fill(RecourseColor.nightChip)
+                                }
+                            }
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(.top, 6)
     }
 
     /// What is moving, in the order it matters: money waiting for you first, because
@@ -321,14 +377,16 @@ struct HomeView: View {
                 icon: "doc.text.fill",
                 tint: RecourseColor.ledger,
                 title: "Cheques",
-                detail: chequesDetail
+                detail: "Write, cash or void",
+                figure: chequesFigure
             ) { environment.router.push(.cheques) }
 
             HomeFeatureCard(
                 icon: "arrow.down.left",
                 tint: Color(red: 0.94, green: 0.46, blue: 0.23),
                 title: "Request",
-                detail: requestDetail
+                detail: "Bill someone by name",
+                figure: requestFigure
             ) { environment.router.push(.invoices) }
 
             // Only where an FX venue is deployed. A chain without one has no
@@ -338,7 +396,8 @@ struct HomeView: View {
                     icon: "arrow.left.arrow.right",
                     tint: Color(red: 0.23, green: 0.51, blue: 0.96),
                     title: "Convert",
-                    detail: "USDC to EURC"
+                    detail: "USDC to EURC",
+                    figure: nil
                 ) { environment.router.push(.convert) }
             }
 
@@ -346,38 +405,74 @@ struct HomeView: View {
                 icon: "chart.bar.fill",
                 tint: Color(red: 0.55, green: 0.36, blue: 0.96),
                 title: "Earn",
-                detail: earnDetail
+                detail: "Yield on idle USDC",
+                figure: earnFigure
             ) { environment.router.push(.earn) }
         }
     }
 
-    /// Live where there is something live to say, otherwise what the thing is for.
-    private var chequesDetail: String {
-        if book.cashableCount > 0 {
-            return "\(currency(book.cashableTotal)) to cash"
-        }
-        if book.liveWrittenCount > 0 {
-            return "\(currency(book.committed)) outstanding"
-        }
-        return "Write, cash or void"
+    /// The live number, when the feature has one. Nil means the card is empty and says
+    /// what it is for instead.
+    private var chequesFigure: USDCAmount? {
+        if book.cashableCount > 0 { return book.cashableTotal }
+        if book.liveWrittenCount > 0 { return book.committed }
+        return nil
     }
 
-    private var requestDetail: String {
-        if !invoices.readyToCollect.isEmpty {
-            return "\(currency(invoices.readyToCollectTotal)) to collect"
-        }
-        if invoices.owedToYou.baseUnits > 0 {
-            return "\(currency(invoices.owedToYou)) owed to you"
-        }
-        return "Bill someone by name"
+    private var requestFigure: USDCAmount? {
+        if !invoices.readyToCollect.isEmpty { return invoices.readyToCollectTotal }
+        if invoices.owedToYou.baseUnits > 0 { return invoices.owedToYou }
+        return nil
     }
 
-    private var earnDetail: String {
-        guard let earnVaultState else { return "Yield on idle USDC" }
-        if earnVaultState.myShares > 0 {
-            return "\(currency(earnVaultState.myValue)) at work"
+    private var earnFigure: USDCAmount? {
+        guard let earnVaultState, earnVaultState.myShares > 0 else { return nil }
+        return earnVaultState.myValue
+    }
+
+    /// Shown until dismissed, and never to someone who already has money in the vault.
+    private var showsEarnPromo: Bool {
+        !dismissedEarnPromo && (earnVaultState?.myShares ?? 0) == 0
+    }
+
+    private var earnPromo: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "chart.bar.fill")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 42, height: 42)
+                .background(Color(red: 0.55, green: 0.36, blue: 0.96), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+            Button {
+                environment.router.push(.earn)
+            } label: {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Earn on idle USDC")
+                        .font(.recourse(14, .semibold))
+                        .foregroundStyle(RecourseColor.nightText)
+                    Text("Put USDC into Earn")
+                        .font(.recourse(11.5, .medium))
+                        .foregroundStyle(RecourseColor.nightMuted)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            Button {
+                withAnimation(.snappy(duration: 0.24)) { dismissedEarnPromo = true }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(RecourseColor.nightMuted)
+                    .frame(width: 28, height: 28)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Dismiss")
         }
-        return "Yield on idle USDC"
+        .padding(12)
+        .overlay {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(RecourseColor.nightLine, lineWidth: 1)
+        }
     }
 
     // Someone has already promised this money; the only thing between it and the
@@ -518,14 +613,19 @@ struct HomeView: View {
 
 /// One of the four things on Home that are not sending or adding money.
 ///
-/// The icon tile carries the colour, the way a home-screen icon does, so the four read
-/// at a glance; the detail line is live where there is something live to say.
+/// Two states, told apart by the border. Live, with a figure to show, the card is solid
+/// and the number leads; empty, it is dashed and the title leads, the way an outline
+/// says "nothing here yet" without a sentence. The icon tile carries the colour so the
+/// four read at a glance whichever state they are in.
 private struct HomeFeatureCard: View {
     let icon: String
     let tint: Color
     let title: String
     let detail: String
+    let figure: USDCAmount?
     let action: () -> Void
+
+    private var live: Bool { figure != nil }
 
     var body: some View {
         Button(action: action) {
@@ -533,27 +633,69 @@ private struct HomeFeatureCard: View {
                 Image(systemName: icon)
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(.white)
-                    .frame(width: 42, height: 42)
-                    .background(tint, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                    .frame(width: 44, height: 44)
+                    .background(tint, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
 
-                Spacer(minLength: 14)
+                Spacer(minLength: 16)
 
-                Text(title)
-                    .font(.recourse(15, .semibold))
-                    .foregroundStyle(RecourseColor.nightText)
-                Text(detail)
-                    .font(.recourse(11.5, .medium))
-                    .foregroundStyle(RecourseColor.nightMuted)
-                    .lineLimit(1)
+                if let figure {
+                    Text(title)
+                        .font(.recourse(14, .medium))
+                        .foregroundStyle(RecourseColor.nightMuted)
+                    HStack(alignment: .firstTextBaseline, spacing: 0) {
+                        Text("$\(figure.baseUnits / USDCAmount.base)")
+                            .foregroundStyle(RecourseColor.nightText)
+                        Text(String(format: ".%02llu", (figure.baseUnits % USDCAmount.base) / 10_000))
+                            .foregroundStyle(RecourseColor.nightMuted)
+                    }
+                    .font(.system(size: 20, weight: .semibold, design: .rounded))
                     .padding(.top, 3)
+                } else {
+                    Text(title)
+                        .font(.recourse(15, .semibold))
+                        .foregroundStyle(RecourseColor.nightText)
+                    Text(detail)
+                        .font(.recourse(11.5, .medium))
+                        .foregroundStyle(RecourseColor.nightMuted)
+                        .lineLimit(1)
+                        .padding(.top, 3)
+                }
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, minHeight: 126, alignment: .topLeading)
-            .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .padding(16)
+            .frame(maxWidth: .infinity, minHeight: 150, alignment: .topLeading)
+            .background(RecourseColor.nightChip.opacity(live ? 1 : 0.45), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .stroke(RecourseColor.nightLine, style: StrokeStyle(lineWidth: 1, dash: live ? [] : [5, 5]))
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(title). \(detail)")
+        .accessibilityLabel(live ? "\(title), \(figure!.formatted)" : "\(title). \(detail)")
+    }
+}
+
+/// Thin grey bars, one per sample, heights proportional to the tallest.
+private struct BalanceBars: View {
+    let samples: [UInt64]
+
+    var body: some View {
+        GeometryReader { proxy in
+            let peak = Double(samples.max() ?? 0)
+            HStack(alignment: .bottom, spacing: 0) {
+                ForEach(Array(samples.enumerated()), id: \.offset) { _, value in
+                    // A floor of four points so an empty wallet still draws a baseline
+                    // rather than nothing, which reads as a chart that failed to load.
+                    let height = peak > 0 ? max(4, proxy.size.height * Double(value) / peak) : 4
+                    Capsule()
+                        .fill(RecourseColor.nightLine)
+                        .frame(width: 2.5, height: height)
+                        .frame(maxWidth: .infinity, alignment: .bottom)
+                }
+            }
+            .frame(height: proxy.size.height, alignment: .bottom)
+        }
+        .accessibilityHidden(true)
     }
 }
 

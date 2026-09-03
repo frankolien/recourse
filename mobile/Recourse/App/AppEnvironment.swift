@@ -13,6 +13,7 @@ final class AppEnvironment {
     let addressBook = AddressBookStore()
     private(set) var chequeBook: ChequeBook!
     private(set) var invoiceBook: InvoiceBook!
+    private(set) var transferHistory: TransferHistory!
 
     init(
         configuration: AppConfiguration,
@@ -47,6 +48,11 @@ final class AppEnvironment {
             accountSession: self.accountSession,
             api: InvoiceAPIClient(baseURL: configuration.apiURL),
             makeGateway: gateway
+        )
+        transferHistory = TransferHistory(
+            configuration: configuration,
+            signer: self.buyerSigner,
+            explorer: ArcscanClient(baseURL: AppConfiguration.explorerURL)
         )
     }
 

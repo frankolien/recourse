@@ -77,6 +77,16 @@ struct AppConfiguration: Sendable {
             ?? "https://recourse-arc.vercel.app"
     )!
 
+    // The chain explorer. It is a Blockscout, and its API is how the app learns about
+    // every USDC movement on the wallet, including the ones nothing in this app
+    // initiated. The RPC could answer the same question through eth_getLogs, but the
+    // public endpoint caps log queries at ten thousand entries and carries no
+    // timestamps, so the explorer is the honest source for a history.
+    static let explorerURL = URL(
+        string: ProcessInfo.processInfo.environment["RECOURSE_EXPLORER_URL"]
+            ?? "https://testnet.arcscan.app"
+    )!
+
     // Same inbox the web support page publishes; the settings screen builds
     // mailto links from it.
     static let supportEmail = "gkenny896@gmail.com"
