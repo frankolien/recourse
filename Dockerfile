@@ -21,7 +21,11 @@ RUN mkdir src \
 # Build the real binary. sqlx::migrate! embeds ./migrations into the binary at compile time.
 COPY backend/migrations ./migrations
 COPY backend/src ./src
-RUN cargo build --release --locked
+# Cargo decides freshness by mtime. The sources arrive with the timestamps they were
+# last edited at, which can be older than the dummy build a few seconds above, and then
+# cargo keeps the dummy binary: an empty main that exits at once, prints nothing, and
+# fails every healthcheck with no log to explain why. Touching them forces the rebuild.
+RUN find src -type f -exec touch {} + && cargo build --release --locked
 
 # ---- Runtime stage ----
 FROM debian:bookworm-slim
