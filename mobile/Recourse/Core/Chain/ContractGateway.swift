@@ -52,6 +52,12 @@ protocol ContractReading: Sendable {
     /// What the pool holds. Read so the screen can state the largest amount it can
     /// fill, instead of refusing sizes one at a time until the user finds it.
     func fxReserves() async throws -> FXReserves
+    /// Whether a cheque's nonce has been spent, which is the only honest source of
+    /// its status. The server knows a cheque exists; only the token knows whether the
+    /// money moved, and it stops distinguishing cashed from voided once either
+    /// happens, because to everyone still holding the signature the answer is the
+    /// same: it is worth nothing now.
+    func authorizationState(authorizer: EthereumAddress, nonce: Data) async throws -> Bool
 }
 
 protocol ContractWriting: Sendable {
@@ -70,6 +76,10 @@ protocol ContractWriting: Sendable {
     func approveVaultUSDC(amount: USDCAmount) async throws -> ChainHash
     func vaultDeposit(amount: USDCAmount) async throws -> ChainHash
     func vaultWithdraw(shares: UInt64) async throws -> ChainHash
+    /// Submit someone else's authorization and move their USDC to the person it names.
+    func cashCheque(_ cheque: Cheque, signature: Data) async throws -> ChainHash
+    /// Burn a cheque's nonce so the authorization can never be used.
+    func voidCheque(nonce: Data, cancellationSignature: Data) async throws -> ChainHash
     func waitForReceipt(transactionHash: ChainHash) async throws -> ChainReceipt
 }
 

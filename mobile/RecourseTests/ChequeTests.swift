@@ -141,6 +141,53 @@ final class ChequeTests: XCTestCase {
         XCTAssertThrowsError(try ArcContractWriter.split(signature: Data(repeating: 0xAB, count: 64)))
     }
 
+    func testCancellationDigestMatchesTheIndependentlyComputedValue() {
+        // Computed with cast from the same type string the token uses. A wrong
+        // cancellation digest is worse than a wrong transfer one: the writer believes
+        // the cheque is dead and it is still cashable.
+        XCTAssertEqual(
+            hex(
+                ChequeAuthorization.cancellationDigest(
+                    authorizer: goldenCheque.from,
+                    nonce: goldenCheque.nonce,
+                    token: usdc,
+                    chainID: chainID
+                )
+            ),
+            "0xd4cf68339b44cf232d3b756d9e4115379debbaa0aca891223707503bdf5714e5"
+        )
+    }
+
+    func testACancellationIsNotATransferSignature() {
+        // Different struct, so a cheque cannot be voided by anyone holding the
+        // authorization, and the token will not accept one where the other belongs.
+        XCTAssertNotEqual(
+            ChequeAuthorization.cancellationDigest(
+                authorizer: goldenCheque.from,
+                nonce: goldenCheque.nonce,
+                token: usdc,
+                chainID: chainID
+            ),
+            ChequeAuthorization.digest(for: goldenCheque, token: usdc, chainID: chainID)
+        )
+    }
+
+    func testCancellationTypedDataNamesTheCancelStructAndNonceItBurns() throws {
+        let payload = try ChequeAuthorization.cancellationTypedData(
+            authorizer: goldenCheque.from,
+            nonce: goldenCheque.nonce,
+            token: usdc,
+            chainID: chainID
+        )
+        let json = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: payload) as? [String: Any]
+        )
+        XCTAssertEqual(json["primaryType"] as? String, "CancelAuthorization")
+        let message = try XCTUnwrap(json["message"] as? [String: Any])
+        XCTAssertEqual(message["nonce"] as? String, hex(goldenCheque.nonce))
+        XCTAssertEqual(message["authorizer"] as? String, goldenCheque.from.value)
+    }
+
     func testADifferentChainCannotReuseTheSameSignature() {
         // The domain binds the chain, so a cheque written for Arc is not a cheque
         // anywhere else even though the token address may be identical.

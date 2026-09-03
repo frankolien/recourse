@@ -61,6 +61,10 @@ struct ArcContractGateway: ContractGateway {
         try await reader.fxReserves()
     }
 
+    func authorizationState(authorizer: EthereumAddress, nonce: Data) async throws -> Bool {
+        try await reader.authorizationState(authorizer: authorizer, nonce: nonce)
+    }
+
     func approveUSDC(amount: USDCAmount) async throws -> ChainHash {
         try await writer.approveUSDC(amount: amount)
     }
@@ -103,6 +107,14 @@ struct ArcContractGateway: ContractGateway {
 
     func vaultWithdraw(shares: UInt64) async throws -> ChainHash {
         try await writer.vaultWithdraw(shares: shares)
+    }
+
+    func cashCheque(_ cheque: Cheque, signature: Data) async throws -> ChainHash {
+        try await writer.cashCheque(cheque, signature: signature)
+    }
+
+    func voidCheque(nonce: Data, cancellationSignature: Data) async throws -> ChainHash {
+        try await writer.voidCheque(nonce: nonce, cancellationSignature: cancellationSignature)
     }
 
     func waitForReceipt(transactionHash: ChainHash) async throws -> ChainReceipt {

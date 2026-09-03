@@ -102,6 +102,50 @@ enum ChequeAuthorization {
         return try JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys])
     }
 
+    /// keccak256("CancelAuthorization(address authorizer,bytes32 nonce)")
+    static let cancelTypeHash = "158b0a9edf7a828aad02f63cd515c68ef2f50ba807396f6d12842833a1597429"
+
+    /// What the writer signs to void a cheque they have already handed out.
+    ///
+    /// A separate struct from the transfer on purpose: the token will not accept a
+    /// transfer signature as a cancellation, so a cheque cannot be voided by anyone who
+    /// merely holds it.
+    static func cancellationTypedData(
+        authorizer: EthereumAddress,
+        nonce: Data,
+        token: EthereumAddress,
+        chainID: Int,
+        tokenName: String = "USDC",
+        tokenVersion: String = "2"
+    ) throws -> Data {
+        let payload: [String: Any] = [
+            "types": [
+                "EIP712Domain": [
+                    ["name": "name", "type": "string"],
+                    ["name": "version", "type": "string"],
+                    ["name": "chainId", "type": "uint256"],
+                    ["name": "verifyingContract", "type": "address"],
+                ],
+                "CancelAuthorization": [
+                    ["name": "authorizer", "type": "address"],
+                    ["name": "nonce", "type": "bytes32"],
+                ],
+            ],
+            "primaryType": "CancelAuthorization",
+            "domain": [
+                "name": tokenName,
+                "version": tokenVersion,
+                "chainId": chainID,
+                "verifyingContract": token.value,
+            ],
+            "message": [
+                "authorizer": authorizer.value,
+                "nonce": "0x" + nonce.map { String(format: "%02x", $0) }.joined(),
+            ],
+        ]
+        return try JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys])
+    }
+
     /// The EIP-712 domain separator, which the token also computes and stores. Deriving
     /// it rather than reading it from the chain means a cheque can be written offline,
     /// and the test pins it against the value the live contract returns.
@@ -133,6 +177,16 @@ enum ChequeAuthorization {
     /// What the signature has to cover: keccak256(0x1901 || domainSeparator || structHash).
     static func digest(for cheque: Cheque, token: EthereumAddress, chainID: Int) -> Data {
         keccak(Data([0x19, 0x01]) + domainSeparator(token: token, chainID: chainID) + structHash(for: cheque))
+    }
+
+    static func cancellationDigest(
+        authorizer: EthereumAddress,
+        nonce: Data,
+        token: EthereumAddress,
+        chainID: Int
+    ) -> Data {
+        let structHash = keccak(hex(cancelTypeHash) + addressWord(authorizer) + nonce)
+        return keccak(Data([0x19, 0x01]) + domainSeparator(token: token, chainID: chainID) + structHash)
     }
 
     // MARK: ABI word helpers

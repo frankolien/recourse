@@ -77,6 +77,8 @@ actor FakeContractGateway: ContractGateway {
         case pay
         case fileDispute(ClaimType, [UploadedEvidence])
         case resolve
+        case cashCheque(Data)
+        case voidCheque(Data)
     }
 
     var balance: USDCAmount
@@ -157,6 +159,33 @@ actor FakeContractGateway: ContractGateway {
     func transferUSDC(to recipient: EthereumAddress, amount: USDCAmount) async throws -> ChainHash {
         calls.append(.transfer(recipient, amount))
         return DomainFixture.transferHash
+    }
+
+    // Nonces the token has seen. Keyed by writer and nonce the way the real one is, so
+    // a test can prove a cheque stops being cashable without a chain.
+    var spentNonces: Set<String> = []
+
+    private func nonceKey(_ authorizer: EthereumAddress, _ nonce: Data) -> String {
+        authorizer.value.lowercased() + ":" + nonce.map { String(format: "%02x", $0) }.joined()
+    }
+
+    func authorizationState(authorizer: EthereumAddress, nonce: Data) async throws -> Bool {
+        spentNonces.contains(nonceKey(authorizer, nonce))
+    }
+
+    func cashCheque(_ cheque: Cheque, signature: Data) async throws -> ChainHash {
+        calls.append(.cashCheque(cheque.nonce))
+        spentNonces.insert(nonceKey(cheque.from, cheque.nonce))
+        return DomainFixture.transferHash
+    }
+
+    func voidCheque(nonce: Data, cancellationSignature: Data) async throws -> ChainHash {
+        calls.append(.voidCheque(nonce))
+        return DomainFixture.transferHash
+    }
+
+    func markSpent(authorizer: EthereumAddress, nonce: Data) {
+        spentNonces.insert(nonceKey(authorizer, nonce))
     }
 
     func registerStarterPolicy() async throws -> ChainHash {

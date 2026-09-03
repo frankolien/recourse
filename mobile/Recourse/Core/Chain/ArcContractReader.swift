@@ -169,6 +169,24 @@ actor ArcContractReader: ContractReading {
         return USDCAmount(baseUnits: try uint64(result["0"], method: "allowance"))
     }
 
+    /// Whether this nonce has already been spent for this writer.
+    ///
+    /// True covers both cashed and voided, because the token records one bit. That is
+    /// not a gap in the read: to anyone holding the signature the two outcomes are the
+    /// same outcome, and the app says which one it was from what it watched happen.
+    func authorizationState(authorizer: EthereumAddress, nonce: Data) async throws -> Bool {
+        let result = try await call(
+            contract: erc20,
+            address: configuration.usdcAddress,
+            method: "authorizationState",
+            parameters: [try web3Address(authorizer), nonce]
+        )
+        guard let used = result["0"] as? Bool else {
+            throw ContractReadError.malformedResult(method: "authorizationState")
+        }
+        return used
+    }
+
     func policy(id: UInt64) async throws -> PolicyRecord {
         let policyResult = try await call(
             contract: policyRegistry,
