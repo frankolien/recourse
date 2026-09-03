@@ -5,6 +5,8 @@ enum AppRoute: Hashable {
     case convert
     case cheques
     case writeCheque
+    case invoices
+    case newInvoice
     case earn
     case account
     case support

@@ -25,32 +25,8 @@ struct StoredCheque: Decodable, Equatable, Sendable, Identifiable {
     var expiresAt: Date { Date(timeIntervalSince1970: TimeInterval(UInt64(validBefore) ?? 0)) }
     var usdc: USDCAmount { USDCAmount(baseUnits: amountBaseUnits) }
 
-    var nonceBytes: Data {
-        var bytes = Data()
-        var index = nonce.startIndex
-        if nonce.hasPrefix("0x") || nonce.hasPrefix("0X") {
-            index = nonce.index(index, offsetBy: 2)
-        }
-        while index < nonce.endIndex, let next = nonce.index(index, offsetBy: 2, limitedBy: nonce.endIndex) {
-            bytes.append(UInt8(nonce[index..<next], radix: 16) ?? 0)
-            index = next
-        }
-        return bytes
-    }
-
-    var signatureBytes: Data {
-        var bytes = Data()
-        var index = signature.startIndex
-        if signature.hasPrefix("0x") || signature.hasPrefix("0X") {
-            index = signature.index(index, offsetBy: 2)
-        }
-        while index < signature.endIndex,
-              let next = signature.index(index, offsetBy: 2, limitedBy: signature.endIndex) {
-            bytes.append(UInt8(signature[index..<next], radix: 16) ?? 0)
-            index = next
-        }
-        return bytes
-    }
+    var nonceBytes: Data { Data(hexString: nonce) ?? Data() }
+    var signatureBytes: Data { Data(hexString: signature) ?? Data() }
 
     /// The authorization this row stands for, ready to submit.
     var cheque: Cheque? {
@@ -104,8 +80,8 @@ struct ChequeDraft: Encodable, Sendable {
         amount = String(cheque.amount.baseUnits)
         validAfter = String(cheque.validAfter)
         validBefore = String(cheque.validBefore)
-        nonce = "0x" + cheque.nonce.map { String(format: "%02x", $0) }.joined()
-        self.signature = "0x" + signature.map { String(format: "%02x", $0) }.joined()
+        nonce = cheque.nonce.hexString
+        self.signature = signature.hexString
         let trimmed = memo?.trimmingCharacters(in: .whitespacesAndNewlines)
         self.memo = (trimmed?.isEmpty ?? true) ? nil : trimmed
     }

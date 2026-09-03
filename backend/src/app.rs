@@ -142,6 +142,19 @@ pub fn build_app(
                 .route("/me", web::get().to(handlers::auth::me))
                 // Cheques. The rows carry no authority: a cheque is not bearer, so
                 // this is delivery rather than custody of anything.
+                // An invoice is a request for a cheque: the issuer fixes the terms,
+                // the payer answers with a signature over exactly those terms.
+                .route("/invoices", web::post().to(handlers::invoices::issue))
+                .route("/invoices/inbox", web::get().to(handlers::invoices::inbox))
+                .route("/invoices/outbox", web::get().to(handlers::invoices::outbox))
+                .route(
+                    "/invoices/{id}/sign",
+                    web::post().to(handlers::invoices::sign),
+                )
+                .route(
+                    "/invoices/{id}/cancel",
+                    web::post().to(handlers::invoices::cancel),
+                )
                 .route("/cheques", web::post().to(handlers::cheques::write_cheque))
                 .route("/cheques/inbox", web::get().to(handlers::cheques::inbox))
                 .route("/cheques/outbox", web::get().to(handlers::cheques::outbox))

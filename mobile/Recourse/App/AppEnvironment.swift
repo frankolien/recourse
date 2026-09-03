@@ -12,6 +12,7 @@ final class AppEnvironment {
     let paymentStore: BuyerPaymentStore
     let addressBook = AddressBookStore()
     private(set) var chequeBook: ChequeBook!
+    private(set) var invoiceBook: InvoiceBook!
 
     init(
         configuration: AppConfiguration,
@@ -33,13 +34,19 @@ final class AppEnvironment {
         // Built last because it needs the session and the signer that were just
         // resolved, and it closes over makeContractGateway so it reads chain state
         // through the same path every other screen does.
+        let gateway = { [configuration, signer = self.buyerSigner] in
+            try ArcContractGateway.live(configuration: configuration, signer: signer)
+        }
         chequeBook = ChequeBook(
             configuration: configuration,
             accountSession: self.accountSession,
             api: ChequeAPIClient(baseURL: configuration.apiURL),
-            makeGateway: { [configuration, signer = self.buyerSigner] in
-                try ArcContractGateway.live(configuration: configuration, signer: signer)
-            }
+            makeGateway: gateway
+        )
+        invoiceBook = InvoiceBook(
+            accountSession: self.accountSession,
+            api: InvoiceAPIClient(baseURL: configuration.apiURL),
+            makeGateway: gateway
         )
     }
 
@@ -92,6 +99,19 @@ final class AppEnvironment {
 
     func makeChequeAPIClient() -> any ChequeAPI {
         ChequeAPIClient(baseURL: configuration.apiURL)
+    }
+
+    func makeInvoiceAPIClient() -> any InvoiceAPI {
+        InvoiceAPIClient(baseURL: configuration.apiURL)
+    }
+
+    func makeInvoiceWorkflow() throws -> InvoiceWorkflow {
+        InvoiceWorkflow(
+            gateway: try makeContractGateway(),
+            signer: buyerSigner,
+            api: makeInvoiceAPIClient(),
+            configuration: configuration
+        )
     }
 
     func makeChequeWorkflow() throws -> ChequeWorkflow {

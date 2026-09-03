@@ -115,7 +115,7 @@ final class PRFProbe: NSObject {
 
             credentialID = registration.credentialID
             hasCredential = true
-            add("ok", "Registered. credentialID \(registration.credentialID.prefix(8).hexString)...")
+            add("ok", "Registered. credentialID \(registration.credentialID.prefix(8).loggableHex)...")
 
             guard let prf = registration.prf else {
                 add("x", "No PRF output object. The authenticator ignored the extension.")
@@ -137,7 +137,7 @@ final class PRFProbe: NSObject {
                     ? "Both assertions matched. PRF is deterministic here."
                     : "Outputs differed. PRF is not usable as key material.")
                 if stable {
-                    add("ok", "Derived wallet seed \(Self.deriveSeed(from: output).prefix(8).hexString)...")
+                    add("ok", "Derived wallet seed \(Self.deriveSeed(from: output).prefix(8).loggableHex)...")
                 }
             } else {
                 firstOutput = output
@@ -177,7 +177,7 @@ final class PRFProbe: NSObject {
                 return nil
             }
             let output = Data(outputKey.withUnsafeBytes { Array($0) })
-            add("ok", "Assertion \(attempt): \(output.count) bytes, \(output.prefix(8).hexString)...")
+            add("ok", "Assertion \(attempt): \(output.count) bytes, \(output.prefix(8).loggableHex)...")
             return output
         } catch {
             add("x", describe(error))
@@ -263,7 +263,9 @@ extension PRFProbe: ASAuthorizationControllerDelegate, ASAuthorizationController
 }
 
 private extension Data {
-    var hexString: String {
+    /// Bare hex, no 0x. These are log lines rather than payloads, and a prefix on a
+    /// truncated eight byte sample reads as a value someone could use.
+    var loggableHex: String {
         map { String(format: "%02x", $0) }.joined()
     }
 }

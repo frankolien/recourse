@@ -211,7 +211,12 @@ private struct RPCError: Decodable {
     let message: String
 }
 
-private extension Data {
+/// Bytes to and from hex, shared across the module.
+///
+/// Failable on purpose: hex that does not parse is a value nobody can act on, and
+/// producing zeroes for it would mean signing over a nonce that is not the one anybody
+/// agreed to. Empty or nil fails at the point of use instead.
+extension Data {
     init?(hexString: String) {
         let value = hexString.hasPrefix("0x") ? String(hexString.dropFirst(2)) : hexString
         guard value.count.isMultiple(of: 2) else { return nil }

@@ -40,6 +40,7 @@ struct HomeView: View {
     }
 
     private var book: ChequeBook { environment.chequeBook }
+    private var invoices: InvoiceBook { environment.invoiceBook }
 
     var body: some View {
         ZStack {
@@ -53,6 +54,9 @@ struct HomeView: View {
                     actionGrid
                     if book.cashableCount > 0 {
                         chequeLead
+                    }
+                    if !invoices.readyToCollect.isEmpty {
+                        collectLead
                     }
                     earnPreview
                     // A fresh account gets one guided card, not a stack of empty
@@ -69,6 +73,7 @@ struct HomeView: View {
             .refreshable {
                 await environment.paymentStore.refreshBuyer()
                 await book.refresh(force: true)
+                await invoices.refresh(force: true)
             }
         }
         .safeAreaInset(edge: .top, spacing: 0) {
@@ -92,6 +97,7 @@ struct HomeView: View {
                 // Polled alongside the balance so a cheque someone writes you appears
                 // without opening the screen, which is the whole point of an inbox.
                 await book.refresh()
+                await invoices.refresh()
                 environment.publishWalletSnapshot()
                 try? await Task.sleep(for: .seconds(10))
             }
@@ -226,7 +232,7 @@ struct HomeView: View {
 
                 Text(motionSubtitle)
                     .font(.recourse(13, .medium))
-                    .foregroundStyle(book.cashableCount > 0 ? RecourseColor.ledger : RecourseColor.nightMuted)
+                    .foregroundStyle(hasIncoming ? RecourseColor.ledger : RecourseColor.nightMuted)
                     .contentTransition(.opacity)
                     .multilineTextAlignment(.center)
             }
@@ -246,24 +252,38 @@ struct HomeView: View {
     /// What is moving, in the order it matters: money waiting for you first, because
     /// that is the one with something to do about it.
     private var motionSubtitle: String {
+        let collectable = invoices.readyToCollectTotal
+        if collectable.baseUnits > 0 {
+            return "\(hidden(collectable)) invoiced and ready to collect"
+        }
         let waiting = book.cashableTotal
-        let promised = book.committed
         if waiting.baseUnits > 0 {
             return "\(hidden(waiting)) waiting for you to cash"
         }
+        let owed = invoices.owedToYou
+        if owed.baseUnits > 0 {
+            return "\(hidden(owed)) owed to you"
+        }
+        let promised = book.committed
         if promised.baseUnits > 0 {
             return "\(hidden(promised)) promised in cheques you wrote"
         }
         return "Nothing in motion"
     }
 
+    /// Green only when the money is coming toward you. What you have promised away is
+    /// a fact, not good news.
+    private var hasIncoming: Bool {
+        book.cashableCount > 0 || !invoices.readyToCollect.isEmpty || invoices.owedToYou.baseUnits > 0
+    }
+
     private func hidden(_ amount: USDCAmount) -> String {
         hidesBalance ? "$••••" : currency(amount)
     }
 
-    // Banking verbs in soft square tiles, one row. Four rather than five now that
-    // scanning a merchant checkout is gone: the tiles are the things this app
-    // actually does.
+    // Banking verbs in soft square tiles, one row. Send and Request sit next to each
+    // other because they are the same act in opposite directions, and that pairing is
+    // what people look for first.
     private var actionGrid: some View {
         HStack(spacing: 12) {
             actionTile("plus", "Add money") {
@@ -271,6 +291,9 @@ struct HomeView: View {
             }
             actionTile("paperplane.fill", "Send", accent: true) {
                 environment.router.push(.send)
+            }
+            actionTile("arrow.down.left", "Request") {
+                environment.router.push(.invoices)
             }
             actionTile("doc.text.fill", "Cheques") {
                 environment.router.push(.cheques)
@@ -347,6 +370,42 @@ struct HomeView: View {
         .buttonStyle(.plain)
     }
 
+    // An invoice someone has signed is money already agreed, sitting behind one
+    // transaction. That is a stronger claim on attention than anything else here.
+    private var collectLead: some View {
+        Button {
+            environment.router.push(.invoices)
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "arrow.down.left.circle.fill")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(RecourseColor.ledger)
+                    .frame(width: 38, height: 38)
+                    .background(RecourseColor.nightChip, in: Circle())
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(
+                        invoices.readyToCollect.count == 1
+                            ? "An invoice has been paid"
+                            : "\(invoices.readyToCollect.count) invoices have been paid"
+                    )
+                    .font(.recourse(13, .semibold))
+                    .foregroundStyle(RecourseColor.nightText)
+                    Text("\(currency(invoices.readyToCollectTotal)) ready to collect")
+                        .font(.recourse(11))
+                        .foregroundStyle(RecourseColor.nightMuted)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(RecourseColor.nightMuted)
+            }
+            .padding(14)
+            .contentShape(Rectangle())
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
     private var earnPreview: some View {
         Button {
             onEarnRequested()
@@ -401,6 +460,8 @@ struct HomeView: View {
         (environment.paymentStore.balance?.baseUnits ?? 0) == 0
             && book.received.isEmpty
             && book.written.isEmpty
+            && invoices.issued.isEmpty
+            && invoices.received.isEmpty
     }
 
     private var firstStepsCard: some View {
@@ -410,7 +471,7 @@ struct HomeView: View {
                 .foregroundStyle(RecourseColor.nightText)
             firstStep("at", "Claim your name", "People pay @you instead of a wallet address they have to copy.")
             firstStep("plus.circle.fill", "Add USDC", "Receive to your address. Fees are paid in USDC too, so there is no second token to hold.")
-            firstStep("doc.text.fill", "Send or write a cheque", "A send is instant and final. A cheque is theirs to collect, expires on its own, and you can void it.")
+            firstStep("doc.text.fill", "Send, request or write a cheque", "A send is instant and final. A request bills someone on terms you fix. A cheque is theirs to collect whenever they like.")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(18)

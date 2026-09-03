@@ -66,7 +66,14 @@ fn present(row: Row) -> StoredCheque {
 }
 
 /// 32 bytes of hex for a nonce, 65 for a signature.
-fn fixed_hex(value: &str, bytes: usize, field: &str) -> Result<String, AccountAuthError> {
+///
+/// Shared with invoices, which validate the same authorization fields because an
+/// invoice is answered by exactly the signature a cheque is made of.
+pub fn fixed_width_hex(
+    value: &str,
+    bytes: usize,
+    field: &str,
+) -> Result<String, AccountAuthError> {
     let body = value
         .strip_prefix("0x")
         .or_else(|| value.strip_prefix("0X"))
@@ -79,7 +86,7 @@ fn fixed_hex(value: &str, bytes: usize, field: &str) -> Result<String, AccountAu
     Ok(format!("0x{}", body.to_ascii_lowercase()))
 }
 
-fn number(value: &str, field: &str) -> Result<i64, AccountAuthError> {
+pub fn whole_number(value: &str, field: &str) -> Result<i64, AccountAuthError> {
     value
         .parse::<i64>()
         .map_err(|_| AccountAuthError::BadRequest(format!("{field} must be a whole number")))
@@ -114,22 +121,22 @@ pub async fn create(
         ));
     }
 
-    let amount = number(&cheque.amount, "amount")?;
+    let amount = whole_number(&cheque.amount, "amount")?;
     if amount == 0 {
         return Err(AccountAuthError::BadRequest(
             "a cheque needs an amount above zero".into(),
         ));
     }
-    let valid_after = number(&cheque.valid_after, "validAfter")?;
-    let valid_before = number(&cheque.valid_before, "validBefore")?;
+    let valid_after = whole_number(&cheque.valid_after, "validAfter")?;
+    let valid_before = whole_number(&cheque.valid_before, "validBefore")?;
     if valid_before <= valid_after {
         return Err(AccountAuthError::BadRequest(
             "a cheque must expire after it becomes valid".into(),
         ));
     }
 
-    let nonce = fixed_hex(&cheque.nonce, 32, "nonce")?;
-    let signature = fixed_hex(&cheque.signature, 65, "signature")?;
+    let nonce = fixed_width_hex(&cheque.nonce, 32, "nonce")?;
+    let signature = fixed_width_hex(&cheque.signature, 65, "signature")?;
 
     let memo = match cheque.memo {
         Some(memo) if memo.chars().count() > MAX_MEMO_CHARS => {
@@ -241,7 +248,7 @@ mod tests {
     #[test]
     fn accepts_and_lowercases_fixed_width_hex() {
         assert_eq!(
-            fixed_hex(&format!("0x{}", "AB".repeat(32)), 32, "nonce").unwrap(),
+            fixed_width_hex(&format!("0x{}", "AB".repeat(32)), 32, "nonce").unwrap(),
             format!("0x{}", "ab".repeat(32))
         );
     }
@@ -250,25 +257,25 @@ mod tests {
     fn refuses_hex_of_the_wrong_width() {
         // A short nonce or signature is a cheque that cannot be cashed, and the writer
         // should learn that now rather than when the recipient tries.
-        assert!(fixed_hex("0xdead", 32, "nonce").is_err());
-        assert!(fixed_hex(&format!("0x{}", "ab".repeat(64)), 65, "signature").is_err());
+        assert!(fixed_width_hex("0xdead", 32, "nonce").is_err());
+        assert!(fixed_width_hex(&format!("0x{}", "ab".repeat(64)), 65, "signature").is_err());
         assert!(
-            fixed_hex(&"ab".repeat(32), 32, "nonce").is_err(),
+            fixed_width_hex(&"ab".repeat(32), 32, "nonce").is_err(),
             "0x prefix is required"
         );
-        assert!(fixed_hex(&format!("0x{}", "zz".repeat(32)), 32, "nonce").is_err());
+        assert!(fixed_width_hex(&format!("0x{}", "zz".repeat(32)), 32, "nonce").is_err());
     }
 
     #[test]
     fn refuses_numbers_that_are_not_whole_or_are_negative() {
-        assert_eq!(number("1500000", "amount").unwrap(), 1_500_000);
-        assert!(number("1.5", "amount").is_err());
-        assert!(number("-1", "amount").is_err());
-        assert!(number("", "amount").is_err());
+        assert_eq!(whole_number("1500000", "amount").unwrap(), 1_500_000);
+        assert!(whole_number("1.5", "amount").is_err());
+        assert!(whole_number("-1", "amount").is_err());
+        assert!(whole_number("", "amount").is_err());
     }
 
     #[test]
     fn accepts_zero_for_valid_after_because_that_means_immediately() {
-        assert_eq!(number("0", "validAfter").unwrap(), 0);
+        assert_eq!(whole_number("0", "validAfter").unwrap(), 0);
     }
 }

@@ -100,6 +100,10 @@ struct RootView: View {
             ChequesView(environment: environment)
         case .writeCheque:
             WriteChequeView(environment: environment)
+        case .invoices:
+            InvoicesView(environment: environment)
+        case .newInvoice:
+            NewInvoiceView(environment: environment)
         case .earn:
             EarnView(environment: environment)
         case .account:
