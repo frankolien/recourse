@@ -1,12 +1,11 @@
 import SwiftUI
 
-/// Small brand marks, drawn rather than bundled.
+/// Small brand marks.
 ///
 /// A deposit card that says "Base, Solana and more" is a sentence someone has to read;
-/// three coins in the right colours is a fact they can see. None of these logos ship in
-/// the bundle, and pulling brand PNGs off the web into a money app is the kind of thing
-/// that ends in a takedown, so each mark is the simplest vector shape that still reads
-/// as itself at 22 points: a colour, a silhouette, and no more.
+/// three coins in the right colours is a fact they can see. Where a licence-clean vector
+/// exists (USDC, Solana, Ethereum, all CC0) the real mark is used, unaltered. The rest
+/// are drawn: the simplest shape that still reads as itself at 22 points.
 enum BrandMark: Identifiable, Hashable {
     case usdc
     case arc
@@ -74,16 +73,10 @@ struct BrandMarkView: View {
 
     // MARK: Coins
 
+    // USDC, Solana and Ethereum are the real marks, from a CC0 set (see ICONS.md
+    // beside the asset catalog). Unaltered, as their owners ask.
     private var usdc: some View {
-        ZStack {
-            Circle().fill(Color(red: 0.153, green: 0.459, blue: 0.792))
-            Circle()
-                .stroke(.white, lineWidth: height * 0.08)
-                .padding(height * 0.16)
-            Text("$")
-                .font(.system(size: height * 0.5, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-        }
+        Image("USDCMark").resizable().scaledToFit()
     }
 
     private var arc: some View {
@@ -109,30 +102,12 @@ struct BrandMarkView: View {
         .clipShape(Circle())
     }
 
-    /// Solana: three slanted bars on the purple to green sweep.
     private var solana: some View {
-        ZStack {
-            Circle().fill(
-                LinearGradient(
-                    colors: [Color(red: 0.6, green: 0.271, blue: 1), Color(red: 0.078, green: 0.945, blue: 0.584)],
-                    startPoint: .bottomLeading,
-                    endPoint: .topTrailing
-                )
-            )
-            SolanaBars()
-                .fill(.white)
-                .padding(height * 0.26)
-        }
+        Image("SolanaMark").resizable().scaledToFit()
     }
 
-    /// Ethereum: the diamond, as two stacked halves of one silhouette.
     private var ethereum: some View {
-        ZStack {
-            Circle().fill(Color(red: 0.384, green: 0.494, blue: 0.918))
-            Diamond()
-                .fill(.white)
-                .padding(height * 0.24)
-        }
+        Image("EthereumMark").resizable().scaledToFit()
     }
 
     private func currency(_ symbol: String) -> some View {
@@ -199,39 +174,5 @@ struct BrandMarkRow: View {
             }
         }
         .accessibilityElement(children: .combine)
-    }
-}
-
-private struct SolanaBars: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let barHeight = rect.height * 0.22
-        let slant = rect.width * 0.22
-        let gap = (rect.height - barHeight * 3) / 2
-        for index in 0..<3 {
-            let top = rect.minY + CGFloat(index) * (barHeight + gap)
-            // Alternate the lean so the middle bar runs the other way, as the mark does.
-            let leansRight = index != 1
-            let leftInset = leansRight ? slant : 0
-            let rightInset = leansRight ? 0 : slant
-            path.move(to: CGPoint(x: rect.minX + leftInset, y: top))
-            path.addLine(to: CGPoint(x: rect.maxX - rightInset, y: top))
-            path.addLine(to: CGPoint(x: rect.maxX - leftInset, y: top + barHeight))
-            path.addLine(to: CGPoint(x: rect.minX + rightInset, y: top + barHeight))
-            path.closeSubpath()
-        }
-        return path
-    }
-}
-
-private struct Diamond: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        path.move(to: CGPoint(x: rect.midX, y: rect.minY))
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.midY))
-        path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
-        path.addLine(to: CGPoint(x: rect.minX, y: rect.midY))
-        path.closeSubpath()
-        return path
     }
 }

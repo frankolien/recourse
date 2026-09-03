@@ -2,9 +2,43 @@ import AuthenticationServices
 import SwiftUI
 
 private struct StoryItem: Identifiable {
+    enum Icon {
+        /// The thing itself, when it has a mark of its own.
+        case usdc
+        /// An app-icon style tile: one colour, one white glyph.
+        case tile(Color, String)
+    }
+
     let id: Int
     let title: String
-    let icon: String
+    let icon: Icon
+}
+
+/// The carousel's icon, at the size the active row wants.
+///
+/// A tinted SF Symbol says what a thing is called; a coloured tile says what it is at a
+/// glance, the way a home screen does. "Hold" gets the USDC coin because that is what
+/// you hold, and the rest get a colour each so the set reads as four things rather than
+/// four green glyphs.
+private struct StoryIcon: View {
+    let icon: StoryItem.Icon
+    let size: CGFloat
+
+    var body: some View {
+        switch icon {
+        case .usdc:
+            Image("USDCMark")
+                .resizable()
+                .scaledToFit()
+                .frame(width: size, height: size)
+        case .tile(let color, let symbol):
+            Image(systemName: symbol)
+                .font(.system(size: size * 0.5, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: size, height: size)
+                .background(color, in: RoundedRectangle(cornerRadius: size * 0.3, style: .continuous))
+        }
+    }
 }
 
 /// The whole way in, on one screen.
@@ -25,10 +59,10 @@ struct OnboardingAuthenticationView: View {
 
     // What the app does, in the order someone meets it.
     private let items = [
-        StoryItem(id: 0, title: "Hold", icon: "dollarsign.circle.fill"),
-        StoryItem(id: 1, title: "Send", icon: "paperplane.fill"),
-        StoryItem(id: 2, title: "Request", icon: "arrow.down.left.circle.fill"),
-        StoryItem(id: 3, title: "Earn", icon: "chart.line.uptrend.xyaxis")
+        StoryItem(id: 0, title: "Hold", icon: .usdc),
+        StoryItem(id: 1, title: "Send", icon: .tile(RecourseColor.ledger, "paperplane.fill")),
+        StoryItem(id: 2, title: "Request", icon: .tile(Color(red: 0.94, green: 0.46, blue: 0.23), "arrow.down.left")),
+        StoryItem(id: 3, title: "Earn", icon: .tile(Color(red: 0.55, green: 0.36, blue: 0.96), "chart.bar.fill"))
     ]
 
     var body: some View {
@@ -99,10 +133,7 @@ struct OnboardingAuthenticationView: View {
 
                     HStack(spacing: 13) {
                         if isActive {
-                            Image(systemName: item.icon)
-                                .font(.system(size: compact ? 20 : 23, weight: .semibold))
-                                .foregroundStyle(RecourseColor.ledger)
-                                .frame(width: 34)
+                            StoryIcon(icon: item.icon, size: compact ? 34 : 40)
                                 .transition(.move(edge: .leading).combined(with: .opacity).combined(with: .scale))
                         }
 
