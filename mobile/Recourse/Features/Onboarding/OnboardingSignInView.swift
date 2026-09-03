@@ -15,14 +15,14 @@ enum OnboardingAuthenticationMode {
     var title: String {
         switch self {
         case .signUp: "Start with an account, not a wallet."
-        case .signIn: "Sign in to your protected payments."
+        case .signIn: "Welcome back to your money."
         }
     }
 
     var subtitle: String {
         switch self {
-        case .signUp: "Recourse creates the testnet wallet quietly after setup."
-        case .signIn: "Use the same account that holds your receipts and payment history."
+        case .signUp: "Recourse sets up your wallet quietly after this."
+        case .signIn: "Use the same account you signed up with."
         }
     }
 }
@@ -189,6 +189,9 @@ struct OnboardingSignInView: View {
     let onBack: () -> Void
     let onAuthenticated: () -> Void
 
+    @State private var showsPasskeyPrompt = false
+    @State private var passkeyEmail = ""
+
     var body: some View {
         GeometryReader { proxy in
             let compact = proxy.size.height < 760
@@ -208,6 +211,76 @@ struct OnboardingSignInView: View {
         .onChange(of: accountSession.account) { _, account in
             guard account != nil else { return }
             onAuthenticated()
+        }
+        .sheet(isPresented: $showsPasskeyPrompt) {
+            passkeyPrompt
+                .presentationDetents([.height(300)])
+                .presentationBackground(RecourseColor.canvas)
+        }
+    }
+
+    /// The email step, which exists because the server looks an account up by it before
+    /// it can offer a challenge. Not usernameless WebAuthn, and a button that skipped
+    /// this would only ever be able to fail.
+    private var passkeyPrompt: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(mode == .signUp ? "Set up a passkey" : "Continue with passkey")
+                    .font(RecourseTypography.display(size: 24))
+                    .foregroundStyle(RecourseColor.ink)
+                Text(
+                    mode == .signUp
+                        ? "Your email names the account. Face ID does the rest, and there is no password to lose."
+                        : "The email on your account, so we know which passkey to ask for."
+                )
+                .font(.recourse(13))
+                .foregroundStyle(RecourseColor.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+
+            TextField("you@example.com", text: $passkeyEmail)
+                .font(.recourse(15, .medium))
+                .foregroundStyle(RecourseColor.ink)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .keyboardType(.emailAddress)
+                .textContentType(.username)
+                .submitLabel(.continue)
+                .onSubmit { startPasskey() }
+                .padding(.horizontal, 18)
+                .frame(height: 52)
+                .background(RecourseColor.surface, in: Capsule())
+                .overlay { Capsule().stroke(RecourseColor.line, lineWidth: 1) }
+
+            Button(action: startPasskey) {
+                HStack(spacing: 10) {
+                    if accountSession.isAuthenticating {
+                        ProgressView().tint(.white)
+                    }
+                    Text("Continue")
+                }
+                .font(.recourse(15, .semibold))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
+                .background(RecourseColor.ledger, in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .disabled(accountSession.isAuthenticating)
+
+            Spacer(minLength: 0)
+        }
+        .padding(22)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func startPasskey() {
+        let email = passkeyEmail
+        showsPasskeyPrompt = false
+        Task {
+            // Dismissed first: the system passkey sheet cannot present over ours.
+            try? await Task.sleep(for: .milliseconds(320))
+            await accountSession.continueWithPasskey(email: email, creating: mode == .signUp)
         }
     }
 
@@ -273,6 +346,10 @@ struct OnboardingSignInView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
+            // The ways in belong together at the bottom, where a thumb is, rather than
+            // stacked under the heading with dead space beneath them.
+            Spacer(minLength: compact ? 10 : 18)
+
             SignInWithAppleButton(
                 .continue,
                 onRequest: accountSession.configureAppleRequest,
@@ -331,10 +408,25 @@ struct OnboardingSignInView: View {
             }
             .buttonStyle(.plain)
 
-            HStack(spacing: 10) {
-                authenticationOption("Email", icon: "envelope")
-                authenticationOption("Passkey", icon: "person.badge.key")
+            Button {
+                showsPasskeyPrompt = true
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "person.badge.key.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                    Text(mode == .signUp ? "Set up a passkey" : "Continue with passkey")
+                        .font(.recourse(15, .semibold))
+                }
+                .foregroundStyle(RecourseColor.ink)
+                .padding(.horizontal, 18)
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
+                .background(RecourseColor.surface, in: Capsule())
+                .overlay {
+                    Capsule().stroke(RecourseColor.line, lineWidth: 1)
+                }
             }
+            .buttonStyle(.plain)
 
             if let errorMessage = accountSession.errorMessage {
                 Text(errorMessage)
@@ -343,24 +435,15 @@ struct OnboardingSignInView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            Spacer(minLength: 4)
-
-            HStack(spacing: 9) {
-                Image(systemName: "iphone.gen3")
-                    .foregroundStyle(RecourseColor.ledger)
-                Text("Your signing key is created after authentication and stays on this iPhone.")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(RecourseColor.muted)
-            }
-
             Text("By continuing, you agree to the Terms and Privacy Policy.")
                 .font(.recourse(9))
                 .foregroundStyle(RecourseColor.muted)
+                .padding(.top, 2)
         }
         .padding(.horizontal, 22)
         .padding(.top, compact ? 14 : 18)
         .padding(.bottom, compact ? 10 : 16)
-        .frame(maxHeight: .infinity)
+        .frame(maxHeight: .infinity, alignment: .bottom)
         .disabled(accountSession.isAuthenticating)
         .overlay {
             if accountSession.isAuthenticating {
@@ -372,21 +455,6 @@ struct OnboardingSignInView: View {
         }
     }
 
-    private func authenticationOption(_ title: String, icon: String) -> some View {
-        Button(action: {}) {
-            Label(title, systemImage: icon)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(RecourseColor.muted)
-                .frame(maxWidth: .infinity)
-                .frame(height: 52)
-                .background(RecourseColor.surface, in: Capsule())
-                .overlay {
-                    Capsule().stroke(RecourseColor.line, lineWidth: 1)
-                }
-        }
-        .buttonStyle(.plain)
-        .disabled(true)
-    }
 }
 
 #if DEBUG

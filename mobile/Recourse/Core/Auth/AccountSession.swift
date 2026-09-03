@@ -260,6 +260,82 @@ final class AccountSession {
         }
     }
 
+    /// Sign in with a passkey, or create one, depending on why we are here.
+    ///
+    /// Both ceremonies need an email because the server looks the account up by it: this
+    /// is not usernameless WebAuthn, and pretending otherwise would mean a button that
+    /// can only ever fail.
+    func continueWithPasskey(email: String, creating: Bool) async {
+        guard !isAuthenticating else { return }
+        let address = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard address.contains("@"), !address.hasPrefix("@"), !address.hasSuffix("@") else {
+            errorMessage = "Enter the email address on your account."
+            return
+        }
+
+        errorMessage = nil
+        isAuthenticating = true
+        defer { isAuthenticating = false }
+
+        let coordinator = PasskeyCoordinator(relyingParty: AppConfiguration.passkeyRelyingParty)
+        do {
+            let grant = creating
+                ? try await register(address, with: coordinator)
+                : try await authenticate(address, with: coordinator)
+            try await accept(grant)
+        } catch PasskeyCoordinator.Failure.cancelled {
+            // The user dismissed the system sheet; not worth a banner.
+        } catch PasskeyCoordinator.Failure.unsupported {
+            errorMessage = "Passkeys are not available on this device yet."
+        } catch let error as AccountAPIError {
+            if case .rejected(_, let message) = error {
+                errorMessage = message
+            } else {
+                errorMessage = "Recourse received an invalid passkey response."
+            }
+        } catch {
+            errorMessage = "That passkey could not be used. Please try again."
+        }
+    }
+
+    private func register(
+        _ email: String,
+        with coordinator: PasskeyCoordinator
+    ) async throws -> AccountSessionGrant {
+        let ceremony = try await api.passkeyRegisterStart(email: email)
+        guard let challenge = ceremony.challengeBytes,
+              let userID = ceremony.userIDBytes else {
+            throw AccountAPIError.invalidResponse
+        }
+        let credential = try await coordinator.register(
+            challenge: challenge,
+            userID: userID,
+            displayName: ceremony.publicKey.user?.name ?? email
+        )
+        return try await api.passkeyRegisterFinish(
+            challengeID: ceremony.challengeId,
+            credential: credential
+        )
+    }
+
+    private func authenticate(
+        _ email: String,
+        with coordinator: PasskeyCoordinator
+    ) async throws -> AccountSessionGrant {
+        let ceremony = try await api.passkeyLoginStart(email: email)
+        guard let challenge = ceremony.challengeBytes else {
+            throw AccountAPIError.invalidResponse
+        }
+        let credential = try await coordinator.assert(
+            challenge: challenge,
+            allowedCredentialIDs: ceremony.allowedCredentialIDs
+        )
+        return try await api.passkeyLoginFinish(
+            challengeID: ceremony.challengeId,
+            credential: credential
+        )
+    }
+
     /// Runs a call that needs the account's access token, refreshing once if the token
     /// has expired.
     ///

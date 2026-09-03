@@ -246,6 +246,30 @@ private actor AccountAPIMock: AccountAPI {
     }
 
     func logout(accessToken: String) async throws {}
+
+    // The passkey ceremonies need a real authenticator, so this mock refuses them
+    // rather than faking a grant no test would learn anything from.
+    func passkeyRegisterStart(email: String) async throws -> PasskeyCeremony {
+        throw AccountAPIError.rejected(status: 503, message: "not stubbed")
+    }
+
+    func passkeyRegisterFinish(
+        challengeID: String,
+        credential: RegistrationCredential
+    ) async throws -> AccountSessionGrant {
+        throw AccountAPIError.rejected(status: 503, message: "not stubbed")
+    }
+
+    func passkeyLoginStart(email: String) async throws -> PasskeyCeremony {
+        throw AccountAPIError.rejected(status: 503, message: "not stubbed")
+    }
+
+    func passkeyLoginFinish(
+        challengeID: String,
+        credential: AssertionCredential
+    ) async throws -> AccountSessionGrant {
+        throw AccountAPIError.rejected(status: 503, message: "not stubbed")
+    }
 }
 
 @MainActor

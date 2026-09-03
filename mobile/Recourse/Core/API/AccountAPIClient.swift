@@ -14,6 +14,37 @@ struct AccountSessionGrant: Codable, Equatable, Sendable {
     let account: AuthenticatedAccount
 }
 
+/// What the server sends to open a WebAuthn ceremony.
+///
+/// webauthn-rs nests the browser's options under `publicKey`, and the handler adds the
+/// challenge id alongside. Only the fields the platform authenticator needs are decoded;
+/// the rest (timeouts, algorithm lists) the system supplies itself.
+struct PasskeyCeremony: Decodable, Sendable {
+    let challengeId: String
+    let publicKey: Options
+
+    struct Options: Decodable, Sendable {
+        let challenge: String
+        let allowCredentials: [Descriptor]?
+        let user: User?
+
+        struct Descriptor: Decodable, Sendable { let id: String }
+        struct User: Decodable, Sendable {
+            let id: String
+            let name: String?
+            let displayName: String?
+        }
+    }
+
+    var challengeBytes: Data? { Data(base64URLEncoded: publicKey.challenge) }
+
+    var allowedCredentialIDs: [Data] {
+        (publicKey.allowCredentials ?? []).compactMap { Data(base64URLEncoded: $0.id) }
+    }
+
+    var userIDBytes: Data? { publicKey.user.flatMap { Data(base64URLEncoded: $0.id) } }
+}
+
 enum AccountAPIError: Error, Equatable {
     case invalidResponse
     case rejected(status: Int, message: String)
@@ -35,6 +66,16 @@ protocol AccountAPI: Sendable {
         familyName: String?
     ) async throws -> AccountSessionGrant
     func exchangeGoogleToken(idToken: String) async throws -> AccountSessionGrant
+    func passkeyRegisterStart(email: String) async throws -> PasskeyCeremony
+    func passkeyRegisterFinish(
+        challengeID: String,
+        credential: RegistrationCredential
+    ) async throws -> AccountSessionGrant
+    func passkeyLoginStart(email: String) async throws -> PasskeyCeremony
+    func passkeyLoginFinish(
+        challengeID: String,
+        credential: AssertionCredential
+    ) async throws -> AccountSessionGrant
     func refresh(refreshToken: String) async throws -> AccountSessionGrant
     func me(accessToken: String) async throws -> AuthenticatedAccount
     func updateProfile(
@@ -82,6 +123,102 @@ actor AccountAPIClient: AccountAPI {
             path: "api/auth/google",
             method: "POST",
             body: GoogleExchangeBody(idToken: idToken)
+        )
+    }
+
+    func passkeyRegisterStart(email: String) async throws -> PasskeyCeremony {
+        struct Body: Encodable { let email: String }
+        return try await send(
+            path: "api/auth/passkey/register/start",
+            method: "POST",
+            body: Body(email: email)
+        )
+    }
+
+    func passkeyRegisterFinish(
+        challengeID: String,
+        credential: RegistrationCredential
+    ) async throws -> AccountSessionGrant {
+        // Shaped exactly as a browser would send it, because webauthn-rs parses the
+        // browser's own type. `extensions` is required even when empty.
+        struct Response: Encodable {
+            let clientDataJSON: String
+            let attestationObject: String
+        }
+        struct Credential: Encodable {
+            let id: String
+            let rawId: String
+            let type = "public-key"
+            let response: Response
+            let extensions = [String: String]()
+        }
+        struct Body: Encodable {
+            let challengeId: String
+            let credential: Credential
+        }
+        return try await send(
+            path: "api/auth/passkey/register/finish",
+            method: "POST",
+            body: Body(
+                challengeId: challengeID,
+                credential: Credential(
+                    id: credential.id,
+                    rawId: credential.id,
+                    response: Response(
+                        clientDataJSON: credential.clientDataJSON,
+                        attestationObject: credential.attestationObject
+                    )
+                )
+            )
+        )
+    }
+
+    func passkeyLoginStart(email: String) async throws -> PasskeyCeremony {
+        struct Body: Encodable { let email: String }
+        return try await send(
+            path: "api/auth/passkey/login/start",
+            method: "POST",
+            body: Body(email: email)
+        )
+    }
+
+    func passkeyLoginFinish(
+        challengeID: String,
+        credential: AssertionCredential
+    ) async throws -> AccountSessionGrant {
+        struct Response: Encodable {
+            let clientDataJSON: String
+            let authenticatorData: String
+            let signature: String
+            let userHandle: String?
+        }
+        struct Credential: Encodable {
+            let id: String
+            let rawId: String
+            let type = "public-key"
+            let response: Response
+            let extensions = [String: String]()
+        }
+        struct Body: Encodable {
+            let challengeId: String
+            let credential: Credential
+        }
+        return try await send(
+            path: "api/auth/passkey/login/finish",
+            method: "POST",
+            body: Body(
+                challengeId: challengeID,
+                credential: Credential(
+                    id: credential.id,
+                    rawId: credential.id,
+                    response: Response(
+                        clientDataJSON: credential.clientDataJSON,
+                        authenticatorData: credential.authenticatorData,
+                        signature: credential.signature,
+                        userHandle: credential.userHandle
+                    )
+                )
+            )
         )
     }
 
@@ -271,6 +408,29 @@ actor PreviewAccountAPI: AccountAPI {
     }
 
     func logout(accessToken: String) async throws {}
+
+    // Previews never reach a real authenticator, so these refuse rather than pretend.
+    func passkeyRegisterStart(email: String) async throws -> PasskeyCeremony {
+        throw AccountAPIError.rejected(status: 503, message: "not available in previews")
+    }
+
+    func passkeyRegisterFinish(
+        challengeID: String,
+        credential: RegistrationCredential
+    ) async throws -> AccountSessionGrant {
+        throw AccountAPIError.rejected(status: 503, message: "not available in previews")
+    }
+
+    func passkeyLoginStart(email: String) async throws -> PasskeyCeremony {
+        throw AccountAPIError.rejected(status: 503, message: "not available in previews")
+    }
+
+    func passkeyLoginFinish(
+        challengeID: String,
+        credential: AssertionCredential
+    ) async throws -> AccountSessionGrant {
+        throw AccountAPIError.rejected(status: 503, message: "not available in previews")
+    }
 
     private var grant: AccountSessionGrant {
         AccountSessionGrant(

@@ -86,4 +86,9 @@ struct AppConfiguration: Sendable {
     // audience via GOOGLE_IOS_CLIENT_ID.
     static let googleIOSClientID = ProcessInfo.processInfo.environment["RECOURSE_GOOGLE_IOS_CLIENT_ID"]
         ?? "181083896548-8f527b3qmqb9oc6iqqsduc53214lenqm.apps.googleusercontent.com"
+
+    // WebAuthn relying party. Must match the backend's WEBAUTHN_RP_ID and appear in the
+    // app's webcredentials entitlement, or the system refuses the ceremony before the
+    // user is ever prompted. Derived from the web origin so the three cannot drift.
+    static let passkeyRelyingParty = webAppURL.host() ?? "recourse-arc.vercel.app"
 }
