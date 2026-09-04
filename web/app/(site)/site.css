@@ -36,7 +36,7 @@
 .site-root h2,
 .site-root h3 {
   margin: 0;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: -0.03em;
   text-wrap: balance;
 }
@@ -158,7 +158,7 @@
   align-items: center;
   gap: 10px;
   font-size: 17px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: -0.01em;
   text-decoration: none;
 }
@@ -377,7 +377,7 @@
   border-radius: 50%;
   color: var(--white);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .site-cheque {
@@ -406,7 +406,7 @@
 .site-cheque-amount {
   margin-top: 8px;
   font-size: 26px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: -0.03em;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -465,7 +465,7 @@
   background: var(--ink);
   color: var(--white);
   font-size: 24px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .site-convert-arrow {
@@ -490,7 +490,7 @@
   border: 1px solid var(--line);
   color: var(--green);
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .site-fee-note {
@@ -1380,7 +1380,7 @@
   background: var(--green);
   color: #fff;
   font-size: 26px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: -0.02em;
 }
 
