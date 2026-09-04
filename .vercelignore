@@ -7,3 +7,5 @@ docs
 ops
 **/target
 **/.next
+engine
+packages
