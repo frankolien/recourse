@@ -8,6 +8,7 @@ import {
   CircleHelp,
   FileText,
   Home,
+  Landmark,
   Loader2,
   LockKeyhole,
   LogOut,
@@ -47,6 +48,7 @@ const primaryNav: NavItem[] = [
   { href: "/receipts", label: "Receipts", icon: ReceiptText },
   { href: "/vault", label: "Vault", icon: LockKeyhole, badge: "LP" },
   { href: "/policies", label: "Policies", icon: FileText },
+  { href: "/treasury", label: "Treasury", icon: Landmark },
 ];
 
 const bottomNav: NavItem[] = [
@@ -62,6 +64,7 @@ const titles: Record<string, string> = {
   "/receipts": "Receipts",
   "/vault": "Vault and yield",
   "/policies": "Policies",
+  "/treasury": "Treasury",
   "/settings": "Settings",
   "/support": "Support",
 };

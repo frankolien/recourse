@@ -6414,3 +6414,746 @@ footer {
   letter-spacing: 0.06em;
   color: var(--muted);
 }
+
+/* ---- Treasury console (/treasury). Same ground and type as the dash-* family;
+   only the pieces those classes do not have: chips, hashes, editable rows. ---- */
+.treasury-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.treasury-actions.column {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.treasury-actions.column .page-cta {
+  justify-content: center;
+}
+
+.treasury-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.treasury-rows {
+  display: grid;
+}
+
+.treasury-row {
+  display: grid;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 8px;
+  border-bottom: 1px solid var(--line-soft);
+  color: inherit;
+}
+
+.treasury-row:last-child {
+  border-bottom: 0;
+}
+
+.treasury-row.head {
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--line);
+  color: #7a837e;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.treasury-row.link {
+  transition: 150ms ease;
+}
+
+.treasury-row.link:hover {
+  background: #f6f6f1;
+}
+
+.treasury-row > svg {
+  justify-self: end;
+  color: #b6bcb6;
+}
+
+.treasury-row.accounts {
+  grid-template-columns: 2fr 1.1fr 1fr 0.6fr 0.7fr 32px;
+}
+
+.treasury-row.keys {
+  grid-template-columns: 2fr 1.2fr 1fr;
+}
+
+.treasury-row.signers {
+  grid-template-columns: 1fr auto;
+}
+
+.treasury-row.signers.editable {
+  grid-template-columns: 1fr auto auto;
+}
+
+.treasury-row.queue {
+  grid-template-columns: 2.2fr 1fr auto 20px;
+}
+
+.treasury-row.scheduled {
+  grid-template-columns: 2fr 1.2fr 0.7fr 20px;
+}
+
+.treasury-row.recent,
+.treasury-row.vetoes {
+  grid-template-columns: 28px 1fr auto;
+}
+
+.treasury-row.approvals {
+  grid-template-columns: 28px 1.4fr 1fr;
+}
+
+.treasury-row.ledger {
+  grid-template-columns: 28px 1.6fr 1.1fr 1.1fr 1.1fr 1fr;
+}
+
+.treasury-row.book {
+  grid-template-columns: 1fr 1.4fr 0.8fr;
+}
+
+.treasury-row.removed .treasury-cell,
+.treasury-row.removed .treasury-tags {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+.treasury-cell {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.treasury-cell strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.treasury-cell small {
+  color: #7d857f;
+  font-size: 11px;
+}
+
+.treasury-cell.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.treasury-row-title {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.treasury-row-title:hover {
+  color: var(--green);
+}
+
+.treasury-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+}
+
+.treasury-chip strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.treasury-chip code {
+  color: #3d4744;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: -0.01em;
+}
+
+.treasury-chip a {
+  display: inline-flex;
+  color: var(--green);
+}
+
+.treasury-icon-button {
+  display: inline-grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #7d857f;
+  cursor: pointer;
+}
+
+.treasury-icon-button:hover {
+  background: #eef0ea;
+  color: var(--ink);
+}
+
+a.treasury-icon-button {
+  justify-self: end;
+  color: #b6bcb6;
+}
+
+.treasury-hash {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  background: #fafaf7;
+}
+
+.treasury-hash code {
+  flex: 1;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.treasury-tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.treasury-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #ecede7;
+  color: #5b645f;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.treasury-tag.you {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.treasury-kv {
+  display: grid;
+  margin: 0;
+}
+
+.treasury-kv > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.treasury-kv > div:last-child {
+  border-bottom: 0;
+}
+
+.treasury-kv dt {
+  color: #6c756f;
+  font-size: 12px;
+}
+
+.treasury-kv dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.treasury-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 13px 14px;
+  border-radius: 10px;
+  background: #eef0ea;
+  color: #3d4744;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.treasury-note svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.treasury-note.ok {
+  background: var(--green-soft);
+  color: #14503c;
+}
+
+.treasury-note.warn {
+  background: var(--orange-soft);
+  color: #7a4a14;
+}
+
+.treasury-note.error {
+  background: var(--red-soft);
+  color: #8a3034;
+}
+
+.treasury-note a {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.treasury-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 10px 0 0;
+  color: #a23539;
+  font-size: 12.5px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.treasury-error svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.treasury-hint {
+  display: block;
+  margin: 10px 0 0;
+  color: #6c756f;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.treasury-muted {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: #7d857f;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.treasury-ok {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--green);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.treasury-countdown {
+  font-family: var(--display);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.treasury-countdown.ready {
+  color: var(--green);
+}
+
+.treasury-empty {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.treasury-empty > svg {
+  flex: 0 0 auto;
+  color: var(--green);
+}
+
+.treasury-empty > div {
+  display: grid;
+  flex: 1;
+  gap: 4px;
+}
+
+.treasury-empty strong {
+  font-size: 14px;
+}
+
+.treasury-empty p {
+  max-width: 62ch;
+  margin: 0;
+  color: #61706c;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.treasury-form-rows {
+  display: grid;
+  gap: 12px;
+}
+
+.treasury-form-row {
+  display: grid;
+  align-items: end;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fbfbf8;
+}
+
+.treasury-form-row.signer {
+  grid-template-columns: 1fr 1.6fr auto 30px;
+}
+
+.treasury-form-row.recipient {
+  grid-template-columns: 1.6fr 1fr 0.8fr 1fr 30px;
+}
+
+.treasury-form-row.recipient .field-row.wide {
+  grid-column: 1 / -2;
+}
+
+.treasury-form-row.book-add {
+  grid-template-columns: 1.6fr 1fr 0.8fr auto;
+  margin-top: 16px;
+}
+
+.treasury-form-row .field-row {
+  min-width: 0;
+}
+
+.treasury-form-row .rule-remove {
+  align-self: end;
+  margin-bottom: 6px;
+}
+
+.treasury-checks {
+  display: flex;
+  height: 42px;
+  align-items: center;
+  gap: 12px;
+}
+
+.treasury-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #3d4744;
+  font-size: 12.5px;
+}
+
+.treasury-check input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--green);
+}
+
+.treasury-duration {
+  display: grid;
+  grid-template-columns: 1fr 110px;
+  gap: 8px;
+}
+
+.treasury-duration input,
+.treasury-duration select {
+  height: 42px;
+  padding: 0 13px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--white);
+  font-size: 13px;
+}
+
+.treasury-keyrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+}
+
+.treasury-keyrow > div {
+  display: grid;
+  gap: 3px;
+}
+
+.treasury-keyrow strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.treasury-keyrow small {
+  color: #6c756f;
+  font-size: 12px;
+}
+
+.treasury-advanced summary {
+  cursor: pointer;
+  font-family: var(--display);
+  font-size: 19px;
+  font-weight: 400;
+  list-style: none;
+}
+
+.treasury-advanced summary::-webkit-details-marker {
+  display: none;
+}
+
+.treasury-advanced summary::after {
+  float: right;
+  color: var(--green);
+  font-family: var(--body);
+  font-size: 11px;
+  font-weight: 600;
+  content: "Show";
+}
+
+.treasury-advanced[open] summary::after {
+  content: "Hide";
+}
+
+.treasury-advanced[open] summary {
+  margin-bottom: 16px;
+}
+
+.treasury-calls {
+  display: grid;
+  gap: 10px;
+}
+
+.treasury-call {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.treasury-call > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.treasury-call strong {
+  font-size: 13px;
+}
+
+.treasury-call small {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: #7d857f;
+  font-size: 11px;
+}
+
+.treasury-calls + .treasury-stats {
+  margin-top: 16px;
+}
+
+.treasury-stats + .treasury-rows,
+.treasury-veto + .treasury-actions {
+  margin-top: 14px;
+}
+
+.treasury-raw {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.treasury-raw > div {
+  display: grid;
+  grid-template-columns: 50px 1fr;
+  gap: 4px 10px;
+  padding: 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: #fafaf7;
+  font-size: 11px;
+}
+
+.treasury-raw span {
+  color: #7d857f;
+  font-weight: 600;
+}
+
+.treasury-raw code {
+  font-family: var(--mono);
+  word-break: break-all;
+}
+
+.treasury-rule {
+  display: grid;
+  gap: 6px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.treasury-rule:first-of-type {
+  padding-top: 0;
+}
+
+.treasury-rule p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.treasury-rule-tag {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--orange-soft);
+  color: #8a5518;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.treasury-sim {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin-top: 14px;
+  padding: 11px 12px;
+  border-radius: 9px;
+  background: #eef0ea;
+  color: #3d4744;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.treasury-sim svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.treasury-sim.ok {
+  background: var(--green-soft);
+  color: #14503c;
+}
+
+.treasury-sim.fail {
+  background: var(--red-soft);
+  color: #8a3034;
+}
+
+.treasury-sign-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.treasury-sign-option {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fbfbf8;
+}
+
+.treasury-sign-option > strong {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+}
+
+.treasury-sign-option > small {
+  color: #6c756f;
+  font-family: var(--mono);
+  font-size: 11.5px;
+}
+
+.treasury-veto {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.treasury-direction {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 8px;
+  background: #eef0ea;
+  color: #4a5551;
+}
+
+.treasury-direction.in {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.treasury-direction.out {
+  background: var(--orange-soft);
+  color: #8a5518;
+}
+
+.treasury-direction.pending {
+  border: 1px dashed var(--line);
+  background: transparent;
+}
+
+.status-pill.treasury-blue {
+  color: #1d4f8a;
+  background: #e4edf9;
+}
+
+.status-pill.treasury-executed {
+  color: #0c6f52;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px #a8cbb9;
+}
+
+.status-pill.treasury-muted {
+  color: #8a918d;
+  background: #f1f2ee;
+}
+
+.page-cta.small {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+@media (max-width: 1100px) {
+  .treasury-form-row.signer,
+  .treasury-form-row.recipient,
+  .treasury-form-row.book-add {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .treasury-form-row.recipient .field-row.wide {
+    grid-column: auto;
+  }
+
+  .treasury-sign-grid {
+    grid-template-columns: 1fr;
+  }
+}
