@@ -4,6 +4,7 @@ mod jobs;
 mod models;
 mod services;
 
+use std::sync::{Arc, Mutex};
 use actix_web::HttpServer;
 use anyhow::Result;
 use sqlx::postgres::PgPoolOptions;
@@ -108,8 +109,9 @@ async fn main() -> Result<()> {
     if let Some(client) = treasury.client.clone() {
         let pool = pool.clone();
         let interval = config.index_interval_secs;
+        let relayer = treasury.relayer.clone();
         actix_web::rt::spawn(async move {
-            jobs::olien_indexer::run(client, pool, interval).await;
+            jobs::olien_indexer::run(client, pool, interval, relayer).await;
         });
     }
 
@@ -192,7 +194,7 @@ fn build_treasury(config: &AppConfig) -> Result<Treasury> {
             None
         }
     };
-    Ok(Treasury { client, chain_id: config.chain_id })
+    Ok(Treasury { client, chain_id: config.chain_id, relayer: Arc::new(Mutex::new(None)) })
 }
 
 // The account routes need three things that are each optional: a funded deployer key

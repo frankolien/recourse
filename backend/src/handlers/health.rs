@@ -2,11 +2,12 @@ use actix_web::{web, HttpResponse};
 use serde_json::json;
 use sqlx::PgPool;
 
+use crate::services::treasury::Treasury;
 use crate::services::AppConfig;
 
 /// GET /health — DB-backed health probe. Reports 503 when Postgres is unreachable, so
 /// the endpoint never stays green while the projection is actually down.
-pub async fn health_check(pool: web::Data<PgPool>, config: web::Data<AppConfig>) -> HttpResponse {
+pub async fn health_check(pool: web::Data<PgPool>, config: web::Data<AppConfig>, treasury: web::Data<Treasury>) -> HttpResponse {
     match sqlx::query_scalar::<_, i64>("SELECT count(*) FROM payments")
         .fetch_one(pool.get_ref())
         .await
@@ -16,6 +17,7 @@ pub async fn health_check(pool: web::Data<PgPool>, config: web::Data<AppConfig>)
             "chainId": config.chain_id,
             "indexedPayments": indexed,
             "demoMode": config.demo_mode,
+            "relayer": treasury.relayer.lock().ok().and_then(|slot| slot.clone()),
         })),
         Err(e) => {
             tracing::error!("health db probe failed: {e}");

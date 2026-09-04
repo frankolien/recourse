@@ -202,8 +202,12 @@ mod tests {
     // and the engine test in the same commit.
     const FIXTURE: &str = "{\"version\":1,\"chainId\":5042002,\"escrow\":\"0x61Fd99789B28582882a3369E2024AeaE5b5D2DC0\",\"merchant\":\"0xD6c574461d96Ee708f58Fe553049aD4f48BB983A\",\"policyId\":1,\"amount\":\"250000\",\"orderReference\":\"ORDER-1001\",\"itemName\":\"API Credits Pack\",\"description\":\"1,000 cloud compute credits\",\"createdAt\":1784900000}";
 
+    // One directory per call: tests run in parallel in one process, and a shared
+    // directory that each test wipes on entry races with the others.
     fn store() -> OrderStore {
-        let dir = std::env::temp_dir().join(format!("recourse-orders-test-{}", std::process::id()));
+        static NEXT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+        let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let dir = std::env::temp_dir().join(format!("recourse-orders-test-{}-{n}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         OrderStore::new(dir).unwrap()
     }
