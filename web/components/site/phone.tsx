@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -47,6 +48,18 @@ function Frame({ label, children }: { label: string; children: ReactNode }) {
         <div className="site-phone-island" />
         <StatusBar />
         {children}
+      </div>
+    </div>
+  );
+}
+
+// A real capture of the app in the frame. The capture carries its own status bar
+// and island, so the frame draws neither and the image fills the screen.
+export function PhoneShot({ src, alt, priority = false }: { src: string; alt: string; priority?: boolean }) {
+  return (
+    <div className="site-phone site-phone-shot" role="img" aria-label={alt}>
+      <div className="site-phone-screen" aria-hidden="true">
+        <Image src={src} alt="" width={1260} height={2736} sizes="300px" priority={priority} />
       </div>
     </div>
   );

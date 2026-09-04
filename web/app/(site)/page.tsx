@@ -4,7 +4,7 @@ import { ArrowLeftRight, ArrowUpRight, FileText, KeyRound, Sprout } from "lucide
 import { DownloadButton } from "@/components/site/download-button";
 import { GITHUB_URL } from "@/components/site/footer";
 import { ChequeSlip, ConvertPair, EarnCurve, FeeTag, HandleChips } from "@/components/site/illustrations";
-import { PhoneHome, PhoneKeys, PhoneSend } from "@/components/site/phone";
+import { PhoneShot } from "@/components/site/phone";
 import { SecurityCarousel } from "@/components/site/security-carousel";
 
 export const metadata: Metadata = {
@@ -25,7 +25,11 @@ export default function HomePage() {
           <p className="site-hero-note">Now in beta on TestFlight.</p>
         </div>
         <div className="site-hero-panel">
-          <PhoneHome />
+          <PhoneShot
+            src="/app/home.png"
+            alt="The Recourse home screen: a balance of forty dollars, Add money and Send, and the Cheques, Request, Convert and Earn cards"
+            priority
+          />
         </div>
       </section>
 
@@ -102,7 +106,7 @@ export default function HomePage() {
             </ul>
           </div>
           <div className="site-panel">
-            <PhoneSend />
+            <PhoneShot src="/app/send.png" alt="Sending 12 USDC to @olien, confirmed with Face ID" />
           </div>
         </div>
       </section>
@@ -134,17 +138,7 @@ export default function HomePage() {
       </section>
 
       <section className="site-wrap site-section" aria-labelledby="security">
-        <div className="site-split">
-          <div className="site-panel">
-            <PhoneKeys />
-          </div>
-          <div className="site-split-copy">
-            <h2 id="security" className="site-h2">
-              Bank-grade security that fits in your pocket
-            </h2>
-            <SecurityCarousel />
-          </div>
-        </div>
+        <SecurityCarousel />
       </section>
 
       <section className="site-wrap site-section" aria-label="Arc and your keys">

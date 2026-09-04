@@ -1327,3 +1327,78 @@
     transition: none;
   }
 }
+
+/* Real screenshots in the frame: the capture fills the screen edge to edge. */
+.site-phone-shot .site-phone-screen {
+  padding: 0;
+}
+
+.site-phone-shot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Security carousel: a faint grid behind one glyph per slide, swapped with the text. */
+.site-security-panel {
+  background-color: var(--site-panel);
+  background-image:
+    linear-gradient(var(--line-soft) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+  background-size: 33.34% 33.34%;
+  background-position: -1px -1px;
+}
+
+.site-security-visual {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  animation: site-fade 0.45s ease;
+}
+
+.site-security-pair {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  color: var(--ink);
+}
+
+.site-security-plus {
+  font-size: 44px;
+  font-weight: 300;
+  line-height: 1;
+  color: #b8bdb9;
+}
+
+.site-security-tile {
+  display: grid;
+  place-items: center;
+  width: 112px;
+  height: 112px;
+  border-radius: 28px;
+  background: var(--green);
+  color: #fff;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+@media (max-width: 820px) {
+  .site-security-pair {
+    gap: 18px;
+  }
+
+  .site-security-tile {
+    width: 84px;
+    height: 84px;
+    border-radius: 22px;
+    font-size: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-security-visual {
+    animation: none;
+  }
+}
