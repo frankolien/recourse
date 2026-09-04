@@ -1,9 +1,10 @@
-use alloy::primitives::keccak256;
+use alloy::primitives::{keccak256, Address, Signature};
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use rand::RngCore;
 use serde::Serialize;
 use sqlx::{PgPool, Postgres, Transaction};
+use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::services::apple_auth::{sha256_hex, VerifiedAppleIdentity};
@@ -170,6 +171,90 @@ pub async fn create_provider_session(
         .commit()
         .await
         .map_err(|error| AccountAuthError::Internal(format!("committing auth session: {error}")))?;
+    Ok(grant)
+}
+
+// The text a wallet signs to enter the Olien console. The nonce is a single-use row of
+// auth_challenges and the expiry is that row's, so the server rebuilds the exact text
+// from what it stored; a signature over anything else recovers a different address.
+pub fn wallet_login_message(address: Address, nonce: &str, expires_at: i64) -> String {
+    format!(
+        "Sign in to Olien\n\nAddress: {}\nNonce: {}\nExpires: {}",
+        address.to_checksum(None),
+        nonce,
+        expires_at
+    )
+}
+
+pub fn recover_wallet_signer(message: &str, signature: &str) -> Result<Address, AccountAuthError> {
+    let raw = alloy::hex::decode(signature.trim().trim_start_matches("0x"))
+        .map_err(|_| AccountAuthError::BadRequest("malformed signature".into()))?;
+    if raw.len() != 65 {
+        return Err(AccountAuthError::BadRequest("signature must be 65 bytes".into()));
+    }
+    let signature = Signature::from_raw(&raw)
+        .map_err(|_| AccountAuthError::BadRequest("malformed signature".into()))?;
+    signature
+        .recover_address_from_msg(message)
+        .map_err(|_| AccountAuthError::Unauthorized("signature does not recover an address".into()))
+}
+
+// Wallet sign-in: the address is the identity (provider "wallet"), the way Squads treats a
+// connected wallet. The address is linked as a treasury address in the same transaction so
+// every Olien naming it as a signer is visible from the first sign-in.
+pub async fn login_wallet(
+    pool: &PgPool,
+    address: &str,
+    nonce: &str,
+    signature: &str,
+) -> Result<SessionGrant, AccountAuthError> {
+    let address = Address::from_str(address.trim())
+        .map_err(|_| AccountAuthError::BadRequest("malformed address".into()))?;
+    let now = now_secs();
+    let mut transaction = pool.begin().await.map_err(|error| {
+        AccountAuthError::Internal(format!("starting auth transaction: {error}"))
+    })?;
+
+    let expires_at = sqlx::query_scalar::<_, i64>(
+        "UPDATE auth_challenges SET consumed = TRUE \
+         WHERE nonce = $1 AND consumed = FALSE AND expires_at > $2 \
+         RETURNING expires_at",
+    )
+    .bind(nonce)
+    .bind(now)
+    .fetch_optional(&mut *transaction)
+    .await
+    .map_err(|error| AccountAuthError::Internal(format!("consuming wallet challenge: {error}")))?;
+    let Some(expires_at) = expires_at else {
+        return Err(AccountAuthError::Unauthorized(
+            "challenge is invalid, expired, or already used".into(),
+        ));
+    };
+
+    let message = wallet_login_message(address, nonce, expires_at);
+    if recover_wallet_signer(&message, signature)? != address {
+        return Err(AccountAuthError::Unauthorized(
+            "signature was not made by this address".into(),
+        ));
+    }
+
+    let subject = format!("{address:#x}");
+    let account = upsert_account(&mut transaction, "wallet", subject.clone(), None, None, None).await?;
+    sqlx::query(
+        "INSERT INTO treasury_linked_addresses (account_id, address) VALUES ($1, $2) \
+         ON CONFLICT DO NOTHING",
+    )
+    .bind(account.account_id)
+    .bind(&subject)
+    .execute(&mut *transaction)
+    .await
+    .map_err(|error| AccountAuthError::Internal(format!("linking wallet address: {error}")))?;
+    let grant = insert_session(&mut transaction, account, now).await?;
+
+    transaction
+        .commit()
+        .await
+        .map_err(|error| AccountAuthError::Internal(format!("committing wallet session: {error}")))?;
     Ok(grant)
 }
 
@@ -941,6 +1026,20 @@ fn now_secs() -> i64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn wallet_login_recovers_the_signer() {
+        use alloy::signers::{local::PrivateKeySigner, SignerSync};
+        let signer = PrivateKeySigner::random();
+        let message = wallet_login_message(signer.address(), "0xabc", 1_800_000_000);
+        assert!(message.starts_with("Sign in to Olien\n\nAddress: 0x"));
+        let signature = signer.sign_message_sync(message.as_bytes()).unwrap();
+        let hex = format!("0x{}", alloy::hex::encode(signature.as_bytes()));
+        assert_eq!(recover_wallet_signer(&message, &hex).unwrap(), signer.address());
+        let other = wallet_login_message(signer.address(), "0xabd", 1_800_000_000);
+        assert_ne!(recover_wallet_signer(&other, &hex).unwrap(), signer.address());
+        assert!(recover_wallet_signer(&message, "0x1234").is_err());
+    }
 
     #[test]
     fn tokens_are_random_and_url_safe() {

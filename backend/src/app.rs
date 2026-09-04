@@ -123,6 +123,11 @@ pub fn build_app(
                     web::post().to(handlers::auth::google_exchange),
                 )
                 .route(
+                    "/auth/wallet/challenge",
+                    web::post().to(handlers::auth::wallet_challenge),
+                )
+                .route("/auth/wallet", web::post().to(handlers::auth::wallet_login))
+                .route(
                     "/auth/email/register",
                     web::post().to(handlers::auth::email_register),
                 )

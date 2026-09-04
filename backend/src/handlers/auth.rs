@@ -1,9 +1,11 @@
 use actix_web::http::{header, StatusCode};
 use actix_web::{web, HttpRequest, HttpResponse};
+use alloy::primitives::Address;
 use base64::Engine;
 use serde::Deserialize;
 use serde_json::json;
 use sqlx::PgPool;
+use std::str::FromStr;
 use uuid::Uuid;
 use webauthn_rs::prelude::{
     Passkey, PasskeyAuthentication, PasskeyRegistration, PublicKeyCredential,
@@ -58,6 +60,18 @@ pub struct EmailRegisterRequest {
     password: String,
     given_name: Option<String>,
     family_name: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct WalletChallengeRequest {
+    address: String,
+}
+
+#[derive(Deserialize)]
+pub struct WalletLoginRequest {
+    address: String,
+    nonce: String,
+    signature: String,
 }
 
 #[derive(Deserialize)]
@@ -197,6 +211,43 @@ pub async fn google_exchange(
     {
         Ok(grant) => HttpResponse::Ok().json(grant),
         Err(error) => account_error_response("creating account session", error),
+    }
+}
+
+/// POST /api/auth/wallet/challenge - the text a wallet signs to enter the Olien console.
+/// Public like /auth/challenge: the nonce is single-use and worthless without the signature.
+pub async fn wallet_challenge(
+    pool: web::Data<PgPool>,
+    body: web::Json<WalletChallengeRequest>,
+) -> HttpResponse {
+    let Ok(address) = Address::from_str(body.address.trim()) else {
+        return error_response(400, "malformed address");
+    };
+    match auth::issue_challenge(pool.get_ref()).await {
+        Ok(c) => HttpResponse::Ok().json(json!({
+            "nonce": c.nonce,
+            "expiresAt": c.expires_at,
+            "message": account_sessions::wallet_login_message(address, &c.nonce, c.expires_at),
+        })),
+        Err(e) => {
+            let (_, msg) = e.parts();
+            tracing::error!("issue_challenge: {msg}");
+            HttpResponse::InternalServerError().json(json!({ "error": "challenge failed" }))
+        }
+    }
+}
+
+/// POST /api/auth/wallet - verify the wallet's signature over its challenge text and issue
+/// a session whose identity is the address.
+pub async fn wallet_login(
+    pool: web::Data<PgPool>,
+    body: web::Json<WalletLoginRequest>,
+) -> HttpResponse {
+    match account_sessions::login_wallet(pool.get_ref(), &body.address, &body.nonce, &body.signature)
+        .await
+    {
+        Ok(grant) => HttpResponse::Ok().json(grant),
+        Err(error) => account_error_response("wallet login", error),
     }
 }
 
