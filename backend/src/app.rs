@@ -33,6 +33,7 @@ use crate::services::google_auth::GoogleAuthService;
 use crate::services::orders::OrderStore;
 use crate::services::passkey::PasskeyService;
 use crate::services::smart_accounts::SmartAccounts;
+use crate::services::treasury::Treasury;
 use crate::services::AppConfig;
 
 // Assembles the actix app: CORS, shared state (one web::Data per dependency), and the
@@ -51,6 +52,7 @@ pub fn build_app(
     orders: OrderStore,
     cloudinary: Option<Cloudinary>,
     smart_accounts: SmartAccounts,
+    treasury: Treasury,
 ) -> App<
     impl actix_web::dev::ServiceFactory<
         actix_web::dev::ServiceRequest,
@@ -73,6 +75,10 @@ pub fn build_app(
         .app_data(web::Data::new(orders))
         .app_data(web::Data::new(cloudinary))
         .app_data(web::Data::new(smart_accounts))
+        .app_data(web::Data::new(treasury))
+        // Registered before the /api scope: a scope matches by prefix, and the treasury
+        // routes would otherwise be looked up inside it and not found.
+        .service(handlers::treasury::routes(web::scope("/api/treasury")))
         .route("/health", web::get().to(handlers::health::health_check))
         .service(
             web::scope("/api")

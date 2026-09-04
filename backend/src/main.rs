@@ -20,6 +20,8 @@ use crate::services::passkey::PasskeyService;
 use crate::services::recovery::{Mailer, RecoveryVault};
 use crate::services::safe::SafeClient;
 use crate::services::smart_accounts::SmartAccounts;
+use crate::services::olien::OlienClient;
+use crate::services::treasury::Treasury;
 use crate::services::AppConfig;
 
 #[actix_web::main]
@@ -102,6 +104,14 @@ async fn main() -> Result<()> {
     }
 
     let smart_accounts = build_smart_accounts(&config)?;
+    let treasury = build_treasury(&config)?;
+    if let Some(client) = treasury.client.clone() {
+        let pool = pool.clone();
+        let interval = config.index_interval_secs;
+        actix_web::rt::spawn(async move {
+            jobs::olien_indexer::run(client, pool, interval).await;
+        });
+    }
 
     tracing::info!(
         "recourse-backend listening on :{} (Arc chain {})",
@@ -125,6 +135,7 @@ async fn main() -> Result<()> {
             orders.clone(),
             cloudinary.clone(),
             smart_accounts.clone(),
+            treasury.clone(),
         )
     })
     .bind(bind)?
@@ -162,6 +173,26 @@ async fn build_attestor(config: &AppConfig) -> Result<Option<AttestorClient>> {
             Ok(None)
         }
     }
+}
+
+// The treasury service needs the Olien contracts from the deployment file and a funded
+// relayer key. Without them the routes answer 503 and the indexer does not start.
+fn build_treasury(config: &AppConfig) -> Result<Treasury> {
+    let client = match (&config.olien, &config.relayer_pk) {
+        (Some(deployment), Some(pk)) => {
+            let client = OlienClient::new(&config.rpc_url, pk, deployment.clone(), config.usdc)?;
+            tracing::info!(
+                "treasury service enabled (factory {:#x}, implementation {:#x}, verifier {:#x}, sub-accounts {:#x}, relayer {:#x})",
+                deployment.factory, deployment.implementation, deployment.verifier, deployment.sub_account_implementation, client.relayer()
+            );
+            Some(client)
+        }
+        _ => {
+            tracing::warn!("treasury service disabled (needs olien in deployments and RELAYER_PK or ATTESTOR_PK)");
+            None
+        }
+    };
+    Ok(Treasury { client, chain_id: config.chain_id })
 }
 
 // The account routes need three things that are each optional: a funded deployer key

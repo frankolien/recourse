@@ -9,11 +9,13 @@ pub mod evidence;
 pub mod google_auth;
 pub mod handles;
 pub mod invoices;
+pub mod olien;
 pub mod orders;
 pub mod passkey;
 pub mod recovery;
 pub mod safe;
 pub mod smart_accounts;
+pub mod treasury;
 pub mod wallet_backups;
 
 use alloy::primitives::Address;
@@ -43,6 +45,10 @@ pub struct Deployment {
     pub p256_owner_factory: Option<Address>,
     #[serde(default)]
     pub safe: Option<safe::SafeDeployment>,
+    // The Olien account protocol (docs/treasury/10-account-spec.md §18). Absent means
+    // the treasury routes stay off.
+    #[serde(default)]
+    pub olien: Option<olien::OlienDeployment>,
 }
 
 #[derive(Debug, Clone)]
@@ -108,6 +114,12 @@ pub struct AppConfig {
     pub resend_api_key: Option<String>,
     pub recovery_mail_from: Option<String>,
     pub recovery_mail_log: bool,
+    // The treasury service: the account contracts and the relayer key that pays for
+    // account creation and executions. RELAYER_PK falls back to ATTESTOR_PK so the
+    // testnet deployment needs no second key yet.
+    pub olien: Option<olien::OlienDeployment>,
+    pub relayer_pk: Option<String>,
+    pub usdc: Address,
 }
 
 fn env_or(key: &str, default: &str) -> String {
@@ -182,6 +194,9 @@ impl AppConfig {
             resend_api_key: optional_env("RESEND_API_KEY"),
             recovery_mail_from: optional_env("RECOVERY_MAIL_FROM"),
             recovery_mail_log: optional_env("RECOVERY_MAIL").as_deref() == Some("log"),
+            olien: deployment.olien,
+            relayer_pk: optional_env("RELAYER_PK").or_else(|| optional_env("ATTESTOR_PK")),
+            usdc: deployment.usdc,
         })
     }
 }
