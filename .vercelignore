@@ -1,12 +1,9 @@
-# Vercel builds only the web app (Root Directory = web) plus its file: dependency engine/.
-# The rest of the monorepo is unused by the web build; excluding it keeps uploads small.
+# Vercel builds only the web app (Root Directory = web). The rest of the monorepo is
+# unused by the web build; excluding it keeps uploads small.
 backend
 contracts
 mobile
-# docs/* rather than docs: /litepaper renders docs/litepaper.md at build time, and a
-# directory excluded outright cannot have one file let back in. This shape can.
-docs/*
-!docs/litepaper.md
+docs
 ops
 **/target
 **/.next

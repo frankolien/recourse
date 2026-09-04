@@ -1,15 +1,20 @@
 import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "@/components/session-provider";
 
-const description = "Deterministic, publicly verifiable buyer protection for USDC payments on Arc. Disputes are computed, not decided.";
+// Geist is the product typeface (the iOS app sets it too). Inter is loaded for the
+// Olien console only, which follows Squads' typography rather than the app's.
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
+
+const description = "Dollars on your phone, sent by name. Recourse is a money app for USDC on Arc.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://recourse-arc.vercel.app"),
   title: {
-    default: "Recourse | Buyer protection for USDC",
+    default: "Recourse",
     template: "%s | Recourse",
   },
   description,
@@ -28,12 +33,12 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f6f5f0",
+  themeColor: "#ffffff",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} ${inter.variable}`}>
       <body>
         <SessionProvider>{children}</SessionProvider>
       </body>

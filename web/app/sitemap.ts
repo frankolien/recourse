@@ -1,17 +1,10 @@
 import type { MetadataRoute } from "next";
 
+const base = "https://recourse-arc.vercel.app";
+
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = "https://recourse-arc.vercel.app";
-  return [
-    { url: base, priority: 1 },
-    { url: `${base}/verify/13`, priority: 0.9 },
-    { url: `${base}/verify/15`, priority: 0.9 },
-    { url: `${base}/vault`, priority: 0.8 },
-    { url: `${base}/litepaper`, priority: 0.8 },
-    { url: `${base}/integrate`, priority: 0.7 },
-    { url: `${base}/signin`, priority: 0.5 },
-    { url: `${base}/privacy`, priority: 0.3 },
-    { url: `${base}/terms`, priority: 0.3 },
-    { url: `${base}/support`, priority: 0.3 },
-  ];
+  return ["/", "/support", "/privacy", "/terms", "/olien"].map((path) => ({
+    url: `${base}${path}`,
+    lastModified: new Date(),
+  }));
 }
