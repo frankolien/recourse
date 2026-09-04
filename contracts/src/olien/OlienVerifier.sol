@@ -5,7 +5,7 @@ import {P256} from "@openzeppelin/contracts/utils/cryptography/P256.sol";
 
 import {WebAuthn} from "./WebAuthn.sol";
 
-interface IConcordVerifier {
+interface IOlienVerifier {
     function verifyP256(bytes32 hash, bytes32 r, bytes32 s, bytes32 x, bytes32 y) external view returns (bool);
     function verifyWebAuthn(bytes32 challenge, bool requireUserVerification, bytes calldata signature, uint256 x, uint256 y)
         external
@@ -13,7 +13,7 @@ interface IConcordVerifier {
         returns (bool);
 }
 
-/// @title ConcordVerifier
+/// @title OlienVerifier
 /// @notice The P-256 and passkey checks, kept out of the account so the account fits the
 ///         code size limit. Stateless; the account holds its address as an immutable.
 ///
@@ -23,7 +23,7 @@ interface IConcordVerifier {
 /// precompile is there and the signature was simply wrong; only if the probe is empty too
 /// does OpenZeppelin's Solidity verifier run. So on Arc the Solidity code never decides a
 /// signature, and on a chain without the precompile it decides every one.
-contract ConcordVerifier is IConcordVerifier {
+contract OlienVerifier is IOlienVerifier {
     address private constant PRECOMPILE = address(0x100);
 
     // RIP-7212 specification test vector: hash, r, s, x, y.

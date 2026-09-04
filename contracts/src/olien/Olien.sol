@@ -9,7 +9,7 @@ import {ERC1967Utils} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.s
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 
 import {
-    IConcord,
+    IOlien,
     Call,
     Transaction,
     SignerInput,
@@ -30,13 +30,13 @@ import {
     PATH_THRESHOLD,
     PATH_RECOVERY,
     PATH_SINGLE
-} from "./IConcord.sol";
+} from "./IOlien.sol";
 import {PackedUserOperation, IAccount, IAccountExecute} from "./IEntryPoint.sol";
-import {ConcordHash} from "./ConcordHash.sol";
-import {IConcordVerifier} from "./ConcordVerifier.sol";
+import {OlienHash} from "./OlienHash.sol";
+import {IOlienVerifier} from "./OlienVerifier.sol";
 import {SubAccount} from "./SubAccount.sol";
 
-/// @title Concord
+/// @title Olien
 /// @notice A multi-signature account for Arc. Specification: docs/treasury/10-account-spec.md.
 ///
 /// One implementation, one proxy per account. Signers are secp256k1 addresses, P-256
@@ -44,14 +44,14 @@ import {SubAccount} from "./SubAccount.sol";
 /// authorization the account accepts is resolved here, inside the contract: the
 /// threshold, a guardian's recovery, a spending limit, a veto, a module. Rule changes
 /// wait out a delay the account chose and can be vetoed while they wait.
-contract Concord is
-    IConcord,
+contract Olien is
+    IOlien,
     IAccount,
     IAccountExecute,
     IERC1271,
     IERC721Receiver
 {
-    string public constant CONCORD_VERSION = "1.0.0";
+    string public constant OLIEN_VERSION = "1.0.0";
 
     /// @dev How long a scheduled change stays executable after its delay elapses.
     uint48 private constant SCHEDULE_WINDOW = 7 days;
@@ -61,11 +61,11 @@ contract Concord is
     /// @dev A guardian acting alone always waits at least this long.
     uint48 private constant MIN_RECOVERY_DELAY = 1 hours;
 
-    // keccak256(abi.encode(uint256(keccak256("concord.account.v1")) - 1)) & ~bytes32(uint256(0xff))
+    // keccak256(abi.encode(uint256(keccak256("olien.account.v1")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 public constant STORAGE_LOCATION = 0x707c89748ccdf9a775a4663e968dd0c304603575b7e0f2831dc9b94440e1d800;
 
     address public immutable ENTRY_POINT;
-    /// @notice Stateless P-256 and passkey checks (see `ConcordVerifier`).
+    /// @notice Stateless P-256 and passkey checks (see `OlienVerifier`).
     address public immutable VERIFIER;
     /// @notice The implementation every sub-account is a minimal proxy of.
     address public immutable SUB_ACCOUNT_IMPLEMENTATION;
@@ -80,11 +80,11 @@ contract Concord is
 
     // Transient slots: what `validateUserOp` established, read back by `executeUserOp`; the
     // signer a single-signer self call is running for; and the reentrancy latch.
-    bytes32 private constant USEROP_HASH_SLOT = keccak256("concord.userop.hash");
-    bytes32 private constant USEROP_META_SLOT = keccak256("concord.userop.meta");
-    bytes32 private constant USEROP_SIGNER_SLOT = keccak256("concord.userop.signer");
-    bytes32 private constant CURRENT_SIGNER_SLOT = keccak256("concord.current-signer");
-    bytes32 private constant GUARD_SLOT = keccak256("concord.guard");
+    bytes32 private constant USEROP_HASH_SLOT = keccak256("olien.userop.hash");
+    bytes32 private constant USEROP_META_SLOT = keccak256("olien.userop.meta");
+    bytes32 private constant USEROP_SIGNER_SLOT = keccak256("olien.userop.signer");
+    bytes32 private constant CURRENT_SIGNER_SLOT = keccak256("olien.current-signer");
+    bytes32 private constant GUARD_SLOT = keccak256("olien.guard");
 
     struct Signer {
         uint8 kind;
@@ -218,7 +218,7 @@ contract Concord is
 
         uint256 nonce = (uint256(txn.nonceKey) << 64) | s.nonces[txn.nonceKey];
         Call[] memory calls = txn.calls;
-        bytes32 hash = ConcordHash.transaction(_domain(), nonce, s.epoch, calls, txn.validAfter, txn.validUntil);
+        bytes32 hash = OlienHash.transaction(_domain(), nonce, s.epoch, calls, txn.validAfter, txn.validUntil);
         if (s.dead[hash]) revert Dead(hash);
         s.nonces[txn.nonceKey] += 1;
 
@@ -478,7 +478,7 @@ contract Concord is
         if (op.signature.length < 12) revert MalformedSignatures();
         uint48 validAfter = uint48(bytes6(op.signature[0:6]));
         uint48 validUntil = uint48(bytes6(op.signature[6:12]));
-        bytes32 hash = ConcordHash.userOperation(_domain(), op, validAfter, validUntil, s.epoch, ENTRY_POINT);
+        bytes32 hash = OlienHash.userOperation(_domain(), op, validAfter, validUntil, s.epoch, ENTRY_POINT);
 
         bool ok = validUntil != 0 && !s.dead[hash] && _authorizeCallData(s, op.callData, hash, userOpHash, op.signature[12:]);
 
@@ -527,11 +527,11 @@ contract Concord is
     function getTransactionHash(Transaction calldata txn) external view returns (bytes32) {
         Storage storage s = _s();
         uint256 nonce = (uint256(txn.nonceKey) << 64) | s.nonces[txn.nonceKey];
-        return ConcordHash.transaction(_domain(), nonce, s.epoch, txn.calls, txn.validAfter, txn.validUntil);
+        return OlienHash.transaction(_domain(), nonce, s.epoch, txn.calls, txn.validAfter, txn.validUntil);
     }
 
     function getMessageHash(bytes32 hash) external view returns (bytes32) {
-        return ConcordHash.message(_domain(), hash);
+        return OlienHash.message(_domain(), hash);
     }
 
     function getSigner(bytes32 id) external view returns (SignerView memory) {
@@ -623,7 +623,7 @@ contract Concord is
     }
 
     function _domain() private view returns (bytes32) {
-        return ConcordHash.domain(address(this));
+        return OlienHash.domain(address(this));
     }
 
     function _checkValidity(uint48 validAfter, uint48 validUntil) private view {
@@ -827,7 +827,7 @@ contract Concord is
 
     function _isValidMessage(bytes32 hash, bytes calldata signature) private view returns (bool) {
         Storage storage s = _s();
-        bytes32 wrapped = ConcordHash.message(_domain(), hash);
+        bytes32 wrapped = OlienHash.message(_domain(), hash);
         if (s.dead[wrapped]) return false;
         (bool ok, Tally memory t) = _tryVerify(s, wrapped, signature);
         return ok && t.approvers >= s.threshold;
@@ -883,12 +883,12 @@ contract Concord is
         if (kind == KIND_ECDSA) return _checkECDSA(hash, id, signature);
         if (kind == KIND_P256) {
             if (signature.length != 64) return false;
-            return IConcordVerifier(VERIFIER).verifyP256(
+            return IOlienVerifier(VERIFIER).verifyP256(
                 hash, bytes32(signature[0:32]), bytes32(signature[32:64]), bytes32(sg.x), bytes32(sg.y)
             );
         }
         if (kind == KIND_WEBAUTHN) {
-            return IConcordVerifier(VERIFIER).verifyWebAuthn(
+            return IOlienVerifier(VERIFIER).verifyWebAuthn(
                 hash, sg.flags & FLAG_UV_REQUIRED != 0, signature, sg.x, sg.y
             );
         }

@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import {Call} from "./IConcord.sol";
+import {Call} from "./IOlien.sol";
 import {PackedUserOperation} from "./IEntryPoint.sol";
 
-/// @title ConcordHash
+/// @title OlienHash
 /// @notice The EIP-712 hashes an account verifies. Everything a signer ever signs is
 ///         one of the four structs here, in the account's own domain.
-library ConcordHash {
+library OlienHash {
     bytes32 internal constant DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
-    bytes32 internal constant NAME_HASH = keccak256("Concord");
+    bytes32 internal constant NAME_HASH = keccak256("Olien");
     bytes32 internal constant VERSION_HASH = keccak256("1");
 
     bytes32 internal constant CALL_TYPEHASH = keccak256("Call(address to,uint256 value,bytes data)");

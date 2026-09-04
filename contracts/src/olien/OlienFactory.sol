@@ -3,15 +3,15 @@ pragma solidity ^0.8.28;
 
 import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
 
-import {Concord} from "./Concord.sol";
-import {ConcordProxy} from "./ConcordProxy.sol";
-import {Init} from "./IConcord.sol";
+import {Olien} from "./Olien.sol";
+import {OlienProxy} from "./OlienProxy.sol";
+import {Init} from "./IOlien.sol";
 
-/// @title ConcordFactory
+/// @title OlienFactory
 /// @notice Deploys accounts at addresses anyone can compute from the first signer set
 ///         and a salt, so money can arrive before the account exists and can only ever
 ///         be controlled by those signers. Also serves as an ERC-4337 `initCode` target.
-contract ConcordFactory {
+contract OlienFactory {
     address public immutable implementation;
 
     event AccountCreated(address indexed account, bytes32 salt);
@@ -33,7 +33,7 @@ contract ConcordFactory {
     }
 
     function _creationCode(Init calldata init) private view returns (bytes memory) {
-        bytes memory initializer = abi.encodeCall(Concord.initialize, (init));
-        return abi.encodePacked(type(ConcordProxy).creationCode, abi.encode(implementation, initializer));
+        bytes memory initializer = abi.encodeCall(Olien.initialize, (init));
+        return abi.encodePacked(type(OlienProxy).creationCode, abi.encode(implementation, initializer));
     }
 }

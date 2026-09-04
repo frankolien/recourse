@@ -95,7 +95,7 @@ uint8 constant PATH_THRESHOLD = 1;
 uint8 constant PATH_RECOVERY = 2;
 uint8 constant PATH_SINGLE = 3;
 
-interface IConcord {
+interface IOlien {
     event Initialized(
         uint16 threshold, uint16 vetoThreshold, uint48 configDelay, uint48 recoveryDelay, uint48 recoveryCoSignDelay
     );

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import {ConcordTestBase, MockToken, Reenterer} from "./ConcordTestBase.sol";
-import {Concord} from "../../src/concord/Concord.sol";
-import {ConcordProxy} from "../../src/concord/ConcordProxy.sol";
-import {SubAccount} from "../../src/concord/SubAccount.sol";
+import {OlienTestBase, MockToken, Reenterer} from "./OlienTestBase.sol";
+import {Olien} from "../../src/olien/Olien.sol";
+import {OlienProxy} from "../../src/olien/OlienProxy.sol";
+import {SubAccount} from "../../src/olien/SubAccount.sol";
 import {
-    IConcord,
+    IOlien,
     Call,
     Transaction,
     SignerInput,
@@ -18,9 +18,9 @@ import {
     PERM_RECOVER,
     FLAG_UV_REQUIRED,
     PATH_THRESHOLD
-} from "../../src/concord/IConcord.sol";
+} from "../../src/olien/IOlien.sol";
 
-contract ConcordAccountTest is ConcordTestBase {
+contract OlienAccountTest is OlienTestBase {
     // ---------------------------------------------------------------- factory
 
     function test_factoryAddressIsPredictableAndIdempotent() public {
@@ -29,7 +29,7 @@ contract ConcordAccountTest is ConcordTestBase {
         address created = factory.createAccount(init, "x");
         assertEq(created, predicted);
         assertEq(factory.createAccount(init, "x"), created);
-        Concord account = Concord(payable(created));
+        Olien account = Olien(payable(created));
         assertEq(account.getConfig().threshold, 2);
         assertEq(account.getConfig().epoch, 1);
         assertEq(account.implementation(), address(impl));
@@ -42,83 +42,83 @@ contract ConcordAccountTest is ConcordTestBase {
     }
 
     function test_initializeOnlyOnce() public {
-        Concord account = plainAccount();
+        Olien account = plainAccount();
         Init memory init = initOf(two(ecdsa(carol, PERM_APPROVE), ecdsa(dave, PERM_APPROVE)), 1, 0);
-        vm.expectRevert(IConcord.AlreadyInitialized.selector);
+        vm.expectRevert(IOlien.AlreadyInitialized.selector);
         account.initialize(init);
-        vm.expectRevert(IConcord.AlreadyInitialized.selector);
+        vm.expectRevert(IOlien.AlreadyInitialized.selector);
         impl.initialize(init);
     }
 
     function test_configIsCheckedAtInitialize() public {
         Init memory init = initOf(two(ecdsa(alice, PERM_APPROVE), ecdsa(bob, PERM_APPROVE)), 0, 0);
-        vm.expectRevert(IConcord.BadConfig.selector);
+        vm.expectRevert(IOlien.BadConfig.selector);
         factory.createAccount(init, "t0");
 
         init.threshold = 3;
-        vm.expectRevert(IConcord.BadConfig.selector);
+        vm.expectRevert(IOlien.BadConfig.selector);
         factory.createAccount(init, "t3");
 
         init = initOf(two(ecdsa(alice, PERM_APPROVE), ecdsa(guardian, PERM_RECOVER)), 1, 0);
-        vm.expectRevert(IConcord.BadConfig.selector);
+        vm.expectRevert(IOlien.BadConfig.selector);
         factory.createAccount(init, "guardian-no-delay");
         init.recoveryDelay = 1 hours;
         factory.createAccount(init, "guardian-no-delay");
 
         init = initOf(two(ecdsa(alice, PERM_VETO), ecdsa(bob, PERM_VETO)), 1, 0);
-        vm.expectRevert(IConcord.BadConfig.selector);
+        vm.expectRevert(IOlien.BadConfig.selector);
         factory.createAccount(init, "no-approver");
 
         init = initOf(two(ecdsa(alice, PERM_APPROVE), ecdsa(bob, PERM_APPROVE)), 1, 31 days);
-        vm.expectRevert(IConcord.BadConfig.selector);
+        vm.expectRevert(IOlien.BadConfig.selector);
         factory.createAccount(init, "long-delay");
     }
 
     function test_badKeysAreRefused() public {
-        vm.expectRevert(IConcord.SignerExists.selector == bytes4(0) ? bytes("") : abi.encodeWithSelector(IConcord.SignerExists.selector, idOf(alice)));
+        vm.expectRevert(IOlien.SignerExists.selector == bytes4(0) ? bytes("") : abi.encodeWithSelector(IOlien.SignerExists.selector, idOf(alice)));
         factory.createAccount(initOf(two(ecdsa(alice, PERM_APPROVE), ecdsa(alice, PERM_APPROVE)), 1, 0), "dup");
 
-        vm.expectRevert(IConcord.BadKey.selector);
+        vm.expectRevert(IOlien.BadKey.selector);
         factory.createAccount(initOf(two(ecdsa(address(0), PERM_APPROVE), ecdsa(bob, PERM_APPROVE)), 1, 0), "zero");
 
-        vm.expectRevert(IConcord.BadKey.selector);
+        vm.expectRevert(IOlien.BadKey.selector);
         factory.createAccount(initOf(two(ecdsa(ENTRY_POINT, PERM_APPROVE), ecdsa(bob, PERM_APPROVE)), 1, 0), "ep");
 
-        vm.expectRevert(IConcord.BadKey.selector);
+        vm.expectRevert(IOlien.BadKey.selector);
         factory.createAccount(initOf(two(contractSigner(dave, PERM_APPROVE), ecdsa(bob, PERM_APPROVE)), 1, 0), "nocode");
 
-        vm.expectRevert(IConcord.BadKey.selector);
+        vm.expectRevert(IOlien.BadKey.selector);
         factory.createAccount(initOf(two(p256(1, 2, PERM_APPROVE), ecdsa(bob, PERM_APPROVE)), 1, 0), "offcurve");
 
         SignerInput memory shortKey = SignerInput(KIND_ECDSA, PERM_APPROVE, 0, hex"1234");
-        vm.expectRevert(IConcord.BadKey.selector);
+        vm.expectRevert(IOlien.BadKey.selector);
         factory.createAccount(initOf(two(shortKey, ecdsa(bob, PERM_APPROVE)), 1, 0), "short");
 
         SignerInput memory badPerms = SignerInput(KIND_ECDSA, 8, 0, abi.encodePacked(alice));
-        vm.expectRevert(IConcord.BadPermissions.selector);
+        vm.expectRevert(IOlien.BadPermissions.selector);
         factory.createAccount(initOf(two(badPerms, ecdsa(bob, PERM_APPROVE)), 1, 0), "perms");
     }
 
     // -------------------------------------------------------------- execution
 
     function test_executeTransferWithTwoECDSASignatures() public {
-        Concord account = plainAccount();
+        Olien account = plainAccount();
         Transaction memory t = txn(transferCall(dave, 25e6));
         bytes32 hash = account.getTransactionHash(t);
 
         vm.expectEmit(true, false, false, true);
-        emit IConcord.Executed(hash, 0, PATH_THRESHOLD);
+        emit IOlien.Executed(hash, 0, PATH_THRESHOLD);
         account.execute(t, aliceBob(hash));
 
         assertEq(usdc.balanceOf(dave), 25e6);
         assertEq(account.getNonce(0), 1);
         // The same signatures cannot run twice: the nonce moved and the hash with it.
-        vm.expectRevert(IConcord.InvalidSignatures.selector);
+        vm.expectRevert(IOlien.InvalidSignatures.selector);
         account.execute(t, aliceBob(hash));
     }
 
     function test_executeBatchAndNativeValue() public {
-        Concord account = plainAccount();
+        Olien account = plainAccount();
         Call[] memory calls = new Call[](2);
         calls[0] = transferCall(dave, 1e6);
         calls[1] = Call(eve, 0.5 ether, "");
@@ -128,7 +128,7 @@ contract ConcordAccountTest is ConcordTestBase {
     }
 
     function test_executeRevertsBubbleUp() public {
-        Concord account = plainAccount();
+        Olien account = plainAccount();
         Transaction memory t = txn(transferCall(dave, 5_000e6));
         bytes32 hash = account.getTransactionHash(t);
         vm.expectRevert(bytes("balance"));
@@ -138,7 +138,7 @@ contract ConcordAccountTest is ConcordTestBase {
     }
 
     function test_executeWithP256Signer() public {
-        Concord account = deploy(initOf(two(p256(deviceX, deviceY, PERM_APPROVE), ecdsa(alice, PERM_APPROVE)), 2, 0), "p256");
+        Olien account = deploy(initOf(two(p256(deviceX, deviceY, PERM_APPROVE), ecdsa(alice, PERM_APPROVE)), 2, 0), "p256");
         Transaction memory t = txn(transferCall(dave, 3e6));
         bytes32 hash = account.getTransactionHash(t);
         bytes memory sigs = pack2(idOf(deviceX, deviceY), signP256(devicePk, hash), idOf(alice), signECDSA(alicePk, hash));
@@ -149,20 +149,20 @@ contract ConcordAccountTest is ConcordTestBase {
     }
 
     function test_p256HighSIsRefused() public {
-        Concord account = deploy(initOf(two(p256(deviceX, deviceY, PERM_APPROVE), ecdsa(alice, PERM_APPROVE)), 2, 0), "p256s");
+        Olien account = deploy(initOf(two(p256(deviceX, deviceY, PERM_APPROVE), ecdsa(alice, PERM_APPROVE)), 2, 0), "p256s");
         Transaction memory t = txn(transferCall(dave, 3e6));
         bytes32 hash = account.getTransactionHash(t);
         (bytes32 r, bytes32 s) = vm.signP256(devicePk, hash);
         if (uint256(s) <= P256_N / 2) s = bytes32(P256_N - uint256(s));
         bytes memory sigs =
             pack2(idOf(deviceX, deviceY), abi.encodePacked(r, s), idOf(alice), signECDSA(alicePk, hash));
-        vm.expectRevert(IConcord.InvalidSignatures.selector);
+        vm.expectRevert(IOlien.InvalidSignatures.selector);
         account.execute(t, sigs);
     }
 
     function test_p256WithoutPrecompileUsesSolidityVerifier() public {
         vm.etch(PRECOMPILE, "");
-        Concord account = deploy(initOf(two(p256(deviceX, deviceY, PERM_APPROVE), ecdsa(alice, PERM_APPROVE)), 2, 0), "nopre");
+        Olien account = deploy(initOf(two(p256(deviceX, deviceY, PERM_APPROVE), ecdsa(alice, PERM_APPROVE)), 2, 0), "nopre");
         Transaction memory t = txn(transferCall(dave, 3e6));
         bytes32 hash = account.getTransactionHash(t);
         account.execute(t, pack2(idOf(deviceX, deviceY), signP256(devicePk, hash), idOf(alice), signECDSA(alicePk, hash)));
@@ -171,12 +171,12 @@ contract ConcordAccountTest is ConcordTestBase {
         t = txn(transferCall(dave, 1e6));
         hash = account.getTransactionHash(t);
         bytes memory wrong = signP256(devicePk, keccak256("other"));
-        vm.expectRevert(IConcord.InvalidSignatures.selector);
+        vm.expectRevert(IOlien.InvalidSignatures.selector);
         account.execute(t, pack2(idOf(deviceX, deviceY), wrong, idOf(alice), signECDSA(alicePk, hash)));
     }
 
     function test_executeWithWebAuthnSigner() public {
-        Concord account = deploy(
+        Olien account = deploy(
             initOf(two(webauthn(passkeyX, passkeyY, PERM_APPROVE, FLAG_UV_REQUIRED), ecdsa(alice, PERM_APPROVE)), 2, 0),
             "passkey"
         );
@@ -190,12 +190,12 @@ contract ConcordAccountTest is ConcordTestBase {
         t = txn(transferCall(dave, 1e6));
         hash = account.getTransactionHash(t);
         bytes memory upOnly = pack2(id, signWebAuthn(passkeyPk, hash, 0x01), idOf(alice), signECDSA(alicePk, hash));
-        vm.expectRevert(IConcord.InvalidSignatures.selector);
+        vm.expectRevert(IOlien.InvalidSignatures.selector);
         account.execute(t, upOnly);
     }
 
     function test_ethSignVariantIsAccepted() public {
-        Concord account = plainAccount();
+        Olien account = plainAccount();
         Transaction memory t = txn(transferCall(dave, 1e6));
         bytes32 hash = account.getTransactionHash(t);
         bytes32 prefixed = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
@@ -208,7 +208,7 @@ contract ConcordAccountTest is ConcordTestBase {
     // ------------------------------------------------------------- signatures
 
     function test_signatureSetRules() public {
-        Concord account = plainAccount();
+        Olien account = plainAccount();
         Transaction memory t = txn(transferCall(dave, 1e6));
         bytes32 hash = account.getTransactionHash(t);
         bytes memory a = signECDSA(alicePk, hash);
@@ -217,33 +217,33 @@ contract ConcordAccountTest is ConcordTestBase {
         (bytes memory loSig, bytes memory hiSig) = lo == idOf(alice) ? (a, b) : (b, a);
 
         // Descending order.
-        vm.expectRevert(IConcord.InvalidSignatures.selector);
+        vm.expectRevert(IOlien.InvalidSignatures.selector);
         account.execute(t, bytes.concat(entry(hi, hiSig), entry(lo, loSig)));
         // Duplicate.
-        vm.expectRevert(IConcord.InvalidSignatures.selector);
+        vm.expectRevert(IOlien.InvalidSignatures.selector);
         account.execute(t, bytes.concat(entry(lo, loSig), entry(lo, loSig)));
         // Unknown signer.
-        vm.expectRevert(IConcord.InvalidSignatures.selector);
+        vm.expectRevert(IOlien.InvalidSignatures.selector);
         account.execute(t, pack2(idOf(alice), a, idOf(carol), signECDSA(carolPk, hash)));
         // One short of the threshold.
-        vm.expectRevert(IConcord.Unauthorized.selector);
+        vm.expectRevert(IOlien.Unauthorized.selector);
         account.execute(t, pack1(idOf(alice), a));
         // Wrong hash.
-        vm.expectRevert(IConcord.InvalidSignatures.selector);
+        vm.expectRevert(IOlien.InvalidSignatures.selector);
         account.execute(t, pack2(idOf(alice), signECDSA(alicePk, keccak256("x")), idOf(bob), b));
         // Truncated encoding.
-        vm.expectRevert(IConcord.MalformedSignatures.selector);
+        vm.expectRevert(IOlien.MalformedSignatures.selector);
         account.execute(t, hex"0011");
         bytes memory claimsMore = abi.encodePacked(idOf(alice), uint16(65), hex"00");
-        vm.expectRevert(IConcord.MalformedSignatures.selector);
+        vm.expectRevert(IOlien.MalformedSignatures.selector);
         account.execute(t, claimsMore);
         // Empty set.
-        vm.expectRevert(IConcord.Unauthorized.selector);
+        vm.expectRevert(IOlien.Unauthorized.selector);
         account.execute(t, "");
     }
 
     function test_onChainApprovalCountsAsAnEntry() public {
-        Concord account = plainAccount();
+        Olien account = plainAccount();
         Transaction memory t = txn(transferCall(dave, 2e6));
         bytes32 hash = account.getTransactionHash(t);
 
@@ -256,36 +256,36 @@ contract ConcordAccountTest is ConcordTestBase {
     }
 
     function test_approveRequiresASignerAddress() public {
-        Concord account = plainAccount();
+        Olien account = plainAccount();
         vm.prank(carol);
-        vm.expectRevert(IConcord.Unauthorized.selector);
+        vm.expectRevert(IOlien.Unauthorized.selector);
         account.approve(keccak256("h"));
     }
 
     // ---------------------------------------------------------------- validity
 
     function test_validityWindow() public {
-        Concord account = plainAccount();
+        Olien account = plainAccount();
         Transaction memory t = Transaction(0, one(transferCall(dave, 1e6)), uint48(block.timestamp + 10), uint48(block.timestamp + 100));
-        vm.expectRevert(IConcord.NotYetValid.selector);
+        vm.expectRevert(IOlien.NotYetValid.selector);
         account.execute(t, "");
 
         t.validAfter = 0;
         t.validUntil = 0;
-        vm.expectRevert(IConcord.Expired.selector);
+        vm.expectRevert(IOlien.Expired.selector);
         account.execute(t, "");
 
         t.validUntil = uint48(block.timestamp + 31 days);
-        vm.expectRevert(IConcord.Expired.selector);
+        vm.expectRevert(IOlien.Expired.selector);
         account.execute(t, "");
 
         t.validUntil = uint48(block.timestamp - 1);
-        vm.expectRevert(IConcord.Expired.selector);
+        vm.expectRevert(IOlien.Expired.selector);
         account.execute(t, "");
     }
 
     function test_nonceLanesAreIndependent() public {
-        Concord account = plainAccount();
+        Olien account = plainAccount();
         Transaction memory lane7 = Transaction(7, one(transferCall(dave, 1e6)), 0, uint48(block.timestamp + 1 days));
         bytes32 hash = account.getTransactionHash(lane7);
         account.execute(lane7, aliceBob(hash));
@@ -296,43 +296,43 @@ contract ConcordAccountTest is ConcordTestBase {
     // ------------------------------------------------------------------ epoch
 
     function test_configChangeInvalidatesEverythingSigned() public {
-        Concord account = plainAccount();
+        Olien account = plainAccount();
         Transaction memory pending = txn(transferCall(dave, 1e6));
         bytes32 pendingHash = account.getTransactionHash(pending);
         bytes memory pendingSigs = aliceBob(pendingHash);
 
-        runAliceBob(account, selfCall(account, abi.encodeCall(Concord.setThreshold, (1))));
+        runAliceBob(account, selfCall(account, abi.encodeCall(Olien.setThreshold, (1))));
         assertEq(account.getConfig().epoch, 2);
         assertEq(account.getConfig().threshold, 1);
 
         // Same nonce is still free, but the hash now carries epoch 2.
-        vm.expectRevert(IConcord.InvalidSignatures.selector);
+        vm.expectRevert(IOlien.InvalidSignatures.selector);
         account.execute(pending, pendingSigs);
     }
 
     function test_signerChanges() public {
-        Concord account = plainAccount();
+        Olien account = plainAccount();
         Call[] memory calls = new Call[](2);
-        calls[0] = selfCall(account, abi.encodeCall(Concord.addSigner, (ecdsa(carol, PERM_APPROVE))));
-        calls[1] = selfCall(account, abi.encodeCall(Concord.setThreshold, (3)));
+        calls[0] = selfCall(account, abi.encodeCall(Olien.addSigner, (ecdsa(carol, PERM_APPROVE))));
+        calls[1] = selfCall(account, abi.encodeCall(Olien.setThreshold, (3)));
         runAliceBob(account, calls);
         assertEq(account.getSigners().length, 3);
         assertEq(account.getConfig().threshold, 3);
         assertEq(account.getSigner(idOf(carol)).since, 1);
 
         // Removing below the threshold is refused at the end of the batch, not midway.
-        Transaction memory t = txn(selfCall(account, abi.encodeCall(Concord.removeSigner, (idOf(carol)))));
+        Transaction memory t = txn(selfCall(account, abi.encodeCall(Olien.removeSigner, (idOf(carol)))));
         bytes32 hash = account.getTransactionHash(t);
         bytes32[] memory ids = new bytes32[](3);
         bytes[] memory sigs = new bytes[](3);
         (ids[0], ids[1], ids[2]) = (idOf(alice), idOf(bob), idOf(carol));
         (sigs[0], sigs[1], sigs[2]) = (signECDSA(alicePk, hash), signECDSA(bobPk, hash), signECDSA(carolPk, hash));
-        vm.expectRevert(IConcord.BadConfig.selector);
+        vm.expectRevert(IOlien.BadConfig.selector);
         account.execute(t, pack(ids, sigs));
 
         Call[] memory fix = new Call[](2);
-        fix[0] = selfCall(account, abi.encodeCall(Concord.setThreshold, (2)));
-        fix[1] = selfCall(account, abi.encodeCall(Concord.removeSigner, (idOf(carol))));
+        fix[0] = selfCall(account, abi.encodeCall(Olien.setThreshold, (2)));
+        fix[1] = selfCall(account, abi.encodeCall(Olien.removeSigner, (idOf(carol))));
         t = txn(fix);
         hash = account.getTransactionHash(t);
         (sigs[0], sigs[1], sigs[2]) = (signECDSA(alicePk, hash), signECDSA(bobPk, hash), signECDSA(carolPk, hash));
@@ -343,29 +343,29 @@ contract ConcordAccountTest is ConcordTestBase {
     }
 
     function test_unknownSelfCallIsRefused() public {
-        Concord account = plainAccount();
-        Transaction memory t = txn(selfCall(account, abi.encodeCall(Concord.approve, (keccak256("h")))));
+        Olien account = plainAccount();
+        Transaction memory t = txn(selfCall(account, abi.encodeCall(Olien.approve, (keccak256("h")))));
         bytes32 hash = account.getTransactionHash(t);
-        vm.expectRevert(abi.encodeWithSelector(IConcord.SelfCallRefused.selector, Concord.approve.selector));
+        vm.expectRevert(abi.encodeWithSelector(IOlien.SelfCallRefused.selector, Olien.approve.selector));
         account.execute(t, aliceBob(hash));
 
         t = txn(Call(address(account), 0, hex"01"));
         hash = account.getTransactionHash(t);
-        vm.expectRevert(abi.encodeWithSelector(IConcord.SelfCallRefused.selector, bytes4(0)));
+        vm.expectRevert(abi.encodeWithSelector(IOlien.SelfCallRefused.selector, bytes4(0)));
         account.execute(t, aliceBob(hash));
     }
 
     function test_configFunctionsOnlyFromSelf() public {
-        Concord account = plainAccount();
+        Olien account = plainAccount();
         vm.prank(alice);
-        vm.expectRevert(IConcord.NotSelf.selector);
+        vm.expectRevert(IOlien.NotSelf.selector);
         account.setThreshold(1);
     }
 
     // --------------------------------------------------------------- EIP-1271
 
     function test_isValidSignature() public {
-        Concord account = plainAccount();
+        Olien account = plainAccount();
         bytes32 digest = keccak256("a cheque");
         bytes32 wrapped = account.getMessageHash(digest);
         bytes memory sigs = aliceBob(wrapped);
@@ -378,13 +378,13 @@ contract ConcordAccountTest is ConcordTestBase {
         assertEq(account.isValidSignature(hash, aliceBob(hash)), bytes4(0xffffffff));
 
         // The threshold can kill a message hash.
-        runAliceBob(account, selfCall(account, abi.encodeCall(Concord.cancel, (wrapped))));
+        runAliceBob(account, selfCall(account, abi.encodeCall(Olien.cancel, (wrapped))));
         assertEq(account.isValidSignature(digest, sigs), bytes4(0xffffffff));
     }
 
     function test_nestedAccountSigns() public {
-        Concord inner = deploy(initOf(two(ecdsa(bob, PERM_APPROVE), ecdsa(carol, PERM_APPROVE)), 2, 0), "inner");
-        Concord outer = deploy(initOf(two(ecdsa(alice, PERM_APPROVE), contractSigner(address(inner), PERM_APPROVE)), 2, 0), "outer");
+        Olien inner = deploy(initOf(two(ecdsa(bob, PERM_APPROVE), ecdsa(carol, PERM_APPROVE)), 2, 0), "inner");
+        Olien outer = deploy(initOf(two(ecdsa(alice, PERM_APPROVE), contractSigner(address(inner), PERM_APPROVE)), 2, 0), "outer");
 
         Transaction memory t = txn(transferCall(dave, 9e6));
         bytes32 outerHash = outer.getTransactionHash(t);
@@ -400,14 +400,14 @@ contract ConcordAccountTest is ConcordTestBase {
         t = txn(transferCall(dave, 1e6));
         outerHash = outer.getTransactionHash(t);
         bytes memory wrongInner = pack2(idOf(bob), signECDSA(bobPk, outerHash), idOf(carol), signECDSA(carolPk, outerHash));
-        vm.expectRevert(IConcord.InvalidSignatures.selector);
+        vm.expectRevert(IOlien.InvalidSignatures.selector);
         outer.execute(t, pack2(idOf(alice), signECDSA(alicePk, outerHash), idOf(address(inner)), wrongInner));
     }
 
     // ------------------------------------------------------------ sub-accounts
 
     function test_subAccounts() public {
-        Concord account = plainAccount();
+        Olien account = plainAccount();
         address predicted = account.subAccount(3);
         vm.prank(eve);
         address created = account.createSubAccount(3);
@@ -428,30 +428,30 @@ contract ConcordAccountTest is ConcordTestBase {
     // ---------------------------------------------------------------- upgrade
 
     function test_implementationChangeAndFreeze() public {
-        Concord account = plainAccount();
-        Concord next = new Concord(ENTRY_POINT, address(verifier), address(subImpl));
+        Olien account = plainAccount();
+        Olien next = new Olien(ENTRY_POINT, address(verifier), address(subImpl));
 
-        Transaction memory t = txn(selfCall(account, abi.encodeCall(Concord.setImplementation, (address(usdc)))));
+        Transaction memory t = txn(selfCall(account, abi.encodeCall(Olien.setImplementation, (address(usdc)))));
         bytes32 hash = account.getTransactionHash(t);
-        vm.expectRevert(abi.encodeWithSelector(IConcord.NotAnImplementation.selector, address(usdc)));
+        vm.expectRevert(abi.encodeWithSelector(IOlien.NotAnImplementation.selector, address(usdc)));
         account.execute(t, aliceBob(hash));
 
-        runAliceBob(account, selfCall(account, abi.encodeCall(Concord.setImplementation, (address(next)))));
+        runAliceBob(account, selfCall(account, abi.encodeCall(Olien.setImplementation, (address(next)))));
         assertEq(account.implementation(), address(next));
         assertEq(account.getConfig().threshold, 2);
 
-        runAliceBob(account, selfCall(account, abi.encodeCall(Concord.freezeImplementation, ())));
+        runAliceBob(account, selfCall(account, abi.encodeCall(Olien.freezeImplementation, ())));
         assertTrue(account.getConfig().implementationFrozen);
-        t = txn(selfCall(account, abi.encodeCall(Concord.setImplementation, (address(impl)))));
+        t = txn(selfCall(account, abi.encodeCall(Olien.setImplementation, (address(impl)))));
         hash = account.getTransactionHash(t);
-        vm.expectRevert(IConcord.Frozen.selector);
+        vm.expectRevert(IOlien.Frozen.selector);
         account.execute(t, aliceBob(hash));
     }
 
     // ------------------------------------------------------------- reentrancy
 
     function test_reentrantExecuteIsRefused() public {
-        Concord account = plainAccount();
+        Olien account = plainAccount();
         Reenterer r = new Reenterer();
         Transaction memory innerTx = Transaction(1, one(transferCall(dave, 1e6)), 0, uint48(block.timestamp + 1 days));
         bytes32 innerHash = account.getTransactionHash(innerTx);
@@ -459,14 +459,14 @@ contract ConcordAccountTest is ConcordTestBase {
 
         Transaction memory t = txn(Call(address(r), 0, abi.encodeCall(Reenterer.poke, ())));
         bytes32 hash = account.getTransactionHash(t);
-        vm.expectRevert(IConcord.Reentered.selector);
+        vm.expectRevert(IOlien.Reentered.selector);
         account.execute(t, aliceBob(hash));
     }
 
     function test_receivesTokensAndValue() public {
-        Concord account = plainAccount();
+        Olien account = plainAccount();
         (bool ok,) = address(account).call{value: 1 ether}("");
         assertTrue(ok);
-        assertEq(account.onERC721Received(address(0), address(0), 0, ""), Concord.onERC721Received.selector);
+        assertEq(account.onERC721Received(address(0), address(0), 0, ""), Olien.onERC721Received.selector);
     }
 }
