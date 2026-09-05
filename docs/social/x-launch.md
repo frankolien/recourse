@@ -8,40 +8,49 @@ where a post names a screen.
 
 ## Launch thread
 
-1. Dollars on your phone, sent by name.
+Shaped like Fuse's Solana launch thread (Dec 2023): one argument across six posts.
+Image 1 is a white card, "The money app for dollars on your phone", the Home
+screenshot in a phone frame, "Built on Safe" small at the foot. Image 2 is the
+three-key diagram: Device, iCloud, Recovery key, then "Safe 2 of 3", then
+"Safe contracts on Arc".
 
-   Recourse is a money app for USDC on Arc, Circle's chain. Type an @handle, an
-   amount, a note. That is the whole payment.
+1/ Money on your phone needs an upgrade.
 
-   Beta on TestFlight now. [link]
+Recourse is a money app for USDC on Arc, Circle's chain for dollars. Send by name,
+no seed phrase, and every payment signed by two keys.
 
-2. No addresses. You pay @ada, not 0x7eae…263c. The app checks the name resolves to
-   one account before you sign, and shows you who.
+Beta on TestFlight: [link]
 
-3. Fees come out of the dollars you already hold. Arc charges gas in USDC, so there is
-   no second token to buy, run out of, or explain.
+[image 1]
 
-4. Two keys sign every payment: one in your phone, one in your iCloud Keychain.
-   Neither works alone. Recourse never holds either. Lose the phone, sign in on a new
-   one, and the keys come back through iCloud and a code to your email.
+2/ Every Recourse account is a Safe, the most used smart account contracts in
+Ethereum, deployed on Arc with three keys and a 2 of 3 threshold. One key lives in
+the phone's Secure Enclave, one in your iCloud Keychain, and a third can only get
+you back in and can never spend.
 
-5. Write a cheque. The other person cashes it when they want, and they do not have to
-   be online for you to write it. Void it any time before it is cashed. It costs
-   nothing to write.
+[image 2]
 
-6. Send an invoice. It fixes the amount, the date and who pays. They answer with one
-   signature, no gas on their side, and you collect when you like.
+3/ There is no seed phrase to write down and no single key that can lose the money.
+Lose the phone: sign in on a new one, the iCloud key comes back on its own, and a
+code to your email swaps the device key over. Lose the iCloud key: your recovery
+PIN brings it back. Recourse never holds a key that can spend.
 
-7. Earn on idle dollars. Put USDC into Earn and it earns while it sits. Take it out
-   whenever.
+4/ We are building Recourse for people who get paid in dollars and pay other
+people in dollars. Not a trading app. A balance, the people you pay, and the
+things that happen between people: a payment, a request, a cheque, a conversion.
 
-8. Convert between dollars and euros. USDC to EURC at a rate the app checks against
-   the market before you sign. If the pool is off market, the app says so and refuses.
+5/ What it does today, on testnet:
+Send to an @handle, no addresses.
+Request money and collect when they sign.
+Write a cheque they cash later, void it before they do.
+Earn on idle dollars.
+Convert USDC to EURC at a rate the app checks before you sign.
+Fees in USDC. No second token.
 
-9. Your money, your keys, and you can read the code. [repo link]
+6/ The code is public: [repo link]. Testnet now; mainnet when Arc opens it on
+September 16.
 
-   Testnet today. Mainnet when Arc opens it. Try the beta and tell us what is wrong
-   with it: [TestFlight link]
+Apply for the beta: [TestFlight link]
 
 ## The first week
 
