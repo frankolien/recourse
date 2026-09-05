@@ -95,8 +95,10 @@ struct OnboardingAuthenticationView: View {
         //         }
         //     }
         // }
-        .onChange(of: accountSession.account) { _, account in
-            guard account != nil else { return }
+        // The count, not the account: someone who steps back here and signs in
+        // again gets the same account back, and the same account is not a change.
+        .onChange(of: accountSession.signInCount) { _, _ in
+            guard accountSession.account != nil else { return }
             onAuthenticated()
         }
         .sheet(isPresented: $showsPasskeyPrompt) {

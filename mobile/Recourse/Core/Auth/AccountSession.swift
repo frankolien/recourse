@@ -84,6 +84,10 @@ enum AccountSessionError: Error {
 @Observable
 final class AccountSession {
     private(set) var account: AuthenticatedAccount?
+    /// Bumped on every accepted sign-in, including one that lands on the account
+    /// already held. Screens that wait for "signed in" watch this rather than the
+    /// account, which does not change when the same person signs in again.
+    private(set) var signInCount = 0
     private(set) var isRestoring = true
     private(set) var isAuthenticating = false
     private(set) var isPreparingAppleSignIn = false
@@ -449,6 +453,7 @@ final class AccountSession {
         // and order history resolve against this account and not the last one.
         ActiveAccount.set(sessionGrant.account)
         errorMessage = nil
+        signInCount += 1
     }
 }
 
