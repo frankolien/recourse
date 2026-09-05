@@ -26,41 +26,51 @@ struct ConvertView: View {
     @State private var problem: String?
     @State private var quoting = false
     @State private var ceiling: USDCAmount?
-    @FocusState private var amountFocused: Bool
+    @State private var showsReview = false
 
     private var amount: USDCAmount? {
         guard let value = try? USDCAmount(decimalString: amountText), value.baseUnits > 0 else { return nil }
         return value
     }
 
+    // The layout is the one every swap screen has settled on: what you pay, what
+    // you get, a keypad on the ground, one button. The ground is flat; the amounts
+    // are the design.
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                // Grouped so the fields, the ceiling chip and the glyph sample as one
-                // system rather than as four unrelated panes. The spacing stays well
-                // under the 16 point gap below the field: at or above it the chip
-                // merges into the field and stops existing.
+        VStack(spacing: 0) {
+            ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    converting
+                    paying
+                    separator
                     receiving
+                    if let problem {
+                        refusal(problem)
+                    } else {
+                        details
+                    }
                 }
-                .recourseGlassGroup(spacing: 8)
+                .padding(.horizontal, 24)
+                .padding(.top, 28)
+                .padding(.bottom, 12)
+            }
+            .scrollIndicators(.hidden)
 
-                if let problem {
-                    refusal(problem)
-                }
-                details
-                assurance
+            VStack(spacing: 14) {
+                AmountKeypad(text: $amountText)
+                reviewButton
             }
             .padding(.horizontal, 20)
-            .padding(.top, 8)
-            .padding(.bottom, 40)
+            .padding(.bottom, 8)
         }
-        .scrollDismissesKeyboard(.interactively)
         .background(RecourseColor.night)
         .navigationTitle("Convert")
         .navigationBarTitleDisplayMode(.inline)
-        .recourseKeyboardDismissal()
+        .sheet(isPresented: $showsReview) {
+            if let amount, let quote {
+                ConvertReviewSheet(amount: amount, quote: quote)
+                    .presentationDetents([.medium])
+            }
+        }
         .task {
             await loadCeiling()
         }
@@ -71,68 +81,86 @@ struct ConvertView: View {
 
     // MARK: Sections
 
-    private var converting: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            fieldLabel("You convert")
-
-            HStack(spacing: 12) {
-                TextField("0.00", text: $amountText)
-                    .keyboardType(.decimalPad)
-                    .focused($amountFocused)
-                    .font(.system(size: 34, weight: .bold, design: .rounded))
-                    .foregroundStyle(RecourseColor.nightText)
-                Text("USDC")
-                    .font(.recourse(14, .bold))
-                    .foregroundStyle(RecourseColor.nightMuted)
+    private var paying: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            sideLabel("You pay")
+            HStack(alignment: .center, spacing: 12) {
+                Text(amountText.isEmpty ? "0" : amountText)
+                    .font(.system(size: 52, weight: .semibold, design: .rounded))
+                    .foregroundStyle(amountText.isEmpty ? RecourseColor.nightMuted.opacity(0.45) : RecourseColor.nightText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                    .contentTransition(.numericText())
+                    .animation(.snappy(duration: 0.18), value: amountText)
+                Spacer(minLength: 8)
+                token(.usdc, "USDC")
             }
-            .padding(.horizontal, 18)
-            .frame(height: 76)
-            .recourseGlassField()
-
             if let ceiling {
-                ceilingChip(ceiling)
-                    .padding(.top, 4)
+                HStack {
+                    Spacer()
+                    // The most the pool can fill at the market rate: the number that
+                    // decides whether typing further is worth it.
+                    Button {
+                        amountText = ceiling.decimalString
+                    } label: {
+                        HStack(spacing: 6) {
+                            Text("MAX")
+                                .font(.recourse(15, .bold))
+                                .foregroundStyle(RecourseColor.nightText)
+                            Text(ceiling.decimalString)
+                                .font(.system(size: 15, weight: .medium, design: .rounded))
+                                .foregroundStyle(RecourseColor.nightMuted)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Convert the maximum, \(ceiling.decimalString) USDC")
+                }
             }
         }
     }
 
     private var receiving: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // The glyph sits between the two amounts rather than above the second,
-            // because it describes the relationship and not the field.
-            directionGlyph
-                .padding(.leading, 4)
-
-            fieldLabel("You receive")
-
-            HStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
+            sideLabel("You receive")
+            HStack(alignment: .center, spacing: 12) {
                 Group {
                     if quoting {
                         ProgressView()
-                            .controlSize(.small)
+                            .controlSize(.regular)
                             .tint(RecourseColor.nightMuted)
+                            .frame(height: 62)
                     } else if let quote {
                         Text(EURCAmount(baseUnits: quote.amountOut).formatted)
-                            .font(.system(size: 34, weight: .bold, design: .rounded))
+                            .font(.system(size: 52, weight: .semibold, design: .rounded))
                             .foregroundStyle(RecourseColor.ledger)
                             .contentTransition(.numericText())
                     } else {
-                        Text("0.00")
-                            .font(.system(size: 34, weight: .bold, design: .rounded))
-                            .foregroundStyle(RecourseColor.nightMuted.opacity(0.5))
+                        Text("0")
+                            .font(.system(size: 52, weight: .semibold, design: .rounded))
+                            .foregroundStyle(RecourseColor.nightMuted.opacity(0.45))
                     }
                 }
-                Spacer(minLength: 0)
-                Text("EURC")
-                    .font(.recourse(14, .bold))
-                    .foregroundStyle(RecourseColor.nightMuted)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+                Spacer(minLength: 8)
+                token(.eurc, "EURC")
             }
-            .padding(.horizontal, 18)
-            .frame(height: 76)
-            .recourseGlassField()
             .animation(.snappy(duration: 0.24), value: quote)
         }
-        .padding(.top, 14)
+    }
+
+    /// The line between the two sides, with the relationship drawn on it. It is a
+    /// glyph and not a button: the pool converts one way.
+    private var separator: some View {
+        HStack(spacing: 14) {
+            Rectangle().fill(RecourseColor.nightLine).frame(height: 1)
+            Image(systemName: "arrow.up.arrow.down")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(RecourseColor.nightMuted)
+            Rectangle().fill(RecourseColor.nightLine).frame(height: 1)
+        }
+        .padding(.vertical, 26)
     }
 
     @ViewBuilder
@@ -140,80 +168,59 @@ struct ConvertView: View {
         if let quote {
             VStack(spacing: 0) {
                 detail("Rate", String(format: "%.4f EURC per USDC", quote.price))
-                divider
                 detail("Minimum received", EURCAmount(baseUnits: quote.minAmountOut).formatted)
                 if let deviation = quote.deviationBps {
-                    divider
                     detail("Versus market", deviation <= 0
                         ? "better by \(abs(deviation)) bps"
                         : "\(deviation) bps worse")
                 }
             }
-            .padding(.top, 28)
+            .padding(.top, 22)
+            .transition(.opacity)
         }
     }
 
-    private var assurance: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "shield.lefthalf.filled")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(RecourseColor.ledger)
-                .frame(width: 18)
-            Text("Every quote is compared against an independent rate before it can be signed. If the pool is too far off, the conversion is refused rather than filled quietly.")
-                .font(.recourse(12))
-                .foregroundStyle(RecourseColor.nightMuted)
-                .fixedSize(horizontal: false, vertical: true)
+    private var reviewButton: some View {
+        Button {
+            showsReview = true
+        } label: {
+            Text("Review")
+                .font(.recourse(17, .semibold))
+                .foregroundStyle(quote == nil ? RecourseColor.nightMuted : .white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 56)
+                .background(quote == nil ? RecourseColor.nightChip : RecourseColor.ledger, in: Capsule())
         }
-        .padding(.top, 32)
+        .buttonStyle(.plain)
+        .disabled(quote == nil)
+        .animation(.snappy(duration: 0.2), value: quote == nil)
     }
 
     // MARK: Pieces
 
-    private func fieldLabel(_ text: String) -> some View {
-        Text(text.uppercased())
-            .font(.recourse(11, .semibold))
-            .kerning(0.8)
-            .foregroundStyle(RecourseColor.nightMuted)
-    }
-
-    /// The whole point of the screen's second job: the ceiling is a number, so show
-    /// the number and let it be tapped.
-    private func ceilingChip(_ ceiling: USDCAmount) -> some View {
-        Button {
-            amountText = ceiling.decimalString
-        } label: {
-            HStack(spacing: 7) {
-                Image(systemName: "arrow.up.to.line.compact")
-                    .font(.system(size: 10, weight: .bold))
-                Text("Max \(ceiling.decimalString)")
-                    .font(.recourse(12, .semibold))
-            }
+    private func sideLabel(_ text: String) -> some View {
+        Text(text)
+            .font(.recourse(16, .medium))
             .foregroundStyle(RecourseColor.nightText)
-            .padding(.horizontal, 14)
-            .frame(height: 34)
-            .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .recourseGlassCapsule()
-        .accessibilityLabel("Convert the maximum, \(ceiling.decimalString) USDC")
     }
 
-    private var directionGlyph: some View {
-        Image(systemName: "arrow.down")
-            .font(.system(size: 13, weight: .bold))
-            .foregroundStyle(RecourseColor.nightMuted)
-            .frame(width: 38, height: 38)
-            .recourseGlassField(cornerRadius: 19)
+    private func token(_ mark: BrandMark, _ symbol: String) -> some View {
+        HStack(spacing: 8) {
+            BrandMarkView(mark: mark, height: 26)
+            Text(symbol)
+                .font(.recourse(17, .semibold))
+                .foregroundStyle(RecourseColor.nightText)
+        }
     }
 
     private func refusal(_ text: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: 10) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.orange)
                 .frame(width: 18)
             Text(text)
-                .font(.recourse(12))
+                .font(.recourse(13))
                 .foregroundStyle(RecourseColor.nightMuted)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -221,23 +228,17 @@ struct ConvertView: View {
         .transition(.opacity)
     }
 
-    private var divider: some View {
-        Rectangle()
-            .fill(RecourseColor.nightLine)
-            .frame(height: 1)
-    }
-
     private func detail(_ label: String, _ value: String) -> some View {
         HStack {
             Text(label)
-                .font(.recourse(12))
+                .font(.recourse(13))
                 .foregroundStyle(RecourseColor.nightMuted)
             Spacer()
             Text(value)
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
                 .foregroundStyle(RecourseColor.nightText)
         }
-        .frame(height: 40)
+        .frame(height: 34)
     }
 
     // MARK: Behaviour
@@ -264,8 +265,7 @@ struct ConvertView: View {
         problem = nil
         guard let amount, let reader else { return }
 
-        // Debounce: the field re-runs this on every keystroke and each pass is a
-        // network read.
+        // Debounce: the pad re-runs this on every key and each pass is a network read.
         try? await Task.sleep(for: .milliseconds(350))
         if Task.isCancelled { return }
 
@@ -305,6 +305,61 @@ struct ConvertView: View {
             return "Enter an amount above zero."
         case .badSlippage:
             return "Slippage tolerance is out of range."
+        }
+    }
+}
+
+/// What Review shows: the quote as it stands, and the truth that the app quotes
+/// the pool and checks it against the market but does not yet fill from here.
+private struct ConvertReviewSheet: View {
+    let amount: USDCAmount
+    let quote: FXQuote
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("Review")
+                .font(.recourse(20, .semibold))
+                .foregroundStyle(RecourseColor.nightText)
+                .padding(.top, 8)
+            row("You pay", "\(amount.decimalString) USDC")
+            row("You receive", "\(EURCAmount(baseUnits: quote.amountOut).formatted) EURC")
+            row("Rate", String(format: "%.4f EURC per USDC", quote.price))
+            row("Minimum received", EURCAmount(baseUnits: quote.minAmountOut).formatted)
+            if let deviation = quote.deviationBps {
+                row("Versus market", deviation <= 0 ? "better by \(abs(deviation)) bps" : "\(deviation) bps worse")
+            }
+            Text("Quoted from Arc's pool and checked against an independent rate. Filling a conversion from the app is not switched on yet.")
+                .font(.recourse(12))
+                .foregroundStyle(RecourseColor.nightMuted)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer()
+            Button {
+                dismiss()
+            } label: {
+                Text("Done")
+                    .font(.recourse(17, .semibold))
+                    .foregroundStyle(RecourseColor.nightText)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 54)
+                    .background(RecourseColor.nightChip, in: Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(RecourseColor.night)
+    }
+
+    private func row(_ label: String, _ value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(.recourse(14))
+                .foregroundStyle(RecourseColor.nightMuted)
+            Spacer()
+            Text(value)
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .foregroundStyle(RecourseColor.nightText)
         }
     }
 }

@@ -1,6 +1,9 @@
 import SwiftUI
 import UIKit
 
+/// Settings, laid out the way the good money apps lay theirs out: who you are at the
+/// top, then Security, General and About as plain rows with a coloured glyph each,
+/// and the version at the bottom. The ground is flat; the rows are the structure.
 struct AccountFoundationView: View {
     let environment: AppEnvironment
 
@@ -10,6 +13,7 @@ struct AccountFoundationView: View {
     @AppStorage(BuyerSettingKey.paymentLimitBaseUnits) private var limitBaseUnits = 0
     @State private var showsNameEditor = false
     @State private var walletAddress: EthereumAddress?
+    @State private var handle: String?
     @State private var copiedAddress = false
     @State private var presentedWebPage: WebPageLink?
     @Environment(\.openURL) private var openURL
@@ -31,18 +35,108 @@ struct AccountFoundationView: View {
     }
 
     var body: some View {
-        List {
-            identitySection
-            handleSection
-            appearanceSection
-            securitySection
-            generalSection
-            supportSection
-            aboutSection
-            sessionSection
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                profileCard
+                section("Security") {
+                    NavigationLink {
+                        KeysView(environment: environment)
+                    } label: {
+                        row("Keys & recovery", "key.horizontal.fill", tint: Color(red: 0.55, green: 0.36, blue: 0.96))
+                    }
+                    NavigationLink {
+                        SignInRecoveryView(accountSession: accountSession, signer: environment.buyerSigner)
+                    } label: {
+                        row("Sign-in & recovery", "person.badge.key.fill", tint: Color(red: 0.36, green: 0.45, blue: 0.93))
+                    }
+                    NavigationLink {
+                        PaymentPreferencesView()
+                    } label: {
+                        row("Face ID for payments", "faceid", tint: RecourseColor.ledger)
+                    }
+                    NavigationLink {
+                        PaymentLimitsView()
+                    } label: {
+                        row("Payment limits", "gauge.with.dots.needle.67percent", tint: Color(red: 0.23, green: 0.51, blue: 0.96),
+                            value: limitBaseUnits > 0 ? PaymentLimit.formatted(baseUnits: limitBaseUnits) : "None")
+                    }
+                }
+                section("General") {
+                    NavigationLink {
+                        ClaimHandleView(environment: environment)
+                    } label: {
+                        row("Your @handle", "at", tint: RecourseColor.ledger, value: handle.map { "@" + $0 })
+                    }
+                    Button {
+                        showsNameEditor = true
+                    } label: {
+                        row("Personal details", "person.text.rectangle.fill", tint: Color(red: 0.13, green: 0.60, blue: 0.62))
+                    }
+                    .buttonStyle(.plain)
+                    // Through the router like Home does, so the Team screens push their own
+                    // routes onto the same path from here as from there.
+                    Button {
+                        environment.router.push(.team)
+                    } label: {
+                        row("Teams", "person.3.fill", tint: Color(red: 0.16, green: 0.62, blue: 0.80))
+                    }
+                    .buttonStyle(.plain)
+                    NavigationLink {
+                        AddressBookView(store: environment.addressBook)
+                    } label: {
+                        row("Address book", "person.crop.rectangle.stack.fill", tint: Color(red: 0.94, green: 0.46, blue: 0.23),
+                            value: environment.addressBook.recipients.isEmpty ? nil : "\(environment.addressBook.recipients.count)")
+                    }
+                    NavigationLink {
+                        NotificationsSettingsView(paymentStore: environment.paymentStore)
+                    } label: {
+                        row("Notifications", "bell.fill", tint: Color(red: 0.93, green: 0.33, blue: 0.31))
+                    }
+                    appearanceRow
+                }
+                section("About") {
+                    Button {
+                        openMail(subject: "Recourse support")
+                    } label: {
+                        row("Contact support", "bubble.left.fill", tint: Color(red: 0.86, green: 0.30, blue: 0.78))
+                    }
+                    .buttonStyle(.plain)
+                    Button {
+                        openMail(subject: "Recourse feedback")
+                    } label: {
+                        row("Share your feedback", "star.bubble.fill", tint: Color(red: 0.30, green: 0.69, blue: 0.31))
+                    }
+                    .buttonStyle(.plain)
+                    Button {
+                        presentedWebPage = WebPageLink(url: AppConfiguration.webAppURL.appending(path: "privacy"))
+                    } label: {
+                        row("Privacy policy", "hand.raised.fill", tint: Color(red: 0.45, green: 0.47, blue: 0.50))
+                    }
+                    .buttonStyle(.plain)
+                    Button {
+                        presentedWebPage = WebPageLink(url: AppConfiguration.webAppURL.appending(path: "terms"))
+                    } label: {
+                        row("Terms", "doc.text.fill", tint: Color(red: 0.45, green: 0.47, blue: 0.50))
+                    }
+                    .buttonStyle(.plain)
+                    Button {
+                        Task {
+                            await accountSession.signOut()
+                            hasCompletedOnboarding = false
+                            storedWorkspaceRole = ""
+                        }
+                    } label: {
+                        row("Sign out", "rectangle.portrait.and.arrow.right.fill", tint: Color(red: 0.93, green: 0.33, blue: 0.31), destructive: true)
+                    }
+                    .buttonStyle(.plain)
+                }
+                developerRows
+                footer
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 48)
         }
-        .listStyle(.insetGrouped)
-        .scrollContentBackground(.hidden)
+        .scrollIndicators(.hidden)
         .background(RecourseColor.night)
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.large)
@@ -59,247 +153,184 @@ struct AccountFoundationView: View {
         }
         .task {
             walletAddress = try? await environment.buyerSigner.address()
+            await loadHandle()
         }
     }
 
-    private var identitySection: some View {
-        Section {
-            Button {
-                showsNameEditor = true
-            } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "person.crop.circle.fill")
-                        .font(.system(size: 44, weight: .regular))
-                        .foregroundStyle(RecourseColor.ledger)
+    // MARK: Top
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(accountName)
-                            .font(.recourse(16, .bold))
-                            .foregroundStyle(RecourseColor.nightText)
-                            .lineLimit(1)
-                        if let accountEmail {
-                            Text(accountEmail)
-                                .font(.recourse(13))
-                                .foregroundStyle(RecourseColor.nightMuted)
-                                .lineLimit(1)
-                        }
-                        Label("Protected on \(configuration.chainName)", systemImage: "circle.fill")
-                            .font(.system(size: 11, weight: .semibold))
+    /// Who this is, in the slot other apps spend on an upsell: the name people pay,
+    /// and the handle they pay it by.
+    private var profileCard: some View {
+        Button {
+            showsNameEditor = true
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "person.crop.circle.fill")
+                    .font(.system(size: 46, weight: .regular))
+                    .foregroundStyle(RecourseColor.ledger)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(accountName)
+                        .font(.recourse(16, .semibold))
+                        .foregroundStyle(RecourseColor.nightText)
+                        .lineLimit(1)
+                    if let handle {
+                        Text("@" + handle)
+                            .font(.recourse(13, .medium))
                             .foregroundStyle(RecourseColor.ledger)
-                            .symbolRenderingMode(.monochrome)
+                            .lineLimit(1)
+                    } else if let accountEmail {
+                        Text(accountEmail)
+                            .font(.recourse(13))
+                            .foregroundStyle(RecourseColor.nightMuted)
+                            .lineLimit(1)
                     }
-
-                    Spacer()
-                    Text("Edit")
-                        .font(.recourse(13, .semibold))
-                        .foregroundStyle(RecourseColor.ledger)
+                    Text("USDC on \(configuration.chainName)")
+                        .font(.recourse(11, .medium))
+                        .foregroundStyle(RecourseColor.nightMuted)
                 }
-                .padding(.vertical, 4)
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(RecourseColor.nightText)
+                    .frame(width: 30, height: 30)
+                    .background(RecourseColor.night, in: Circle())
             }
-            .buttonStyle(.plain)
+            .padding(16)
+            .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
+        .buttonStyle(.plain)
+        .padding(.top, 4)
+    }
+
+    // MARK: Rows
+
+    private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(title)
+                .font(.recourse(14, .medium))
+                .foregroundStyle(RecourseColor.nightMuted)
+                .padding(.top, 30)
+                .padding(.bottom, 6)
+            content()
+        }
+    }
+
+    private func row(_ title: String, _ systemImage: String, tint: Color, value: String? = nil, destructive: Bool = false) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: systemImage)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 32, height: 32)
+                .background(tint, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            Text(title)
+                .font(.recourse(16, .medium))
+                .foregroundStyle(destructive ? Color(red: 0.93, green: 0.33, blue: 0.31) : RecourseColor.nightText)
+            Spacer(minLength: 8)
+            if let value {
+                Text(value)
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundStyle(RecourseColor.nightMuted)
+                    .lineLimit(1)
+            }
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(RecourseColor.nightMuted.opacity(0.7))
+        }
+        .frame(height: 56)
+        .contentShape(Rectangle())
     }
 
     // Applies to the in-app screens only; onboarding stays white and green
     // regardless of this choice.
-    private var handleSection: some View {
-        Section {
-            NavigationLink {
-                ClaimHandleView(environment: environment)
-            } label: {
-                settingsRowLabel("Your name", "at")
-            }
-            NavigationLink {
-                KeysView(environment: environment)
-            } label: {
-                settingsRowLabel("Keys & recovery", "key.horizontal.fill")
-            }
-            // Through the router like Home does, so the Team screens push their own
-            // routes onto the same path from here as from there.
-            Button {
-                environment.router.push(.team)
-            } label: {
-                settingsRow("Teams", "person.3.fill")
-            }
-            .buttonStyle(.plain)
-        } footer: {
-            Text("Pick a handle so people can pay you by name. Your keys are what spend and what gets you back in on a new phone.")
-        }
-    }
-
-    private var appearanceSection: some View {
-        Section("Appearance") {
-            Picker("Theme", selection: $appearanceRaw) {
+    private var appearanceRow: some View {
+        HStack(spacing: 14) {
+            Image(systemName: "circle.lefthalf.filled")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 32, height: 32)
+                .background(Color(red: 0.45, green: 0.47, blue: 0.50), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            Text("Appearance")
+                .font(.recourse(16, .medium))
+                .foregroundStyle(RecourseColor.nightText)
+            Spacer(minLength: 8)
+            Picker("Appearance", selection: $appearanceRaw) {
                 Text("Dark").tag("dark")
                 Text("Light").tag("light")
             }
             .pickerStyle(.segmented)
-            .listRowBackground(Color.clear)
+            .frame(width: 140)
         }
+        .frame(height: 56)
     }
 
-    private var securitySection: some View {
-        Section("Security") {
-            NavigationLink {
-                SignInRecoveryView(
-                    accountSession: accountSession,
-                    signer: environment.buyerSigner
-                )
-            } label: {
-                settingsRowLabel("Sign-in & recovery", "person.badge.key.fill")
-            }
-            deviceKeyRow
-            NavigationLink {
-                PaymentLimitsView()
-            } label: {
-                HStack {
-                    settingsRowLabel("Payment limits", "gauge.with.dots.needle.67percent")
-                    Spacer()
-                    Text(limitBaseUnits > 0 ? PaymentLimit.formatted(baseUnits: limitBaseUnits) : "None")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(RecourseColor.nightMuted)
-                }
-            }
-        }
-    }
-
-    // The wallet is a per-device key, so payments and balance follow the device,
-    // not the account. Showing the address here makes that split visible.
-    private var deviceKeyRow: some View {
-        Button {
-            guard let walletAddress else { return }
-            UIPasteboard.general.string = walletAddress.value
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
-            copiedAddress = true
-            Task {
-                try? await Task.sleep(for: .seconds(2))
-                copiedAddress = false
-            }
-        } label: {
-            HStack {
-                settingsRowLabel("Device signing key", "iphone.gen3.radiowaves.left.and.right")
-                Spacer()
-                if copiedAddress {
-                    Label("Copied", systemImage: "checkmark")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(RecourseColor.ledger)
-                } else if let walletAddress {
-                    Text(walletAddress.shortened)
-                        .font(.system(size: 12, weight: .medium, design: .monospaced))
-                        .foregroundStyle(RecourseColor.nightMuted)
-                }
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Copy this device's wallet address")
-    }
-
-    private var generalSection: some View {
-        Section("General") {
-            Button {
-                showsNameEditor = true
-            } label: {
-                settingsRowLabel("Personal details", "person.crop.circle.fill")
-            }
-            .buttonStyle(.plain)
-            NavigationLink {
-                NotificationsSettingsView(paymentStore: environment.paymentStore)
-            } label: {
-                settingsRowLabel("Notifications", "bell.fill")
-            }
-            NavigationLink {
-                PaymentPreferencesView()
-            } label: {
-                settingsRowLabel("Payment preferences", "creditcard.fill")
-            }
-            NavigationLink {
-                AddressBookView(store: environment.addressBook)
-            } label: {
-                HStack {
-                    settingsRowLabel("Address book", "person.crop.rectangle.stack.fill")
-                    Spacer()
-                    if !environment.addressBook.recipients.isEmpty {
-                        Text("\(environment.addressBook.recipients.count)")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(RecourseColor.nightMuted)
-                    }
-                }
-            }
-        }
-    }
-
-    private var supportSection: some View {
-        Section("Support") {
-            Button {
-                openMail(subject: "Recourse support")
-            } label: {
-                settingsRow("Contact support", "message.fill")
-            }
-            .buttonStyle(.plain)
-            Button {
-                openMail(subject: "Recourse feedback")
-            } label: {
-                settingsRow("Share feedback", "star.bubble.fill")
-            }
-            .buttonStyle(.plain)
-        }
-    }
-
-    private var aboutSection: some View {
-        Section("About") {
-            HStack {
-                settingsRowLabel("Network", "network")
-                Spacer()
-                Text(configuration.chainName)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(RecourseColor.nightMuted)
-            }
-            HStack {
-                settingsRowLabel("Version", "app.badge.checkmark")
-                Spacer()
-                Text(appVersion)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(RecourseColor.nightMuted)
-            }
-            Button {
-                presentedWebPage = WebPageLink(url: AppConfiguration.webAppURL.appending(path: "privacy"))
-            } label: {
-                settingsRow("Privacy", "hand.raised.fill")
-            }
-            .buttonStyle(.plain)
-            Button {
-                presentedWebPage = WebPageLink(url: AppConfiguration.webAppURL.appending(path: "terms"))
-            } label: {
-                settingsRow("Terms", "doc.text.fill")
-            }
-            .buttonStyle(.plain)
-        }
-    }
-
-    private var sessionSection: some View {
-        Section {
-            // Mirror of the merchant workspace's "Switch to buyer": same account,
-            // same wallet, the other side of the counter.
+    /// The two switches a tester needs and a customer never sees the point of, kept
+    /// small and last.
+    private var developerRows: some View {
+        HStack(spacing: 18) {
             Button("Switch to merchant") {
                 storedWorkspaceRole = OnboardingRole.merchant.rawValue
             }
-            .foregroundStyle(RecourseColor.ledger)
-
             Button("Replay onboarding") {
                 hasCompletedOnboarding = false
                 storedWorkspaceRole = ""
             }
-            .foregroundStyle(RecourseColor.ledger)
+        }
+        .font(.recourse(12, .medium))
+        .foregroundStyle(RecourseColor.nightMuted)
+        .buttonStyle(.plain)
+        .padding(.top, 34)
+    }
 
-            Button("Sign out", role: .destructive) {
-                Task {
-                    await accountSession.signOut()
-                    hasCompletedOnboarding = false
-                    storedWorkspaceRole = ""
+    // The wallet is the account's address on Arc; shown where other apps print an
+    // id, and copied with a tap, because support asks for it.
+    private var footer: some View {
+        VStack(spacing: 6) {
+            HStack(spacing: 5) {
+                Text("Recourse")
+                    .font(.recourse(14, .semibold))
+                    .foregroundStyle(RecourseColor.nightText)
+                Circle().fill(RecourseColor.ledger).frame(width: 6, height: 6)
+            }
+            Text("Version \(appVersion)")
+                .font(.recourse(12, .medium))
+                .foregroundStyle(RecourseColor.nightMuted)
+            if let walletAddress {
+                Button {
+                    UIPasteboard.general.string = walletAddress.value
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                    copiedAddress = true
+                    Task {
+                        try? await Task.sleep(for: .seconds(2))
+                        copiedAddress = false
+                    }
+                } label: {
+                    Text(copiedAddress ? "Copied" : walletAddress.value)
+                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .foregroundStyle(RecourseColor.nightMuted.opacity(0.8))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Copy this account's address")
+            }
+            HStack(spacing: 8) {
+                Button("Privacy Policy") {
+                    presentedWebPage = WebPageLink(url: AppConfiguration.webAppURL.appending(path: "privacy"))
+                }
+                Text("\u{00B7}")
+                Button("Terms") {
+                    presentedWebPage = WebPageLink(url: AppConfiguration.webAppURL.appending(path: "terms"))
                 }
             }
+            .font(.recourse(12))
+            .foregroundStyle(RecourseColor.nightMuted)
+            .buttonStyle(.plain)
+            .padding(.top, 2)
         }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 36)
     }
 
     private var appVersion: String {
@@ -307,6 +338,16 @@ struct AccountFoundationView: View {
         let version = info?["CFBundleShortVersionString"] as? String ?? "1.0"
         let build = info?["CFBundleVersion"] as? String ?? "1"
         return "\(version) (\(build))"
+    }
+
+    private func loadHandle() async {
+        let api = environment.makeHandleAPIClient()
+        let existing = try? await accountSession.withAccessToken { token in
+            try await api.myHandle(accessToken: token)
+        }
+        if let existing = existing ?? nil {
+            handle = existing.handle
+        }
     }
 
     // Mail first because replies need a reply-to address; the web support page
@@ -324,30 +365,6 @@ struct AccountFoundationView: View {
             if !accepted {
                 presentedWebPage = WebPageLink(url: AppConfiguration.webAppURL.appending(path: "support"))
             }
-        }
-    }
-
-    private func settingsRow(_ title: String, _ systemImage: String) -> some View {
-        HStack {
-            settingsRowLabel(title, systemImage)
-            Spacer()
-            Image(systemName: "chevron.right")
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(Color.secondary.opacity(0.55))
-        }
-        .contentShape(Rectangle())
-    }
-
-    private func settingsRowLabel(_ title: String, _ systemImage: String) -> some View {
-        Label {
-            Text(title)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(RecourseColor.nightText)
-        } icon: {
-            Image(systemName: systemImage)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(RecourseColor.ledger)
-                .frame(width: 26, height: 26)
         }
     }
 }
