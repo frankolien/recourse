@@ -306,7 +306,12 @@ the Recovery Key, emailed codes), `services/smart_accounts.rs` (the rules), rout
 under `/api/me/account`. Run end to end against a local Postgres and Arc testnet:
 provision in 12 seconds, a device swap in 2, a foreign device key refused, a wrong
 code counted, a wrong Cloud Key signature refused before anything is unsealed, the
-grant spent after one use. New environment: `RECOVERY_VAULT_KEY`, `RESEND_API_KEY`,
+grant spent after one use. The half-made account, run the same way on 2026-09-05: a
+row rewound to `deploying` at an address with no code, asked for by different keys,
+was re-keyed and deployed at `0x11ffb1f3a15dda9cf84b6678afcc6834f80003b5`
+(`0x36f7bf55e13df1d46ff1bb8ac00e196d4e3526f3175e7e12c58b5b18fa4d71f4`) with the
+Recovery Key kept; the live row then refused other keys with 409 and returned itself
+to the same keys. New environment: `RECOVERY_VAULT_KEY`, `RESEND_API_KEY`,
 `RECOVERY_MAIL_FROM`, and `RECOVERY_MAIL=log` for local work.
 
 **Mobile.** `SafeSigning` (hashes pinned to values the live Safe returned),
