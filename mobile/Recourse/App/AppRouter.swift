@@ -11,6 +11,9 @@ enum AppRoute: Hashable {
     case account
     case support
     case keys
+    case team
+    case teamAccount(String)
+    case teamProposal(account: String, txHash: String)
 }
 
 @MainActor

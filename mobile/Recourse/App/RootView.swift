@@ -116,6 +116,12 @@ struct RootView: View {
             SupportView()
         case .keys:
             KeysView(environment: environment)
+        case .team:
+            TeamView(environment: environment)
+        case .teamAccount(let address):
+            TeamAccountView(environment: environment, address: address)
+        case .teamProposal(let account, let txHash):
+            TeamProposalView(environment: environment, account: account, txHash: txHash)
         }
     }
 

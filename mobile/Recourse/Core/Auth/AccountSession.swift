@@ -379,6 +379,9 @@ final class AccountSession {
         if let error = error as? InvoiceAPIError, case .rejected(let status, _) = error {
             return status == 401
         }
+        if let error = error as? OlienAPIError, case .rejected(let status, _) = error {
+            return status == 401
+        }
         return false
     }
 

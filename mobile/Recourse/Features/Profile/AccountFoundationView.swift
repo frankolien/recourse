@@ -114,6 +114,14 @@ struct AccountFoundationView: View {
             } label: {
                 settingsRowLabel("Keys & recovery", "key.horizontal.fill")
             }
+            // Through the router like Home does, so the Team screens push their own
+            // routes onto the same path from here as from there.
+            Button {
+                environment.router.push(.team)
+            } label: {
+                settingsRow("Teams", "person.3.fill")
+            }
+            .buttonStyle(.plain)
         } footer: {
             Text("Pick a handle so people can pay you by name. Your keys are what spend and what gets you back in on a new phone.")
         }

@@ -60,6 +60,9 @@ struct HomeView: View {
                         earnPromo
                     }
                     accountLead
+                    if environment.teamStore.isMember {
+                        teamLead
+                    }
                     if book.cashableCount > 0 {
                         chequeLead
                     }
@@ -80,6 +83,7 @@ struct HomeView: View {
                 await book.refresh(force: true)
                 await invoices.refresh(force: true)
                 await history.refresh(force: true)
+                await environment.teamStore.refresh(force: true)
             }
         }
         .safeAreaInset(edge: .top, spacing: 0) {
@@ -113,6 +117,7 @@ struct HomeView: View {
                 await book.refresh()
                 await invoices.refresh()
                 await history.refresh()
+                await environment.teamStore.refresh()
                 environment.publishWalletSnapshot()
                 try? await Task.sleep(for: .seconds(10))
             }
@@ -482,6 +487,53 @@ struct HomeView: View {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .stroke(RecourseColor.nightLine, lineWidth: 1)
         }
+    }
+
+    private var teamDetail: String {
+        let waiting = environment.teamStore.waitingForMe.count
+        if waiting > 0 {
+            return waiting == 1 ? "1 proposal waiting for you" : "\(waiting) proposals waiting for you"
+        }
+        return environment.teamStore.isMember ? "Nothing waiting for you" : "Treasuries you belong to"
+    }
+
+    /// Only while this account signs for a treasury. A single treasury is named, so a
+    /// founder reads the company and not a category; more than one reads as Team.
+    private var teamLead: some View {
+        Button {
+            environment.router.push(.team)
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "person.3.fill")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(RecourseColor.ledger)
+                    .frame(width: 38, height: 38)
+                    .background(RecourseColor.nightChip, in: Circle())
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(teamLeadTitle)
+                        .font(.recourse(13, .semibold))
+                        .foregroundStyle(RecourseColor.nightText)
+                        .lineLimit(1)
+                    Text(teamDetail)
+                        .font(.recourse(11))
+                        .foregroundStyle(RecourseColor.nightMuted)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(RecourseColor.nightMuted)
+            }
+            .padding(14)
+            .contentShape(Rectangle())
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var teamLeadTitle: String {
+        let accounts = environment.teamStore.accounts
+        if accounts.count == 1, let only = accounts.first { return only.displayName }
+        return "Team"
     }
 
     // Someone has already promised this money; the only thing between it and the
