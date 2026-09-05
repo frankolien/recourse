@@ -28,6 +28,9 @@ final class SmartAccountStore {
     private(set) var phase: Phase = .unknown
     /// The Safe signer while live; the gateway builds its submitter from it.
     private(set) var safeSigner: SafeAccountSigner?
+    /// The provision in flight, so a second caller waits on it instead of asking the
+    /// server to deploy twice.
+    private var provisioning: Task<SmartAccountRecord, Error>?
 
     let deviceKey: any DeviceKeySigning
     private let configuration: AppConfiguration
@@ -77,7 +80,7 @@ final class SmartAccountStore {
         do {
             let remote = try await session.withAccessToken { try await api.current(accessToken: $0) }
             guard remote.isLive else {
-                phase = .provisioning("Finishing your account")
+                await finish()
                 return
             }
             if try await holdsDeviceKey(for: remote) {
@@ -97,8 +100,27 @@ final class SmartAccountStore {
         }
     }
 
+    /// The server has a row it never finished deploying. It finishes on the next
+    /// provision call, so the phone makes that call instead of showing a spinner
+    /// nothing will ever stop. A failure waits for the user's "Try again", which is
+    /// the same call.
+    private func finish() async {
+        if case .failed = phase { return }
+        guard provisioning == nil else { return }
+        phase = .provisioning("Finishing your account")
+        _ = try? await provision()
+    }
+
     /// Create the Safe for the keys this phone holds. Safe to call again after a failure.
     func provision() async throws -> SmartAccountRecord {
+        if let provisioning { return try await provisioning.value }
+        let task = Task { try await createSafe() }
+        provisioning = task
+        defer { provisioning = nil }
+        return try await task.value
+    }
+
+    private func createSafe() async throws -> SmartAccountRecord {
         phase = .provisioning("Preparing your keys")
         do {
             let publicKey = try await deviceKey.publicKey()

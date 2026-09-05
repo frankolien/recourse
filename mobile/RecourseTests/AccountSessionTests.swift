@@ -172,7 +172,7 @@ final class WorkspaceRoutingTests: XCTestCase {
     }
 }
 
-private actor AccountSessionMemoryStore: SecureDataStore {
+actor AccountSessionMemoryStore: SecureDataStore {
     private var values: [String: Data] = [:]
 
     func save(_ data: Data, account: String) throws {
@@ -188,7 +188,7 @@ private actor AccountSessionMemoryStore: SecureDataStore {
     }
 }
 
-private actor AccountAPIMock: AccountAPI {
+actor AccountAPIMock: AccountAPI {
     let profile: AuthenticatedAccount?
     let refreshedGrant: AccountSessionGrant
     let meError: AccountAPIError?
@@ -273,7 +273,7 @@ private actor AccountAPIMock: AccountAPI {
 }
 
 @MainActor
-private struct FixedAppleCredentialChecker: AppleCredentialStateChecking {
+struct FixedAppleCredentialChecker: AppleCredentialStateChecking {
     let state: ASAuthorizationAppleIDProvider.CredentialState
 
     func credentialState(for userID: String) async throws -> ASAuthorizationAppleIDProvider.CredentialState {

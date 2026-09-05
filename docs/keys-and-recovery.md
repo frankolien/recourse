@@ -209,7 +209,11 @@ scripts for testnet and mainnet. Nothing else on-chain is ours.
 `recovery_signers` (sealed key, address), `recovery_challenges` (hashed codes,
 attempts, expiry, purpose); a mailer (Resend) behind an owned interface; endpoints
 to provision an account, to request and verify a code, and to co-sign an owner
-rotation once a code has been verified. New secrets: `RECOVERY_VAULT_KEY`,
+rotation once a code has been verified. Provision is idempotent: a row left in
+`deploying` by a failed deployment is finished by the next call, and the phone makes
+that call itself when it sees one rather than waiting; if the phone that started it
+is gone and nothing sits at the address, the next phone's keys take the row over at
+a fresh address, with the abandoned address and salt logged. New secrets: `RECOVERY_VAULT_KEY`,
 `RESEND_API_KEY`. The signing policy lives in one place and is tested: the Recovery
 Key signs `swapOwner`, `addOwnerWithThreshold` and `removeOwner` on the account's own
 Safe and nothing else.

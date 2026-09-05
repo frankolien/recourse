@@ -158,6 +158,65 @@ pub async fn current(pool: &PgPool, service: &SmartAccounts, account_id: i64) ->
     Ok(row(pool, account_id).await?.map(|row| view(&row, safe)))
 }
 
+/// A fresh salt and the address the Safe takes for these owners.
+async fn plan(safe: &SafeClient, owners: &[Address; 3]) -> Result<(U256, Address), AccountAuthError> {
+    let mut salt_bytes = [0u8; 32];
+    rand::rngs::OsRng.fill_bytes(&mut salt_bytes);
+    let salt = U256::from_be_bytes(salt_bytes);
+    let initializer = safe.initializer(owners, THRESHOLD);
+    let address = safe.predict_safe(&initializer, salt).await.map_err(chain)?;
+    Ok((salt, address))
+}
+
+/// Point a row that never deployed at the keys the phone holds now.
+///
+/// The row was written before the first deployment and that deployment failed, so
+/// nothing exists at its address, no phone was ever shown it, and the handle still
+/// points at the old key. The Recovery Key stays; the address moves with the owners.
+/// The abandoned address and salt go to the log so the Safe could still be deployed
+/// there by hand if money ever turned up at it.
+async fn rekey(
+    pool: &PgPool,
+    safe: &SafeClient,
+    account_id: i64,
+    abandoned: &Row,
+    cloud_owner: Address,
+    device_owner: Address,
+    device_x: U256,
+    device_y: U256,
+) -> Result<Row, AccountAuthError> {
+    let recovery_owner = parse_address(&abandoned.recovery_owner)?;
+    let (salt, address) = plan(safe, &[cloud_owner, device_owner, recovery_owner]).await?;
+    let updated = sqlx::query(
+        "UPDATE smart_accounts \
+         SET safe_address = $2, salt_nonce = $3, cloud_owner = $4, device_owner = $5, device_x = $6, device_y = $7, \
+             updated_at = now() \
+         WHERE account_id = $1 AND status = $8 AND safe_address = $9",
+    )
+    .bind(account_id)
+    .bind(hex_address(address))
+    .bind(hex_u256(salt))
+    .bind(hex_address(cloud_owner))
+    .bind(hex_address(device_owner))
+    .bind(hex_u256(device_x))
+    .bind(hex_u256(device_y))
+    .bind(STATUS_DEPLOYING)
+    .bind(&abandoned.safe_address)
+    .execute(pool)
+    .await
+    .map_err(|error| AccountAuthError::Internal(format!("re-keying smart account: {error}")))?;
+    if updated.rows_affected() == 0 {
+        return Err(AccountAuthError::Conflict("this account's wallet changed underneath; try again".into()));
+    }
+    tracing::info!(
+        "smart account for account {account_id} re-keyed to {address:#x}; {} (salt {}) was never deployed",
+        abandoned.safe_address, abandoned.salt_nonce
+    );
+    row(pool, account_id)
+        .await?
+        .ok_or_else(|| AccountAuthError::Internal("smart account vanished after re-keying".into()))
+}
+
 /// Create the account's Safe, or finish creating it, or return it.
 ///
 /// The phone brings the two keys it holds; the Recovery Key is minted here. The
@@ -180,29 +239,32 @@ pub async fn provision(
 
     let existing = match row(pool, account_id).await? {
         Some(existing) => {
-            if parse_address(&existing.cloud_owner)? != cloud_owner {
+            let same_cloud = parse_address(&existing.cloud_owner)? == cloud_owner;
+            let same_device = parse_address(&existing.device_owner)? == device_owner;
+            if same_cloud && same_device {
+                if existing.status == STATUS_LIVE {
+                    return Ok(view(&existing, safe));
+                }
+                existing
+            } else if existing.status != STATUS_LIVE
+                && !safe.has_code(parse_address(&existing.safe_address)?).await.map_err(chain)?
+            {
+                // A first deployment that failed leaves a row keyed to whatever phone
+                // asked; if that phone's keys are gone, the one here now takes over.
+                rekey(pool, safe, account_id, &existing, cloud_owner, device_owner, device_x, device_y).await?
+            } else if !same_cloud {
                 return Err(AccountAuthError::Conflict(
                     "this account already has a wallet under a different cloud key".into(),
                 ));
-            }
-            if parse_address(&existing.device_owner)? != device_owner {
+            } else {
                 return Err(AccountAuthError::Conflict(
                     "this account already has a device key; restore this phone through recovery".into(),
                 ));
             }
-            if existing.status == STATUS_LIVE {
-                return Ok(view(&existing, safe));
-            }
-            existing
         }
         None => {
             let recovery_owner = recovery::ensure_signer(pool, vault, account_id).await?;
-            let mut salt_bytes = [0u8; 32];
-            rand::rngs::OsRng.fill_bytes(&mut salt_bytes);
-            let salt = U256::from_be_bytes(salt_bytes);
-            let owners = [cloud_owner, device_owner, recovery_owner];
-            let initializer = safe.initializer(&owners, THRESHOLD);
-            let address = safe.predict_safe(&initializer, salt).await.map_err(chain)?;
+            let (salt, address) = plan(safe, &[cloud_owner, device_owner, recovery_owner]).await?;
 
             sqlx::query(
                 "INSERT INTO smart_accounts \
