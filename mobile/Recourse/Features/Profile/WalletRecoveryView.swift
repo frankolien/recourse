@@ -263,8 +263,16 @@ struct WalletRecoveryView: View {
             await load()
         } catch let error as WalletBackup.Failure {
             problem = error.message
+        } catch TransactionAuthorizationError.cancelled {
+            problem = "Face ID was cancelled. Nothing was backed up."
+        } catch TransactionAuthorizationError.unavailable {
+            problem = "Set a device passcode or Face ID first; the key is only exported behind one."
+        } catch let error as BuyerSignerError {
+            problem = SmartAccountStore.describe(error)
+        } catch is URLError {
+            problem = "No connection to Recourse. Try again."
         } catch {
-            problem = "Recovery could not be turned on. Check your connection and try again."
+            problem = "Recovery could not be turned on: \(String(describing: error))"
         }
     }
 
