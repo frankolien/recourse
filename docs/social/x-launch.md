@@ -9,10 +9,10 @@ where a post names a screen.
 ## Launch thread
 
 Shaped like Fuse's Solana launch thread (Dec 2023): one argument across six posts.
-Image 1 is a white card, "The money app for dollars on your phone", the Home
-screenshot in a phone frame, "Built on Safe" small at the foot. Image 2 is the
-three-key diagram: Device, iCloud, Recovery key, then "Safe 2 of 3", then
-"Safe contracts on Arc".
+Image 1 is `images/x-launch-1.png`: a white card, the headline, three lines, the
+Home screenshot in a phone frame, "Built on Safe, on Arc" at the foot. Image 2 is
+`images/x-launch-2.png`: the three-key diagram, Device, iCloud, Recovery key, then
+"Safe 2 of 3", then "Safe contracts on Arc". Both 3200 by 1800, X's 16:9.
 
 1/ Money on your phone needs an upgrade.
 
