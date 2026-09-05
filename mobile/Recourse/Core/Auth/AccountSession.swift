@@ -120,6 +120,27 @@ final class AccountSession {
     /// The in-flight background profile refresh, exposed so tests can await it.
     private(set) var profileRefreshTask: Task<Void, Never>?
 
+    /// The refresh in flight, shared by every caller that hits a 401 at once. The
+    /// server rotates the refresh token on use, so two refreshes racing meant the
+    /// second one presented a dead token and the app signed out for no reason.
+    private var refreshTask: Task<AccountSessionGrant, Error>?
+
+    private func refreshGrant(from stale: AccountSessionGrant) async throws -> AccountSessionGrant {
+        if let current = grant, current.accessToken != stale.accessToken {
+            // Someone already refreshed since this caller read its token.
+            return current
+        }
+        if let refreshTask { return try await refreshTask.value }
+        let task = Task { [api] in
+            let refreshed = try await api.refresh(refreshToken: stale.refreshToken)
+            try await self.accept(refreshed)
+            return refreshed
+        }
+        refreshTask = task
+        defer { refreshTask = nil }
+        return try await task.value
+    }
+
     func restore() async {
         guard isRestoring else { return }
         defer { isRestoring = false }
@@ -152,12 +173,14 @@ final class AccountSession {
             try await accept(storedGrant.replacingAccount(profile))
         } catch let error as AccountAPIError where error.isUnauthorized {
             do {
-                let refreshed = try await api.refresh(refreshToken: storedGrant.refreshToken)
-                try await accept(refreshed)
-            } catch {
+                _ = try await refreshGrant(from: storedGrant)
+            } catch let error as AccountAPIError where error.isUnauthorized {
+                // The server refused the refresh token itself: the session is over.
                 grant = nil
                 account = nil
                 try? await store.clear()
+            } catch {
+                // A dropped connection mid-refresh is not a sign-out.
             }
         } catch {
             // Offline or a slow backend keeps the cached session usable.
@@ -361,8 +384,7 @@ final class AccountSession {
             return try await work(grant.accessToken)
         } catch {
             guard Self.isUnauthorized(error) else { throw error }
-            let refreshed = try await api.refresh(refreshToken: grant.refreshToken)
-            try await accept(refreshed)
+            let refreshed = try await refreshGrant(from: grant)
             return try await work(refreshed.accessToken)
         }
     }

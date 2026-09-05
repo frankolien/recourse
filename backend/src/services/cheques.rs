@@ -86,6 +86,25 @@ pub fn fixed_width_hex(
     Ok(format!("0x{}", body.to_ascii_lowercase()))
 }
 
+/// A cheque's signature: 65 bytes from a plain key, or longer from a smart account,
+/// whose EIP-1271 signature packs one ECDSA signature per owner. The server keeps
+/// it and the chain judges it at cashing time, so only the shape is checked here.
+const MAX_SIGNATURE_BYTES: usize = 4096;
+
+pub fn signature_hex(value: &str) -> Result<String, AccountAuthError> {
+    let body = value
+        .strip_prefix("0x")
+        .or_else(|| value.strip_prefix("0X"))
+        .ok_or_else(|| AccountAuthError::BadRequest("signature must be 0x prefixed hex".into()))?;
+    let bytes = body.len() / 2;
+    if body.len() % 2 != 0 || bytes < 65 || bytes > MAX_SIGNATURE_BYTES || !body.chars().all(|c| c.is_ascii_hexdigit()) {
+        return Err(AccountAuthError::BadRequest(format!(
+            "signature must be at least 65 bytes of hex, got {bytes}"
+        )));
+    }
+    Ok(format!("0x{}", body.to_ascii_lowercase()))
+}
+
 pub fn whole_number(value: &str, field: &str) -> Result<i64, AccountAuthError> {
     value
         .parse::<i64>()
@@ -136,7 +155,7 @@ pub async fn create(
     }
 
     let nonce = fixed_width_hex(&cheque.nonce, 32, "nonce")?;
-    let signature = fixed_width_hex(&cheque.signature, 65, "signature")?;
+    let signature = signature_hex(&cheque.signature)?;
 
     let memo = match cheque.memo {
         Some(memo) if memo.chars().count() > MAX_MEMO_CHARS => {
@@ -258,7 +277,10 @@ mod tests {
         // A short nonce or signature is a cheque that cannot be cashed, and the writer
         // should learn that now rather than when the recipient tries.
         assert!(fixed_width_hex("0xdead", 32, "nonce").is_err());
-        assert!(fixed_width_hex(&format!("0x{}", "ab".repeat(64)), 65, "signature").is_err());
+        assert!(signature_hex(&format!("0x{}", "ab".repeat(64))).is_err());
+        // A Safe with two owners signs twice; that cheque cashes through EIP-1271.
+        assert!(signature_hex(&format!("0x{}", "ab".repeat(130))).is_ok());
+        assert!(signature_hex(&format!("0x{}", "ab".repeat(65))).is_ok());
         assert!(
             fixed_width_hex(&"ab".repeat(32), 32, "nonce").is_err(),
             "0x prefix is required"

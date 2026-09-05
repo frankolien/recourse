@@ -162,7 +162,7 @@ pub async fn sign(
     invoice_id: i64,
     signature: &str,
 ) -> Result<StoredInvoice, AccountAuthError> {
-    let signature = cheques::fixed_width_hex(signature, 65, "signature")?;
+    let signature = cheques::signature_hex(signature)?;
     let addresses = cheques::addresses_for(pool, payer_account_id).await?;
     if addresses.is_empty() {
         return Err(AccountAuthError::BadRequest(

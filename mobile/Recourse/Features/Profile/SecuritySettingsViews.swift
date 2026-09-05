@@ -256,9 +256,17 @@ struct PaymentLimitsView: View {
 /// Device-level behavior for the moment of payment.
 struct PaymentPreferencesView: View {
     @AppStorage(BuyerSettingKey.confirmPaymentsWithBiometrics) private var confirmWithBiometrics = true
+    @AppStorage(BuyerSettingKey.lockOnOpen) private var lockOnOpen = true
 
     var body: some View {
         List {
+            Section {
+                Toggle("Require Face ID to open", isOn: $lockOnOpen)
+                    .tint(RecourseColor.ledger)
+            } footer: {
+                Text("Asked when the app opens and whenever it comes back from the background. Your keys are locked either way; this keeps your balance and history from being read off an unattended phone.")
+            }
+
             Section {
                 Toggle("Confirm payments with Face ID", isOn: $confirmWithBiometrics)
                     .tint(RecourseColor.ledger)

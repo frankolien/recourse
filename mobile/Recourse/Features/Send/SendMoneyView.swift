@@ -354,8 +354,18 @@ struct SendMoneyView: View {
             "Set a device passcode or Face ID before sending."
         case ContractReadError.rpc(let code, let message):
             "Arc RPC error \(code): \(message)"
+        case BundlerError.rejected(let reason):
+            "Arc's bundler refused the transfer: \(reason)"
+        case BundlerError.transport(let reason):
+            "The bundler could not be reached: \(reason)"
+        case BundlerError.malformed(let reason):
+            "The bundler answered in a shape this app could not read: \(reason)"
+        case BundlerError.receiptTimedOut, SafeSubmitError.operationTimedOut:
+            "Arc has not confirmed the transfer yet. Check History before sending again."
+        case SafeSubmitError.operationFailed:
+            "Arc ran the transfer and it failed. Nothing was sent."
         default:
-            "The transfer could not be completed. Please try again."
+            SmartAccountStore.describe(error)
         }
     }
 }

@@ -8,6 +8,7 @@ struct RootView: View {
     // Session restore is local-only and near-instant; the hold keeps the splash
     // up long enough for its entrance animation to land instead of blinking.
     @State private var isHoldingSplash = true
+    @Environment(\.scenePhase) private var scenePhase
 
     private var workspaceDestination: WorkspaceDestination {
         WorkspaceRouting.destination(
@@ -62,6 +63,16 @@ struct RootView: View {
                 }
                 .transition(.opacity)
             }
+        }
+        // The lock sits over the signed-in app only; onboarding has nothing to hide.
+        .overlay {
+            if workspaceDestination == .buyerApp, environment.appLock.isLocked {
+                LockScreenView(lock: environment.appLock)
+                    .transition(.opacity)
+            }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background { environment.appLock.lockIfEnabled() }
         }
         .recourseKeyboardDismissal()
         // The app interior follows the user's appearance pick (Settings), dark

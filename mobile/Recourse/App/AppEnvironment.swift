@@ -19,6 +19,7 @@ final class AppEnvironment {
     private(set) var transferHistory: TransferHistory!
     private(set) var teamStore: TeamStore!
     private(set) var push: PushCoordinator!
+    let appLock = AppLock()
 
     init(
         configuration: AppConfiguration,

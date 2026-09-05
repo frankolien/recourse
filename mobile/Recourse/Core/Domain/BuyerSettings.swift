@@ -8,6 +8,7 @@ enum BuyerSettingKey {
     static let paymentLimitBaseUnits = "recourse.paymentLimitBaseUnits"
     static let confirmPaymentsWithBiometrics = "recourse.confirmPaymentsWithBiometrics"
     static let addressBook = "recourse.addressBook"
+    static let lockOnOpen = "recourse.lockOnOpen"
 }
 
 enum PaymentLimit {
