@@ -109,6 +109,11 @@ struct HomeView: View {
                 // the footnote fit at medium; large is there for anyone who pulls.
                 .presentationDetents([.medium, .large])
         }
+        .task(id: environment.smartAccounts.isLive) {
+            // The first thing a live account hears about is money arriving; iOS asks
+            // once, and later launches only refresh the token.
+            if environment.smartAccounts.isLive { _ = await environment.push.enableAlerts() }
+        }
         .task {
             while !Task.isCancelled {
                 await environment.paymentStore.refreshBuyer()

@@ -60,6 +60,9 @@ struct AppShellView: View {
                 }
         }
         .tint(RecourseColor.ledgerDeep)
+        .onChange(of: environment.router.historyRequests) {
+            selection = .history
+        }
     }
 
     private func updateTabBarExpansion(_ isScrollingTowardTop: Bool) {

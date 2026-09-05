@@ -20,6 +20,14 @@ enum AppRoute: Hashable {
 @Observable
 final class AppRouter {
     var path: [AppRoute] = []
+    /// Bumped when something outside the tab bar wants the History tab shown, such as
+    /// a tapped "Received" alert. The shell watches it and switches tabs.
+    var historyRequests = 0
+
+    func showHistory() {
+        path.removeAll()
+        historyRequests += 1
+    }
 
     func push(_ route: AppRoute) {
         path.append(route)

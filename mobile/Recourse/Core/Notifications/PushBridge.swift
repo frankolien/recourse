@@ -45,11 +45,35 @@ final class PushBridge: NSObject, UIApplicationDelegate, UNUserNotificationCente
 
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
         let userInfo = response.notification.request.content.userInfo
-        guard let route = userInfo["route"] as? [String: Any],
-              route["kind"] as? String == "proposal",
-              let account = route["account"] as? String,
-              let txHash = route["txHash"] as? String else { return }
-        await MainActor.run { deliver(.teamProposal(account: account, txHash: txHash)) }
+        guard let route = userInfo["route"] as? [String: Any] else { return }
+        switch route["kind"] as? String {
+        case "proposal":
+            guard let account = route["account"] as? String, let txHash = route["txHash"] as? String else { return }
+            await MainActor.run { deliver(.teamProposal(account: account, txHash: txHash)) }
+        case "transfer":
+            await MainActor.run { deliverHistory() }
+        default:
+            return
+        }
+    }
+
+    /// A tapped "Received" alert opens History. Set by the root view once it exists.
+    var onHistory: (() -> Void)? {
+        didSet {
+            if pendingHistory, let onHistory {
+                pendingHistory = false
+                onHistory()
+            }
+        }
+    }
+    private var pendingHistory = false
+
+    private func deliverHistory() {
+        if let onHistory {
+            onHistory()
+        } else {
+            pendingHistory = true
+        }
     }
 
     private func deliver(_ route: AppRoute) {

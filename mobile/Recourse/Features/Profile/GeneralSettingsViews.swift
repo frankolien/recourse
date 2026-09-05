@@ -32,7 +32,7 @@ struct NotificationsSettingsView: View {
                         .font(.recourse(13, .medium))
                         .foregroundStyle(RecourseColor.nightMuted)
                 } footer: {
-                    Text("Reminders are scheduled on this iPhone. The only alerts Recourse sends from its server are team alerts: a proposal waiting for you, or a change you can veto. They carry the treasury's name and what was proposed, never your balance.")
+                    Text("Reminders are scheduled on this iPhone. From its server, Recourse sends two kinds of alert: money arriving in your account, with the amount and who sent it, and team alerts, a proposal waiting for you or a change you can veto. Neither carries your balance.")
                 }
             } else {
                 Section("Scheduled") {

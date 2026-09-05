@@ -119,6 +119,15 @@ async fn main() -> Result<()> {
             jobs::olien_indexer::run(client, pool, interval, relayer, push).await;
         });
     }
+    // Money arriving in a consumer account is worth a push too, and needs only the
+    // chain client and APNs, so it runs whenever both exist.
+    if let (Some(client), Some(push)) = (treasury.client.clone(), treasury.push.clone()) {
+        let pool = pool.clone();
+        let interval = config.index_interval_secs;
+        actix_web::rt::spawn(async move {
+            jobs::transfer_alerts::run(client, pool, interval, push).await;
+        });
+    }
 
     tracing::info!(
         "recourse-backend listening on :{} (Arc chain {})",

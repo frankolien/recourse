@@ -74,6 +74,7 @@ struct RootView: View {
             await environment.smartAccounts.load()
             // A tapped alert opens its proposal, including one tapped before launch.
             PushBridge.shared.onRoute = { route in environment.router.push(route) }
+            PushBridge.shared.onHistory = { environment.router.showHistory() }
         }
         .task {
             // Glyph beat, wordmark sweep, then a moment to read it.

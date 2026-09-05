@@ -38,6 +38,12 @@ final class PushCoordinator {
 
     /// Ask, then register. Returns whether alerts are allowed.
     @discardableResult
+    /// Money arriving is the alert everyone wants, so the question is asked once the
+    /// account is live, not only when someone joins a treasury.
+    func enableAlerts() async -> Bool {
+        await enableTeamAlerts()
+    }
+
     func enableTeamAlerts() async -> Bool {
         let center = UNUserNotificationCenter.current()
         var status = await center.notificationSettings().authorizationStatus

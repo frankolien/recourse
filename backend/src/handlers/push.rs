@@ -40,7 +40,10 @@ pub async fn register(pool: web::Data<PgPool>, req: HttpRequest, body: web::Json
     .execute(pool.get_ref())
     .await;
     match saved {
-        Ok(_) => HttpResponse::Ok().json(serde_json::json!({ "ok": true })),
+        Ok(_) => {
+            tracing::info!("push: account {} registered a {environment} device", profile.account_id);
+            HttpResponse::Ok().json(serde_json::json!({ "ok": true }))
+        }
         Err(error) => error_response(500, &format!("saving the token: {error}")),
     }
 }

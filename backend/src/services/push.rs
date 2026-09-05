@@ -96,6 +96,11 @@ impl Push {
                 return;
             }
         };
+        if devices.is_empty() {
+            tracing::info!("push: no devices for accounts {account_ids:?}; nothing sent for {title:?}");
+            return;
+        }
+        tracing::info!("push: {} device(s) across {} account(s) for {title:?}", devices.len(), account_ids.len());
         let bearer = match self.bearer() {
             Ok(token) => token,
             Err(error) => {
@@ -121,7 +126,7 @@ impl Push {
                 .send()
                 .await;
             match sent {
-                Ok(response) if response.status().is_success() => {}
+                Ok(response) if response.status().is_success() => tracing::info!("push: delivered to a {} device", device.environment),
                 Ok(response) => {
                     let status = response.status();
                     let text = response.text().await.unwrap_or_default();
