@@ -85,14 +85,16 @@ struct OnboardingAuthenticationView: View {
         .task {
             await accountSession.prepareAppleSignIn()
         }
-        .task {
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(1.45))
-                withAnimation(.smooth(duration: 0.55)) {
-                    activeIndex = (activeIndex + 1) % items.count
-                }
-            }
-        }
+        // The ticker through Hold, Send, Request, Earn is switched off for now; the
+        // carousel holds on Send. Restore the task below to bring it back.
+        // .task {
+        //     while !Task.isCancelled {
+        //         try? await Task.sleep(for: .seconds(1.45))
+        //         withAnimation(.smooth(duration: 0.55)) {
+        //             activeIndex = (activeIndex + 1) % items.count
+        //         }
+        //     }
+        // }
         .onChange(of: accountSession.account) { _, account in
             guard account != nil else { return }
             onAuthenticated()
