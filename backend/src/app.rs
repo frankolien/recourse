@@ -205,6 +205,8 @@ pub fn build_app(
                 .route("/me/account/device/prepare", web::post().to(handlers::accounts::device_prepare))
                 .route("/me/account/device/execute", web::post().to(handlers::accounts::device_execute))
                 .route("/me/account/abandon", web::post().to(handlers::accounts::abandon))
+                .route("/me/push-token", web::put().to(handlers::push::register))
+                .route("/me/push-token", web::delete().to(handlers::push::unregister))
                 // Verify + record a payment's evidence list against the onchain root.
                 .route(
                     "/evidence/manifest",

@@ -106,12 +106,17 @@ async fn main() -> Result<()> {
 
     let smart_accounts = build_smart_accounts(&config)?;
     let treasury = build_treasury(&config)?;
+    match &treasury.push {
+        Some(_) => tracing::info!("push alerts enabled (APNs)"),
+        None => tracing::warn!("push alerts disabled (set APNS_KEY_ID, APNS_TEAM_ID, APNS_KEY_P8, APNS_BUNDLE_ID)"),
+    }
     if let Some(client) = treasury.client.clone() {
         let pool = pool.clone();
         let interval = config.index_interval_secs;
         let relayer = treasury.relayer.clone();
+        let push = treasury.push.clone();
         actix_web::rt::spawn(async move {
-            jobs::olien_indexer::run(client, pool, interval, relayer).await;
+            jobs::olien_indexer::run(client, pool, interval, relayer, push).await;
         });
     }
 
@@ -194,7 +199,8 @@ fn build_treasury(config: &AppConfig) -> Result<Treasury> {
             None
         }
     };
-    Ok(Treasury { client, chain_id: config.chain_id, relayer: Arc::new(Mutex::new(None)) })
+    let push = services::push::Push::from_config(config).map(Arc::new);
+    Ok(Treasury { client, chain_id: config.chain_id, relayer: Arc::new(Mutex::new(None)), push })
 }
 
 // The account routes need three things that are each optional: a funded deployer key

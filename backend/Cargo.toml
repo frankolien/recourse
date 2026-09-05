@@ -21,7 +21,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 dotenvy = "0.15"
 chrono = { version = "0.4", features = ["serde"] }
 jsonwebtoken = "9"
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "http2"] }
 sha2 = "0.10"
 # P-256 checks for device and passkey signers, done locally exactly as the Olien verifier does.
 p256 = { version = "0.13", features = ["ecdsa"] }

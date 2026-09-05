@@ -10,5 +10,6 @@ pub mod health;
 pub mod orders;
 pub mod payments;
 pub mod policies;
+pub mod push;
 pub mod treasury;
 pub mod wallet_backup;

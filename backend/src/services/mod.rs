@@ -10,6 +10,7 @@ pub mod google_auth;
 pub mod handles;
 pub mod invoices;
 pub mod olien;
+pub mod push;
 pub mod orders;
 pub mod passkey;
 pub mod recovery;
@@ -120,6 +121,12 @@ pub struct AppConfig {
     pub olien: Option<olien::OlienDeployment>,
     pub relayer_pk: Option<String>,
     pub usdc: Address,
+    // APNs token auth: the key id and team id from the developer account, the .p8
+    // key itself, and the app's bundle id as the topic. All four or no pushes.
+    pub apns_key_id: Option<String>,
+    pub apns_team_id: Option<String>,
+    pub apns_key_p8: Option<String>,
+    pub apns_bundle_id: Option<String>,
 }
 
 fn env_or(key: &str, default: &str) -> String {
@@ -197,6 +204,10 @@ impl AppConfig {
             olien: deployment.olien,
             relayer_pk: optional_env("RELAYER_PK").or_else(|| optional_env("ATTESTOR_PK")),
             usdc: deployment.usdc,
+            apns_key_id: optional_env("APNS_KEY_ID"),
+            apns_team_id: optional_env("APNS_TEAM_ID"),
+            apns_key_p8: optional_env("APNS_KEY_P8"),
+            apns_bundle_id: optional_env("APNS_BUNDLE_ID"),
         })
     }
 }
