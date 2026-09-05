@@ -13,6 +13,7 @@ struct EarnView: View {
     @State private var loadError: String?
     @State private var showsProduct = false
     @State private var action: EarnAction?
+    @Environment(\.dismiss) private var dismiss
 
     static let productName = "Settlement Yield"
     static let productBlurb = "Put USDC into the settlement vault. It pays merchants at T+0 and earns the advance fees plus float yield while it waits."
@@ -23,14 +24,14 @@ struct EarnView: View {
             VStack(alignment: .leading, spacing: 0) {
                 header
                 balance
-                    .padding(.top, 34)
-                statCards
                     .padding(.top, 26)
+                statCards
+                    .padding(.top, 20)
                 Text("Available products")
-                    .font(.recourse(17, .semibold))
+                    .font(.recourse(15, .semibold))
                     .foregroundStyle(RecourseColor.nightText)
-                    .padding(.top, 36)
-                    .padding(.bottom, 14)
+                    .padding(.top, 28)
+                    .padding(.bottom, 10)
                 productCard
                 if let loadError {
                     Text(loadError)
@@ -97,12 +98,12 @@ struct EarnView: View {
     private var header: some View {
         HStack(spacing: 14) {
             Image(systemName: "chart.bar.fill")
-                .font(.system(size: 18, weight: .bold))
+                .font(.system(size: 14, weight: .bold))
                 .foregroundStyle(.white)
-                .frame(width: 44, height: 44)
-                .background(Self.earnTint, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                .frame(width: 34, height: 34)
+                .background(Self.earnTint, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             Text("Earn")
-                .font(.recourse(24, .semibold))
+                .font(.recourse(19, .semibold))
                 .foregroundStyle(RecourseColor.nightText)
             Spacer()
         }
@@ -116,10 +117,10 @@ struct EarnView: View {
                 Text("·")
                 Text(apy.map { String(format: "APY %.2f%%", $0 * 100) } ?? "APY measuring")
             }
-            .font(.recourse(14, .medium))
+            .font(.recourse(12.5, .medium))
             .foregroundStyle(RecourseColor.nightMuted)
 
-            Dollars(baseUnits: vaultState?.myValue.baseUnits ?? 0, size: 48)
+            Dollars(baseUnits: vaultState?.myValue.baseUnits ?? 0, size: 38)
                 .opacity(vaultState == nil ? 0.35 : 1)
         }
     }
@@ -130,19 +131,19 @@ struct EarnView: View {
         HStack(spacing: 12) {
             statCard("Earned so far", icon: "sparkles", tint: Color(red: 0.36, green: 0.55, blue: 0.96)) {
                 if let vaultState, let earned = ledger.earnedSoFar(position: vaultState.myValue) {
-                    Dollars(baseUnits: earned.baseUnits, size: 22)
+                    Dollars(baseUnits: earned.baseUnits, size: 18)
                 } else {
                     Text("Counts from your next deposit")
-                        .font(.recourse(12, .medium))
+                        .font(.recourse(11, .medium))
                         .foregroundStyle(RecourseColor.nightMuted)
                 }
             }
             statCard("Last 7D", icon: "calendar", tint: Color(red: 0.94, green: 0.46, blue: 0.23)) {
                 if let vaultState, let week = ledger.earnedLastWeek(shares: vaultState.myShares, priceNow: vaultState.sharePrice) {
-                    Dollars(baseUnits: week.baseUnits, size: 22)
+                    Dollars(baseUnits: week.baseUnits, size: 18)
                 } else {
                     Text("Measuring this week")
-                        .font(.recourse(12, .medium))
+                        .font(.recourse(11, .medium))
                         .foregroundStyle(RecourseColor.nightMuted)
                 }
             }
@@ -153,33 +154,33 @@ struct EarnView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 10) {
                 Image(systemName: icon)
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(tint)
-                    .frame(width: 26, height: 26)
-                    .background(tint.opacity(0.16), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                    .frame(width: 22, height: 22)
+                    .background(tint.opacity(0.16), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
                 Text(title)
-                    .font(.recourse(15, .semibold))
+                    .font(.recourse(13, .semibold))
                     .foregroundStyle(RecourseColor.nightText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
-            Spacer(minLength: 24)
+            Spacer(minLength: 16)
             value()
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, minHeight: 128, alignment: .leading)
-        .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .padding(14)
+        .frame(maxWidth: .infinity, minHeight: 96, alignment: .leading)
+        .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     private var productCard: some View {
         Button {
             showsProduct = true
         } label: {
-            VStack(alignment: .leading, spacing: 18) {
-                HStack(spacing: 14) {
-                    ProductMark(size: 52)
-                    VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 12) {
+                    ProductMark(size: 42)
+                    VStack(alignment: .leading, spacing: 3) {
                         HStack(spacing: 6) {
                             Text("Recourse")
                                 .foregroundStyle(RecourseColor.nightMuted)
@@ -188,23 +189,23 @@ struct EarnView: View {
                             Text(apy.map { String(format: "%.2f%% APY", $0 * 100) } ?? "APY measuring")
                                 .foregroundStyle(apy == nil ? RecourseColor.nightMuted : RecourseColor.ledger)
                         }
-                        .font(.recourse(14, .medium))
+                        .font(.recourse(12.5, .medium))
                         Text(Self.productName)
-                            .font(.recourse(21, .semibold))
+                            .font(.recourse(17, .semibold))
                             .foregroundStyle(RecourseColor.nightText)
                     }
                     Spacer(minLength: 0)
                 }
                 Text(Self.productBlurb)
-                    .font(.recourse(13.5))
+                    .font(.recourse(12.5))
                     .foregroundStyle(RecourseColor.nightMuted)
                     .lineSpacing(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(22)
+            .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-            .contentShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+            .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -213,31 +214,48 @@ struct EarnView: View {
 
     private var hasPosition: Bool { (vaultState?.myShares ?? 0) > 0 }
 
+    // The way out sits with the actions, where Fuse puts it: the navigation bar is
+    // hidden so the page can carry its own title.
     private var actionBar: some View {
-        HStack(spacing: 0) {
-            actionButton("Deposit", icon: "plus", enabled: true) { action = .deposit }
-            actionButton("Withdraw", icon: "arrow.up", enabled: hasPosition) { action = .withdraw }
+        HStack(spacing: 12) {
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(RecourseColor.nightText)
+                    .frame(width: 52, height: 52)
+                    .background(RecourseColor.nightChip, in: Circle())
+                    .overlay(Circle().stroke(RecourseColor.nightLine, lineWidth: 1))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Back")
+
+            HStack(spacing: 0) {
+                actionButton("Deposit", icon: "plus", enabled: true) { action = .deposit }
+                actionButton("Withdraw", icon: "arrow.up", enabled: hasPosition) { action = .withdraw }
+            }
+            .padding(.horizontal, 6)
+            .frame(height: 52)
+            .background(RecourseColor.nightChip, in: Capsule())
+            .overlay(Capsule().stroke(RecourseColor.nightLine, lineWidth: 1))
         }
-        .padding(.horizontal, 8)
-        .frame(height: 64)
-        .background(RecourseColor.nightChip, in: Capsule())
-        .overlay(Capsule().stroke(RecourseColor.nightLine, lineWidth: 1))
         .shadow(color: .black.opacity(0.35), radius: 24, y: 10)
-        .padding(.horizontal, 28)
-        .padding(.bottom, 24)
+        .padding(.horizontal, 20)
+        .padding(.bottom, 20)
     }
 
     private func actionButton(_ title: String, icon: String, enabled: Bool, tap: @escaping () -> Void) -> some View {
         Button(action: tap) {
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 Image(systemName: icon)
-                    .font(.system(size: 17, weight: .bold))
+                    .font(.system(size: 14, weight: .bold))
                 Text(title)
-                    .font(.recourse(17, .semibold))
+                    .font(.recourse(15, .semibold))
             }
             .foregroundStyle(enabled ? RecourseColor.nightText : RecourseColor.nightMuted)
             .frame(maxWidth: .infinity)
-            .frame(height: 52)
+            .frame(height: 44)
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -281,18 +299,10 @@ private struct ProductMark: View {
     let size: CGFloat
 
     var body: some View {
-        Group {
-            if let icon = UIImage(named: "AppIcon") {
-                Image(uiImage: icon).resizable().scaledToFill()
-            } else {
-                Image("LaunchMark")
-                    .resizable()
-                    .scaledToFit()
-                    .padding(size * 0.22)
-                    .background(RecourseColor.ledger)
-            }
-        }
-        .frame(width: size, height: size)
+        Image("RecourseMark")
+            .resizable()
+            .scaledToFill()
+            .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: size * 0.26, style: .continuous))
     }
 }

@@ -263,7 +263,7 @@ struct HomeView: View {
                         .transition(.blurReplace)
                     }
                 }
-                .font(.system(size: 56, weight: .semibold, design: .rounded))
+                .font(.system(size: 46, weight: .semibold, design: .rounded))
                 .minimumScaleFactor(0.55)
                 .lineLimit(1)
 
@@ -387,10 +387,10 @@ struct HomeView: View {
                 showsReceive = true
             } label: {
                 Label("Add money", systemImage: "plus")
-                    .font(.recourse(15, .semibold))
+                    .font(.recourse(14, .semibold))
                     .foregroundStyle(RecourseColor.nightText)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 52)
+                    .frame(height: 46)
                     .background(RecourseColor.nightChip, in: Capsule())
             }
             .buttonStyle(.plain)
@@ -399,10 +399,10 @@ struct HomeView: View {
                 environment.router.push(.send)
             } label: {
                 Label("Send", systemImage: "paperplane.fill")
-                    .font(.recourse(15, .semibold))
+                    .font(.recourse(14, .semibold))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 52)
+                    .frame(height: 46)
                     .background(RecourseColor.ledger, in: Capsule())
             }
             .buttonStyle(.plain)
@@ -781,16 +781,16 @@ private struct HomeFeatureCard: View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 0) {
                 Image(systemName: icon)
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .background(tint, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .frame(width: 36, height: 36)
+                    .background(tint, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
 
-                Spacer(minLength: 16)
+                Spacer(minLength: 12)
 
                 if let figure {
                     Text(title)
-                        .font(.recourse(14, .medium))
+                        .font(.recourse(13, .medium))
                         .foregroundStyle(RecourseColor.nightMuted)
                     HStack(alignment: .firstTextBaseline, spacing: 0) {
                         Text("$\(figure.baseUnits / USDCAmount.base)")
@@ -798,27 +798,27 @@ private struct HomeFeatureCard: View {
                         Text(String(format: ".%02llu", (figure.baseUnits % USDCAmount.base) / 10_000))
                             .foregroundStyle(RecourseColor.nightMuted)
                     }
-                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                    .font(.system(size: 17, weight: .semibold, design: .rounded))
                     .padding(.top, 3)
                 } else {
                     Text(title)
-                        .font(.recourse(15, .semibold))
+                        .font(.recourse(14, .semibold))
                         .foregroundStyle(RecourseColor.nightText)
                     Text(detail)
-                        .font(.recourse(11.5, .medium))
+                        .font(.recourse(11, .medium))
                         .foregroundStyle(RecourseColor.nightMuted)
                         .lineLimit(1)
                         .padding(.top, 3)
                 }
             }
-            .padding(16)
-            .frame(maxWidth: .infinity, minHeight: 150, alignment: .topLeading)
-            .background(RecourseColor.nightChip.opacity(live ? 1 : 0.45), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .padding(14)
+            .frame(maxWidth: .infinity, minHeight: 118, alignment: .topLeading)
+            .background(RecourseColor.nightChip.opacity(live ? 1 : 0.45), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .stroke(RecourseColor.nightLine, style: StrokeStyle(lineWidth: 1, dash: live ? [] : [5, 5]))
             }
-            .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .buttonStyle(.plain)
         .accessibilityLabel(live ? "\(title), \(figure!.formatted)" : "\(title). \(detail)")
