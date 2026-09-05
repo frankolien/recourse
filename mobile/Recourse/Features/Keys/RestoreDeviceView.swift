@@ -87,6 +87,8 @@ struct RestoreDeviceView: View {
         .overlay(alignment: .bottom) { footer }
         .toolbar(.hidden, for: .navigationBar)
         .task { await loadFacts() }
+        // Coming back from the recovery screen: the Cloud Key may be here now.
+        .onAppear { Task { await loadFacts() } }
         .sheet(isPresented: $showsWarning) { warning }
     }
 

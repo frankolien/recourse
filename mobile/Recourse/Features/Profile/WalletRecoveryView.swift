@@ -45,6 +45,13 @@ struct WalletRecoveryView: View {
                 case .protected(let address, let updatedAt):
                     header("Recovery is on", "Sign in on another device and unlock with your PIN.")
                     facts(address: address, updatedAt: updatedAt)
+                    if let owner = environment.smartAccounts.record?.cloudOwner, owner.lowercased() != address.lowercased() {
+                        note(
+                            "This backup holds a key that is not your account's Cloud Key. It was made after the account was, so it cannot bring the account back. If you are restoring, go back and start a new wallet instead.",
+                            icon: "exclamationmark.triangle.fill",
+                            tint: .orange
+                        )
+                    }
                     turnOff
                 case .restorable(let address):
                     header(

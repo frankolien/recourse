@@ -74,21 +74,25 @@ struct OnboardingWalletSetupView: View {
 
                 Spacer(minLength: 8)
 
+                // One button, and it says the one thing there is to do: continue,
+                // or restore the account the server found.
                 Button {
                     if let walletAddress {
                         onContinue(walletAddress)
+                    } else if needsRecovery {
+                        showsPhoneRestore = true
                     }
                 } label: {
                     if isPreparing {
                         ProgressView()
                             .tint(.white)
                     } else {
-                        Text("Continue")
+                        Text(needsRecovery && walletAddress == nil ? "Restore this account" : "Continue")
                     }
                 }
                 .buttonStyle(RecoursePrimaryButtonStyle())
-                .disabled(walletAddress == nil || isPreparing)
-                .opacity(walletAddress == nil ? 0.55 : 1)
+                .disabled((walletAddress == nil && !(needsRecovery && environment != nil)) || isPreparing)
+                .opacity(walletAddress == nil && !needsRecovery ? 0.55 : 1)
             }
             .padding(.horizontal, 22)
             .padding(.top, compact ? 18 : 24)
@@ -122,23 +126,10 @@ struct OnboardingWalletSetupView: View {
                 .font(.recourse(12.5))
                 .foregroundStyle(RecourseColor.muted)
                 .fixedSize(horizontal: false, vertical: true)
-            recoveryButton("Restore this account", filled: true) { showsPhoneRestore = true }
         }
         .padding(16)
         .background(RecourseColor.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(RecourseColor.line, lineWidth: 1))
-    }
-
-    private func recoveryButton(_ title: String, filled: Bool, tap: @escaping () -> Void) -> some View {
-        Button(action: tap) {
-            Text(title)
-                .font(.recourse(13, .semibold))
-                .foregroundStyle(filled ? .white : RecourseColor.ledger)
-                .frame(maxWidth: .infinity)
-                .frame(height: 42)
-                .background(filled ? RecourseColor.ledger : RecourseColor.mint, in: Capsule())
-        }
-        .buttonStyle(.plain)
     }
 
     /// After either sheet closes: if the phone now holds the account's Device Key,
