@@ -39,6 +39,9 @@ struct RestoreDeviceView: View {
     /// wallet would be made with.
     @State private var localCloud: String?
     @State private var checkedCloud = false
+    /// Whether the server holds a PIN backup of the account's own Cloud Key. False
+    /// means the door marked "bring it back" cannot open, and is not shown.
+    @State private var backupRestoresAccount = false
     /// The second door: no PIN, or no backup, so the old wallet is given up and a
     /// new one made with the keys on this phone.
     @State private var startingFresh = false
@@ -157,23 +160,31 @@ struct RestoreDeviceView: View {
             switch stage {
             case .start:
                 if checkedCloud, cloudAddress == nil {
-                    // Two doors: the PIN backup brings the account's key back; without
-                    // a PIN the old wallet is given up and a new one made here.
+                    // Two doors, but only the ones that open: the PIN backup brings
+                    // the account's key back when such a backup exists; otherwise the
+                    // old wallet is given up and a new one made here.
                     VStack(spacing: 10) {
-                        NavigationLink {
-                            WalletRecoveryView(environment: environment)
-                        } label: {
-                            Text("Bring back the Cloud Key")
-                                .font(.recourse(17, .semibold))
-                                .foregroundStyle(.white)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 56)
-                                .background(RecourseColor.ledger, in: Capsule())
-                        }
-                        .buttonStyle(.plain)
-                        secondary("Start a new wallet instead") {
-                            startingFresh = true
-                            showsWarning = true
+                        if backupRestoresAccount {
+                            NavigationLink {
+                                WalletRecoveryView(environment: environment)
+                            } label: {
+                                Text("Bring back the Cloud Key")
+                                    .font(.recourse(17, .semibold))
+                                    .foregroundStyle(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 56)
+                                    .background(RecourseColor.ledger, in: Capsule())
+                            }
+                            .buttonStyle(.plain)
+                            secondary("Start a new wallet instead") {
+                                startingFresh = true
+                                showsWarning = true
+                            }
+                        } else {
+                            primary("Start a new wallet") {
+                                startingFresh = true
+                                showsWarning = true
+                            }
                         }
                     }
                 } else {
@@ -219,6 +230,15 @@ struct RestoreDeviceView: View {
                 keyTile("Recovery", detail: email, glyph: "envelope.fill", dim: true)
             }
             .padding(.top, 10)
+
+            if checkedCloud, cloudAddress == nil, !backupRestoresAccount {
+                Text("This phone has neither of the account's keys and no PIN backup of the Cloud Key exists, so the wallet cannot be signed for again. A new wallet is the way forward; the old one stays on Arc.")
+                    .font(.recourse(13))
+                    .foregroundStyle(RecourseColor.nightMuted)
+                    .lineSpacing(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 18)
+            }
         }
     }
 
@@ -477,6 +497,11 @@ struct RestoreDeviceView: View {
         } else {
             cloudAddress = nil
         }
+        // A backup counts only if it holds the account's own Cloud Key; one made
+        // of a stray key after the account was would restore nothing.
+        let api = environment.makeWalletBackupAPIClient()
+        let backup = try? await environment.accountSession.withAccessToken { try await api.fetch(accessToken: $0) }
+        backupRestoresAccount = backup.map { stored in owner.map { $0.lowercased() == stored.address.lowercased() } ?? false } ?? false
         checkedCloud = true
         if let safe = store.record?.safe, let gateway = try? environment.makeContractGateway() {
             balance = try? await gateway.usdcBalance(of: EthereumAddress(trusted: safe))
