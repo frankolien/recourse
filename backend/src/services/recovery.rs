@@ -199,7 +199,7 @@ pub enum Mailer {
 }
 
 impl Mailer {
-    async fn send(&self, to: &str, subject: &str, text: &str) -> Result<(), AccountAuthError> {
+    async fn send(&self, to: &str, subject: &str, text: &str, html: &str) -> Result<(), AccountAuthError> {
         match self {
             Mailer::Log => {
                 tracing::warn!("RECOVERY_MAIL=log: mail to {to}: {subject}\n{text}");
@@ -214,6 +214,7 @@ impl Mailer {
                         "to": [to],
                         "subject": subject,
                         "text": text,
+                        "html": html,
                     }))
                     .send()
                     .await
@@ -245,6 +246,51 @@ pub struct IssuedChallenge {
 pub struct RecoveryGrant {
     pub grant_id: String,
     pub expires_at: String,
+}
+
+/// The email as a company sends one: the mark, the code large, what it does, and a
+/// footer that says who sent it and where the policies are. A bare line of text from
+/// an unknown sender reads as phishing, which is the last thing a recovery code can
+/// afford to look like.
+fn recovery_mail_html(code: &str, email: &str) -> String {
+    let site = "https://recourse-arc.vercel.app";
+    let to = escape_html(email);
+    format!(
+        r#"<!doctype html>
+<html><body style="margin:0;padding:0;background:#f4f7f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#111b19;">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f7f5;padding:32px 16px;">
+<tr><td align="center">
+<table role="presentation" width="520" cellspacing="0" cellpadding="0" style="max-width:520px;width:100%;background:#ffffff;border-radius:20px;border:1px solid #e3eae6;">
+<tr><td style="padding:32px 36px 0 36px;">
+  <table role="presentation" cellspacing="0" cellpadding="0"><tr>
+    <td><img src="{site}/brand/recourse-mark.png" width="36" height="36" alt="Recourse" style="display:block;border-radius:9px;"></td>
+    <td style="padding-left:12px;font-size:18px;font-weight:600;letter-spacing:-0.01em;">Recourse</td>
+  </tr></table>
+</td></tr>
+<tr><td style="padding:36px 36px 0 36px;font-size:24px;font-weight:600;letter-spacing:-0.02em;">Your recovery code</td></tr>
+<tr><td style="padding:12px 36px 0 36px;font-size:15px;line-height:1.55;color:#3a4441;">Enter this code in Recourse to move your account to this phone. It expires in 10 minutes.</td></tr>
+<tr><td style="padding:24px 36px 0 36px;">
+  <div style="background:#edf3ef;border-radius:14px;padding:22px;text-align:center;font-size:36px;font-weight:600;letter-spacing:0.28em;color:#075b46;font-variant-numeric:tabular-nums;">{code}</div>
+</td></tr>
+<tr><td style="padding:24px 36px 0 36px;font-size:14px;line-height:1.55;color:#66706d;">Recourse will never ask you for this code. If you did not ask for it, ignore this email: the code on its own cannot do anything. Moving your account also needs the key in your iCloud.</td></tr>
+<tr><td style="padding:32px 36px 32px 36px;">
+  <div style="border-top:1px solid #e3eae6;padding-top:20px;font-size:12px;line-height:1.6;color:#8a938f;">
+    Sent to {to} because it is the recovery email on your Recourse account.<br>
+    Recourse, the money app for dollars on your phone. USDC on Arc.<br>
+    <a href="{site}/privacy" style="color:#075b46;text-decoration:none;">Privacy</a> &nbsp;·&nbsp;
+    <a href="{site}/terms" style="color:#075b46;text-decoration:none;">Terms</a> &nbsp;·&nbsp;
+    <a href="{site}/support" style="color:#075b46;text-decoration:none;">Support</a>
+  </div>
+</td></tr>
+</table>
+</td></tr>
+</table>
+</body></html>"#
+    )
+}
+
+fn escape_html(text: &str) -> String {
+    text.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;")
 }
 
 fn mask_email(email: &str) -> String {
@@ -336,6 +382,7 @@ pub async fn issue_code(
                  Enter it in Recourse to move your account to this phone. If you did not ask for this, \
                  ignore this email: the code on its own cannot do anything."
             ),
+            &recovery_mail_html(&code, email),
         )
         .await?;
 
