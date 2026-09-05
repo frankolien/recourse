@@ -62,7 +62,7 @@ struct EarnView: View {
                 GeometryReader { proxy in
                     VStack {
                         Spacer(minLength: 0)
-                        EarnProductSheet(environment: environment, apy: apy) {
+                        EarnProductSheet(environment: environment, apy: apy, bottomInset: proxy.safeAreaInsets.bottom) {
                             closeProduct()
                             // Let the sheet leave before the next one arrives, or
                             // the two animations fight over the same edge.
@@ -73,7 +73,6 @@ struct EarnView: View {
                         } onClose: {
                             closeProduct()
                         }
-                        .frame(height: proxy.size.height * 0.67)
                     }
                     .ignoresSafeArea(edges: .bottom)
                 }
@@ -347,6 +346,7 @@ private struct ProductMark: View {
 private struct EarnProductSheet: View {
     let environment: AppEnvironment
     let apy: Double?
+    let bottomInset: CGFloat
     let onDeposit: () -> Void
     let onClose: () -> Void
 
@@ -399,6 +399,7 @@ private struct EarnProductSheet: View {
                 .foregroundStyle(RecourseColor.nightMuted)
                 .multilineTextAlignment(.center)
                 .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, 48)
                 .padding(.top, 22)
 
@@ -412,8 +413,6 @@ private struct EarnProductSheet: View {
             .buttonStyle(.plain)
             .padding(.top, 14)
 
-            Spacer(minLength: 12)
-
             Button(action: onDeposit) {
                 Text("Deposit")
                     .font(.recourse(17, .semibold))
@@ -424,7 +423,9 @@ private struct EarnProductSheet: View {
             }
             .buttonStyle(.plain)
             .padding(.horizontal, Self.sideMargin)
-            .padding(.bottom, 20)
+            .padding(.top, 22)
+            // Clear of the home indicator: the sheet reaches the screen's edge.
+            .padding(.bottom, max(bottomInset, 16) + 6)
         }
         .frame(maxWidth: .infinity)
         .background(RecourseColor.night)
@@ -481,6 +482,7 @@ private struct EarnProductSheet: View {
                         .font(.recourse(13, .medium))
                         .foregroundStyle(RecourseColor.nightText)
                     Dollars(baseUnits: Self.exampleDeposit.baseUnits, size: 15)
+                        .fixedSize()
                         .opacity(0.55)
                 }
                 Spacer()
@@ -492,6 +494,7 @@ private struct EarnProductSheet: View {
                         Text(endValueText)
                             .font(.system(size: 15, weight: .semibold, design: .rounded))
                             .foregroundStyle(RecourseColor.ledger)
+                            .fixedSize()
                         Image(systemName: "arrow.up")
                             .font(.system(size: 9, weight: .bold))
                             .foregroundStyle(.white)
