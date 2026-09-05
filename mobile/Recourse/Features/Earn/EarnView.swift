@@ -20,49 +20,81 @@ struct EarnView: View {
     static let earnTint = Color(red: 0.55, green: 0.36, blue: 0.96)
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                header
-                balance
-                    .padding(.top, 26)
-                statCards
-                    .padding(.top, 20)
-                Text("Available products")
-                    .font(.recourse(15, .semibold))
-                    .foregroundStyle(RecourseColor.nightText)
-                    .padding(.top, 28)
-                    .padding(.bottom, 10)
-                productCard
-                if let loadError {
-                    Text(loadError)
-                        .font(.recourse(12, .medium))
-                        .foregroundStyle(RecourseColor.nightMuted)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, 16)
+        ZStack(alignment: .bottom) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    header
+                    balance
+                        .padding(.top, 26)
+                    statCards
+                        .padding(.top, 20)
+                    Text("Available products")
+                        .font(.recourse(15, .semibold))
+                        .foregroundStyle(RecourseColor.nightText)
+                        .padding(.top, 28)
+                        .padding(.bottom, 10)
+                    productCard
+                    if let loadError {
+                        Text(loadError)
+                            .font(.recourse(12, .medium))
+                            .foregroundStyle(RecourseColor.nightMuted)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.top, 16)
+                    }
                 }
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+                .padding(.bottom, 140)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 8)
-            .padding(.bottom, 140)
+            .scrollIndicators(.hidden)
+            .overlay(alignment: .bottom) { actionBar }
+            // The page goes soft behind the product sheet, the way Fuse's does. A
+            // system sheet dims but cannot blur what is under it, so the sheet is
+            // drawn here instead.
+            .blur(radius: showsProduct ? 14 : 0)
+            .animation(.easeInOut(duration: 0.25), value: showsProduct)
+
+            if showsProduct {
+                Color.black.opacity(0.18)
+                    .ignoresSafeArea()
+                    .onTapGesture { closeProduct() }
+                    .transition(.opacity)
+                GeometryReader { proxy in
+                    VStack {
+                        Spacer(minLength: 0)
+                        EarnProductSheet(environment: environment, apy: apy) {
+                            closeProduct()
+                            // Let the sheet leave before the next one arrives, or
+                            // the two animations fight over the same edge.
+                            Task { @MainActor in
+                                try? await Task.sleep(for: .milliseconds(320))
+                                action = .deposit
+                            }
+                        } onClose: {
+                            closeProduct()
+                        }
+                        .frame(height: proxy.size.height * 0.67)
+                    }
+                    .ignoresSafeArea(edges: .bottom)
+                }
+                .transition(.move(edge: .bottom))
+            }
         }
-        .scrollIndicators(.hidden)
         .background(RecourseColor.night)
         .navigationTitle("Earn")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .navigationBar)
-        .overlay(alignment: .bottom) { actionBar }
         .task { await load() }
         .refreshable { await load() }
-        .sheet(isPresented: $showsProduct) {
-            EarnProductSheet(environment: environment, apy: apy, vaultState: vaultState) {
-                await load()
-            }
-        }
         .sheet(item: $action) { action in
             EarnActionView(environment: environment, mode: action, vaultState: vaultState) {
                 await load()
             }
         }
+    }
+
+    private func closeProduct() {
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.88)) { showsProduct = false }
     }
 
     /// The position as last read, then the chain. A failed read keeps the last
@@ -175,7 +207,7 @@ struct EarnView: View {
 
     private var productCard: some View {
         Button {
-            showsProduct = true
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.88)) { showsProduct = true }
         } label: {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(spacing: 12) {
@@ -310,149 +342,174 @@ private struct ProductMark: View {
 // MARK: - Product sheet
 
 /// What the product is and what a deposit could become, before any amount is typed.
+/// Drawn as an overlay rather than a system sheet so the page behind it can blur, and
+/// measured off Fuse's sheet: every distance below is theirs.
 private struct EarnProductSheet: View {
     let environment: AppEnvironment
     let apy: Double?
-    let vaultState: VaultState?
-    let onFinished: () async -> Void
+    let onDeposit: () -> Void
+    let onClose: () -> Void
 
-    @Environment(\.dismiss) private var dismiss
     @State private var showsLearnMore = false
-    @State private var showsDeposit = false
+    @State private var dragOffset: CGFloat = 0
 
     private static let exampleDeposit = USDCAmount(baseUnits: 1_000_000_000)
+    private static let sideMargin: CGFloat = 37
 
     var body: some View {
         VStack(spacing: 0) {
+            Capsule()
+                .fill(RecourseColor.nightLine)
+                .frame(width: 36, height: 5)
+                .padding(.top, 8)
+
             ZStack(alignment: .topTrailing) {
-                VStack(spacing: 3) {
+                VStack(spacing: 8) {
                     Text(EarnView.productName)
-                        .font(.recourse(16, .semibold))
+                        .font(.recourse(17, .semibold))
                         .foregroundStyle(RecourseColor.nightText)
                     HStack(spacing: 6) {
                         Text("Provided by")
                             .foregroundStyle(RecourseColor.nightMuted)
-                        ProductMark(size: 18)
+                        ProductMark(size: 17)
                         Text("Recourse")
                             .foregroundStyle(RecourseColor.nightText)
                     }
-                    .font(.recourse(13, .medium))
+                    .font(.recourse(13.5, .medium))
                 }
                 .frame(maxWidth: .infinity)
-                Button {
-                    dismiss()
-                } label: {
+                .padding(.top, 9)
+
+                Button(action: onClose) {
                     Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 17, weight: .medium))
                         .foregroundStyle(RecourseColor.nightMuted)
-                        .frame(width: 36, height: 36)
+                        .frame(width: 44, height: 44)
                 }
                 .buttonStyle(.plain)
+                .padding(.trailing, 24)
             }
-            .padding(.top, 14)
-            .padding(.horizontal, 20)
 
-            ScrollView {
-                VStack(spacing: 10) {
-                    card
-                    Text(EarnView.productBlurb)
-                        .font(.recourse(11))
-                        .foregroundStyle(RecourseColor.nightMuted)
-                        .multilineTextAlignment(.center)
-                        .lineSpacing(2)
-                        .padding(.horizontal, 36)
-                    Button {
-                        showsLearnMore = true
-                    } label: {
-                        Label("Learn more", systemImage: "globe")
-                            .font(.recourse(12, .semibold))
-                            .foregroundStyle(RecourseColor.ledger)
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, 24)
-                .padding(.top, 12)
-                .padding(.bottom, 8)
-            }
-            .scrollIndicators(.hidden)
+            card
+                .padding(.horizontal, Self.sideMargin)
+                .padding(.top, 20)
+
+            Text(EarnView.productBlurb)
+                .font(.recourse(13))
+                .foregroundStyle(RecourseColor.nightMuted)
+                .multilineTextAlignment(.center)
+                .lineSpacing(3)
+                .padding(.horizontal, 48)
+                .padding(.top, 22)
 
             Button {
-                showsDeposit = true
+                showsLearnMore = true
             } label: {
+                Label("Learn more", systemImage: "globe")
+                    .font(.recourse(14, .medium))
+                    .foregroundStyle(RecourseColor.ledger)
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 14)
+
+            Spacer(minLength: 12)
+
+            Button(action: onDeposit) {
                 Text("Deposit")
-                    .font(.recourse(15, .semibold))
+                    .font(.recourse(17, .semibold))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 46)
+                    .frame(height: 51)
                     .background(RecourseColor.ledger, in: Capsule())
             }
             .buttonStyle(.plain)
-            .padding(.horizontal, 24)
-            .padding(.bottom, 6)
+            .padding(.horizontal, Self.sideMargin)
+            .padding(.bottom, 20)
         }
-        .background(RecourseColor.night.ignoresSafeArea())
-        .presentationDetents([.fraction(0.58), .large])
-        .presentationDragIndicator(.visible)
+        .frame(maxWidth: .infinity)
+        .background(RecourseColor.night)
+        .clipShape(UnevenRoundedRectangle(topLeadingRadius: 40, topTrailingRadius: 40))
+        .offset(y: max(dragOffset, 0))
+        .gesture(
+            DragGesture()
+                .onChanged { dragOffset = $0.translation.height }
+                .onEnded { value in
+                    if value.translation.height > 90 {
+                        onClose()
+                    }
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { dragOffset = 0 }
+                }
+        )
         .sheet(isPresented: $showsLearnMore) {
             SafariWebView(url: URL(string: "https://recourse-arc.vercel.app/support")!)
-        }
-        .sheet(isPresented: $showsDeposit) {
-            EarnActionView(environment: environment, mode: .deposit, vaultState: vaultState, onFinished: onFinished)
         }
     }
 
     private var card: some View {
-        VStack(alignment: .leading, spacing: 9) {
+        VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text("How it works")
-                    .font(.recourse(13.5, .semibold))
+                    .font(.recourse(17, .medium))
                     .foregroundStyle(RecourseColor.nightText)
                 Spacer()
                 rateChip
             }
+            .frame(height: 22)
             dashed
-            HStack(alignment: .firstTextBaseline) {
+                .padding(.top, 16)
+            HStack(alignment: .center) {
                 Text("You deposit")
-                    .font(.recourse(13.5, .medium))
+                    .font(.recourse(17))
                     .foregroundStyle(RecourseColor.nightMuted)
                 Spacer()
-                Dollars(baseUnits: Self.exampleDeposit.baseUnits, size: 17)
-                BrandMarkView(mark: .usdc, height: 18)
-                    .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 2 }
+                Dollars(baseUnits: Self.exampleDeposit.baseUnits, size: 21)
+                BrandMarkView(mark: .usdc, height: 16)
+                    .padding(.leading, 2)
             }
+            .frame(height: 24)
+            .padding(.top, 14)
             dashed
+                .padding(.top, 14)
             Text("Your potential earn")
-                .font(.recourse(13.5, .semibold))
+                .font(.recourse(17, .medium))
                 .foregroundStyle(RecourseColor.nightText)
+                .frame(height: 22)
+                .padding(.top, 12)
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(monthLabel(0))
-                        .font(.recourse(11.5, .medium))
+                        .font(.recourse(13, .medium))
                         .foregroundStyle(RecourseColor.nightText)
-                    Dollars(baseUnits: Self.exampleDeposit.baseUnits, size: 13.5)
-                        .opacity(0.6)
+                    Dollars(baseUnits: Self.exampleDeposit.baseUnits, size: 15)
+                        .opacity(0.55)
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 3) {
                     Text(monthLabel(12))
-                        .font(.recourse(11.5, .medium))
+                        .font(.recourse(13, .medium))
                         .foregroundStyle(RecourseColor.nightText)
-                    HStack(spacing: 5) {
+                    HStack(spacing: 6) {
                         Text(endValueText)
-                            .font(.system(size: 13.5, weight: .semibold, design: .rounded))
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
                             .foregroundStyle(RecourseColor.ledger)
                         Image(systemName: "arrow.up")
                             .font(.system(size: 9, weight: .bold))
                             .foregroundStyle(.white)
-                            .frame(width: 16, height: 16)
+                            .frame(width: 17, height: 17)
                             .background(RecourseColor.ledger, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
                     }
                 }
             }
+            .padding(.top, 11)
             bars
+                .padding(.top, 14)
         }
-        .padding(14)
-        .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .padding(24)
+        .background(RecourseColor.night, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(RecourseColor.nightLine, lineWidth: 1)
+        )
     }
 
     // Until the phone has measured the vault's own rate, the chart runs at an
@@ -465,39 +522,40 @@ private struct EarnProductSheet: View {
     private var rateChip: some View {
         HStack(spacing: 5) {
             Text(String(format: "%.2f%%", chartRate * 100))
-                .font(.recourse(11.5, .semibold))
+                .font(.recourse(13, .semibold))
             Text(apy == nil ? "Illustrative APY" : "Estimated APY")
-                .font(.recourse(11.5, .medium))
+                .font(.recourse(13, .medium))
         }
         .foregroundStyle(RecourseColor.ledger)
-        .padding(.horizontal, 10)
-        .frame(height: 24)
-        .background(RecourseColor.ledger.opacity(0.14), in: Capsule())
+        .padding(.horizontal, 12)
+        .frame(height: 22)
+        .background(RecourseColor.ledger.opacity(0.12), in: Capsule())
+        .overlay(Capsule().stroke(RecourseColor.ledger.opacity(0.35), lineWidth: 1))
     }
 
     private var dashed: some View {
         Line()
-            .stroke(style: StrokeStyle(lineWidth: 1, dash: [6, 6]))
+            .stroke(style: StrokeStyle(lineWidth: 1, dash: [7, 7]))
             .foregroundStyle(RecourseColor.nightLine)
             .frame(height: 1)
     }
 
     // Thirteen bars, one per month, at the value a deposit would reach if the rate
-    // held. With no rate yet the bars sit flat rather than pretend.
+    // held. Pill-shaped and packed the way Fuse packs them, the last one lit.
     private var bars: some View {
         let values = (0 ... 12).map { value(afterMonths: $0) }
         let start = Double(Self.exampleDeposit.baseUnits)
         let span = max((values.last ?? start) - start, 1)
-        return HStack(alignment: .bottom, spacing: 5) {
+        return HStack(alignment: .bottom, spacing: 4) {
             ForEach(Array(values.enumerated()), id: \.offset) { index, value in
                 let fraction = (value - start) / span
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(index == 12 ? RecourseColor.ledger : RecourseColor.ledger.opacity(0.2))
-                    .frame(height: 6 + 64 * fraction)
+                Capsule()
+                    .fill(index == 12 ? AnyShapeStyle(LinearGradient(colors: [RecourseColor.ledger, RecourseColor.ledger.opacity(0.75)], startPoint: .top, endPoint: .bottom)) : AnyShapeStyle(RecourseColor.ledger.opacity(0.16)))
+                    .frame(height: 6 + 99 * fraction)
                     .frame(maxWidth: .infinity)
             }
         }
-        .frame(height: 70, alignment: .bottom)
+        .frame(height: 105, alignment: .bottom)
     }
 
     private func value(afterMonths months: Int) -> Double {
