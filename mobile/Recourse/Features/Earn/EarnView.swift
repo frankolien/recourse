@@ -325,18 +325,18 @@ private struct EarnProductSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             ZStack(alignment: .topTrailing) {
-                VStack(spacing: 5) {
+                VStack(spacing: 3) {
                     Text(EarnView.productName)
-                        .font(.recourse(17, .semibold))
+                        .font(.recourse(16, .semibold))
                         .foregroundStyle(RecourseColor.nightText)
                     HStack(spacing: 6) {
                         Text("Provided by")
                             .foregroundStyle(RecourseColor.nightMuted)
-                        ProductMark(size: 20)
+                        ProductMark(size: 18)
                         Text("Recourse")
                             .foregroundStyle(RecourseColor.nightText)
                     }
-                    .font(.recourse(14, .medium))
+                    .font(.recourse(13, .medium))
                 }
                 .frame(maxWidth: .infinity)
                 Button {
@@ -349,14 +349,14 @@ private struct EarnProductSheet: View {
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.top, 18)
+            .padding(.top, 14)
             .padding(.horizontal, 20)
 
             ScrollView {
-                VStack(spacing: 16) {
+                VStack(spacing: 10) {
                     card
                     Text(EarnView.productBlurb)
-                        .font(.recourse(12))
+                        .font(.recourse(11))
                         .foregroundStyle(RecourseColor.nightMuted)
                         .multilineTextAlignment(.center)
                         .lineSpacing(2)
@@ -365,14 +365,14 @@ private struct EarnProductSheet: View {
                         showsLearnMore = true
                     } label: {
                         Label("Learn more", systemImage: "globe")
-                            .font(.recourse(13, .semibold))
+                            .font(.recourse(12, .semibold))
                             .foregroundStyle(RecourseColor.ledger)
                     }
                     .buttonStyle(.plain)
                 }
-                .padding(.horizontal, 28)
-                .padding(.top, 18)
-                .padding(.bottom, 12)
+                .padding(.horizontal, 24)
+                .padding(.top, 12)
+                .padding(.bottom, 8)
             }
             .scrollIndicators(.hidden)
 
@@ -380,18 +380,18 @@ private struct EarnProductSheet: View {
                 showsDeposit = true
             } label: {
                 Text("Deposit")
-                    .font(.recourse(16, .semibold))
+                    .font(.recourse(15, .semibold))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 52)
+                    .frame(height: 46)
                     .background(RecourseColor.ledger, in: Capsule())
             }
             .buttonStyle(.plain)
-            .padding(.horizontal, 28)
-            .padding(.bottom, 10)
+            .padding(.horizontal, 24)
+            .padding(.bottom, 6)
         }
         .background(RecourseColor.night.ignoresSafeArea())
-        .presentationDetents([.fraction(0.8), .large])
+        .presentationDetents([.fraction(0.58), .large])
         .presentationDragIndicator(.visible)
         .sheet(isPresented: $showsLearnMore) {
             SafariWebView(url: URL(string: "https://recourse-arc.vercel.app/support")!)
@@ -402,10 +402,10 @@ private struct EarnProductSheet: View {
     }
 
     private var card: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 9) {
             HStack {
                 Text("How it works")
-                    .font(.recourse(15, .semibold))
+                    .font(.recourse(13.5, .semibold))
                     .foregroundStyle(RecourseColor.nightText)
                 Spacer()
                 rateChip
@@ -413,46 +413,46 @@ private struct EarnProductSheet: View {
             dashed
             HStack(alignment: .firstTextBaseline) {
                 Text("You deposit")
-                    .font(.recourse(15, .medium))
+                    .font(.recourse(13.5, .medium))
                     .foregroundStyle(RecourseColor.nightMuted)
                 Spacer()
-                Dollars(baseUnits: Self.exampleDeposit.baseUnits, size: 20)
-                BrandMarkView(mark: .usdc, height: 20)
+                Dollars(baseUnits: Self.exampleDeposit.baseUnits, size: 17)
+                BrandMarkView(mark: .usdc, height: 18)
                     .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 2 }
             }
             dashed
             Text("Your potential earn")
-                .font(.recourse(15, .semibold))
+                .font(.recourse(13.5, .semibold))
                 .foregroundStyle(RecourseColor.nightText)
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(monthLabel(0))
-                        .font(.recourse(12.5, .medium))
+                        .font(.recourse(11.5, .medium))
                         .foregroundStyle(RecourseColor.nightText)
-                    Dollars(baseUnits: Self.exampleDeposit.baseUnits, size: 15)
+                    Dollars(baseUnits: Self.exampleDeposit.baseUnits, size: 13.5)
                         .opacity(0.6)
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 3) {
                     Text(monthLabel(12))
-                        .font(.recourse(12.5, .medium))
+                        .font(.recourse(11.5, .medium))
                         .foregroundStyle(RecourseColor.nightText)
-                    HStack(spacing: 6) {
+                    HStack(spacing: 5) {
                         Text(endValueText)
-                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .font(.system(size: 13.5, weight: .semibold, design: .rounded))
                             .foregroundStyle(RecourseColor.ledger)
                         Image(systemName: "arrow.up")
                             .font(.system(size: 9, weight: .bold))
                             .foregroundStyle(.white)
-                            .frame(width: 18, height: 18)
-                            .background(RecourseColor.ledger, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+                            .frame(width: 16, height: 16)
+                            .background(RecourseColor.ledger, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
                     }
                 }
             }
             bars
         }
-        .padding(18)
-        .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .padding(14)
+        .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     // Until the phone has measured the vault's own rate, the chart runs at an
@@ -465,13 +465,13 @@ private struct EarnProductSheet: View {
     private var rateChip: some View {
         HStack(spacing: 5) {
             Text(String(format: "%.2f%%", chartRate * 100))
-                .font(.recourse(12.5, .semibold))
+                .font(.recourse(11.5, .semibold))
             Text(apy == nil ? "Illustrative APY" : "Estimated APY")
-                .font(.recourse(12.5, .medium))
+                .font(.recourse(11.5, .medium))
         }
         .foregroundStyle(RecourseColor.ledger)
-        .padding(.horizontal, 11)
-        .frame(height: 28)
+        .padding(.horizontal, 10)
+        .frame(height: 24)
         .background(RecourseColor.ledger.opacity(0.14), in: Capsule())
     }
 
@@ -488,16 +488,16 @@ private struct EarnProductSheet: View {
         let values = (0 ... 12).map { value(afterMonths: $0) }
         let start = Double(Self.exampleDeposit.baseUnits)
         let span = max((values.last ?? start) - start, 1)
-        return HStack(alignment: .bottom, spacing: 6) {
+        return HStack(alignment: .bottom, spacing: 5) {
             ForEach(Array(values.enumerated()), id: \.offset) { index, value in
                 let fraction = (value - start) / span
                 RoundedRectangle(cornerRadius: 6, style: .continuous)
                     .fill(index == 12 ? RecourseColor.ledger : RecourseColor.ledger.opacity(0.2))
-                    .frame(height: 8 + 110 * fraction)
+                    .frame(height: 6 + 64 * fraction)
                     .frame(maxWidth: .infinity)
             }
         }
-        .frame(height: 118, alignment: .bottom)
+        .frame(height: 70, alignment: .bottom)
     }
 
     private func value(afterMonths months: Int) -> Double {
