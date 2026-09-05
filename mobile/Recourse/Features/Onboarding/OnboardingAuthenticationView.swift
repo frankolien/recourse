@@ -110,24 +110,26 @@ struct OnboardingAuthenticationView: View {
 
     private func carousel(compact: Bool) -> some View {
         ZStack(alignment: .top) {
-            HStack {
-                Button(action: onBack) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(RecourseColor.ink)
-                        .frame(width: 44, height: 44)
-                        .background(RecourseColor.surface, in: Circle())
-                        .overlay {
-                            Circle().stroke(RecourseColor.line, lineWidth: 1)
-                        }
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Back")
-
-                Spacer()
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 20)
+            // The close button is off for now, with the story list. Restore the block
+            // below to bring it back.
+            // HStack {
+            //     Button(action: onBack) {
+            //         Image(systemName: "xmark")
+            //             .font(.system(size: 14, weight: .bold))
+            //             .foregroundStyle(RecourseColor.ink)
+            //             .frame(width: 44, height: 44)
+            //             .background(RecourseColor.surface, in: Circle())
+            //             .overlay {
+            //                 Circle().stroke(RecourseColor.line, lineWidth: 1)
+            //             }
+            //     }
+            //     .buttonStyle(.plain)
+            //     .accessibilityLabel("Back")
+            //
+            //     Spacer()
+            // }
+            // .padding(.horizontal, 20)
+            // .padding(.top, 20)
 
             // The Hold, Send, Request, Earn list is off for now; the band keeps only
             // the close button. Restore the block below to bring it back.
