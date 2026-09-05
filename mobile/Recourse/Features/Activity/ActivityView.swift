@@ -10,7 +10,7 @@ import SwiftUI
 struct ActivityView: View {
     let environment: AppEnvironment
     let onScrollTowardTopChanged: (Bool) -> Void
-    @State private var openedTransaction: WebPageLink?
+    @State private var selectedEntry: HistoryEntry?
     @State private var previousScrollOffset: CGFloat = 0
     @State private var query = ""
     @State private var filter: Filter = .all
@@ -88,9 +88,7 @@ struct ActivityView: View {
                             .padding(.bottom, 4)
                         ForEach(day.entries) { entry in
                             Button {
-                                openedTransaction = WebPageLink(
-                                    url: AppConfiguration.explorerURL.appending(path: "tx/\(entry.transfer.hash)")
-                                )
+                                selectedEntry = entry
                             } label: {
                                 row(entry)
                             }
@@ -116,10 +114,18 @@ struct ActivityView: View {
         }
         .background(RecourseColor.night)
         .navigationTitle("History")
-        // The explorer opens in a sheet, the way the faucet does, so a look at a
-        // transaction never bounces the user out to Safari.
-        .sheet(item: $openedTransaction) { page in
-            SafariWebView(url: page.url)
+        // A tapped row opens its summary; the explorer is a tap further, inside the
+        // app the way the faucet is, so a look at a transaction never bounces the
+        // user out to Safari.
+        .sheet(item: $selectedEntry) { entry in
+            TransactionSummaryView(
+                entry: entry,
+                counterpartyName: name(for: entry),
+                network: environment.configuration.chainName,
+                explorerURL: AppConfiguration.explorerURL.appending(path: "tx/\(entry.transfer.hash)"),
+                isUSDC: entry.transfer.token == usdcAddress
+            )
+            .presentationDragIndicator(.visible)
         }
         .refreshable { await reload(force: true) }
         .task { await reload(force: false) }
