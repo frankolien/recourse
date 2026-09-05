@@ -52,7 +52,8 @@ struct RootView: View {
             case .onboarding:
                 OnboardingFlowView(
                     accountSession: environment.accountSession,
-                    smartAccounts: environment.smartAccounts
+                    smartAccounts: environment.smartAccounts,
+                    environment: environment
                 ) { role in
                     withAnimation(.easeInOut(duration: 0.35)) {
                         storedWorkspaceRole = role.rawValue

@@ -15,6 +15,10 @@ struct WalletRecoveryView: View {
         /// A backup exists and this device has no wallet. The restore case, and the
         /// whole reason any of this was built.
         case restorable(address: String)
+        /// A backup exists for the key the account was made with, and this phone holds
+        /// some other key it minted in the meantime. That key is a stray, and the
+        /// restore replaces it.
+        case replaceable(address: String)
     }
 
     @State private var stage: Stage = .loading
@@ -49,7 +53,15 @@ struct WalletRecoveryView: View {
                     )
                     walletLine(address)
                     pinFields(confirming: false)
-                    action("Restore wallet") { await restore() }
+                    action("Restore wallet") { await restore(replacing: false) }
+                case .replaceable(let address):
+                    header(
+                        "Bring back your Cloud Key",
+                        "Your account was made with a key that is not on this phone. Enter the PIN you chose to bring it back. The key this phone made in the meantime is discarded."
+                    )
+                    walletLine(address)
+                    pinFields(confirming: false)
+                    action("Bring back the key") { await restore(replacing: true) }
                 }
 
                 if let problem { note(problem, icon: "exclamationmark.triangle.fill", tint: .orange) }
@@ -202,12 +214,27 @@ struct WalletRecoveryView: View {
         let hasLocalWallet = await environment.buyerSigner.hasWallet()
 
         if let stored {
-            stage = hasLocalWallet
-                ? .protected(address: stored.address, updatedAt: stored.updatedAt)
-                : .restorable(address: stored.address)
+            if !hasLocalWallet {
+                stage = .restorable(address: stored.address)
+            } else if await localKeyIsAStray(backupAddress: stored.address) {
+                stage = .replaceable(address: stored.address)
+            } else {
+                stage = .protected(address: stored.address, updatedAt: stored.updatedAt)
+            }
         } else {
             stage = .unprotected
         }
+    }
+
+    /// True when the account's Safe names the backed-up key as its Cloud Key and the
+    /// key on this phone is some other one. That happens after a reinstall that lost
+    /// the keychain: the app minted a new key before anyone could stop it, and the
+    /// server then refused to provision under it.
+    private func localKeyIsAStray(backupAddress: String) async -> Bool {
+        guard let owner = environment.smartAccounts.record?.cloudOwner,
+              owner.lowercased() == backupAddress.lowercased(),
+              let local = try? await environment.buyerSigner.address().value else { return false }
+        return local.lowercased() != owner.lowercased()
     }
 
     private func enableRecovery() async {
@@ -241,7 +268,7 @@ struct WalletRecoveryView: View {
         }
     }
 
-    private func restore() async {
+    private func restore(replacing: Bool) async {
         problem = nil
         done = nil
         focused = false
@@ -252,7 +279,12 @@ struct WalletRecoveryView: View {
             let stored = try await withBackupAPI { api, token in
                 try await api.fetch(accessToken: token)
             }
+            // The PIN is checked before anything is removed, so a wrong PIN leaves
+            // the stray key where it was.
             let key = try WalletBackup.open(stored.envelope, pin: pin)
+            if replacing {
+                try await environment.buyerSigner.reset()
+            }
             try await environment.buyerSigner.importPrivateKey(key)
 
             // Prove it before claiming success: the address the restored key derives
@@ -266,7 +298,10 @@ struct WalletRecoveryView: View {
             }
 
             pin = ""
-            done = "Your wallet is back on this phone."
+            done = replacing
+                ? "Your Cloud Key is back. Now restore this phone under Keys."
+                : "Your wallet is back on this phone."
+            await environment.smartAccounts.refresh()
             await load()
         } catch let error as WalletBackup.Failure {
             problem = error.message

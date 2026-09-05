@@ -12,6 +12,7 @@ struct OnboardingFlowView: View {
     let onComplete: (OnboardingRole) -> Void
     private let buyerSigner: any BuyerSigner
     private let smartAccounts: SmartAccountStore?
+    private let environment: AppEnvironment?
     @State private var stage: OnboardingStage = .welcome
     @State private var walletAddress: EthereumAddress?
 
@@ -19,11 +20,13 @@ struct OnboardingFlowView: View {
         accountSession: AccountSession,
         buyerSigner: any BuyerSigner = TestnetLocalSigner(),
         smartAccounts: SmartAccountStore? = nil,
+        environment: AppEnvironment? = nil,
         onComplete: @escaping (OnboardingRole) -> Void
     ) {
         self.accountSession = accountSession
         self.buyerSigner = buyerSigner
         self.smartAccounts = smartAccounts
+        self.environment = environment
         self.onComplete = onComplete
     }
 
@@ -49,6 +52,7 @@ struct OnboardingFlowView: View {
                     OnboardingWalletSetupView(
                         signer: buyerSigner,
                         smartAccounts: smartAccounts,
+                        environment: environment,
                         onBack: { advance(to: .authentication) },
                         onContinue: { address in
                             walletAddress = address
