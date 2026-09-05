@@ -10,7 +10,7 @@ import SwiftUI
 struct ActivityView: View {
     let environment: AppEnvironment
     let onScrollTowardTopChanged: (Bool) -> Void
-    @Environment(\.openURL) private var openURL
+    @State private var openedTransaction: WebPageLink?
     @State private var previousScrollOffset: CGFloat = 0
     @State private var query = ""
     @State private var filter: Filter = .all
@@ -53,6 +53,22 @@ struct ActivityView: View {
         }
     }
 
+    /// One calendar day of movements, newest day first, as the list's section.
+    private struct Day: Identifiable {
+        let start: Date
+        let title: String
+        let entries: [HistoryEntry]
+        var id: Date { start }
+    }
+
+    private var days: [Day] {
+        let calendar = Calendar.current
+        let grouped = Dictionary(grouping: entries) { calendar.startOfDay(for: $0.transfer.timestamp) }
+        return grouped.keys.sorted(by: >).map { start in
+            Day(start: start, title: dayTitle(start, calendar: calendar), entries: grouped[start] ?? [])
+        }
+    }
+
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
@@ -60,22 +76,30 @@ struct ActivityView: View {
                 searchField
                     .padding(.bottom, 16)
                 filterBar
-                    .padding(.bottom, 8)
 
                 if entries.isEmpty {
                     empty
                 } else {
-                    ForEach(entries) { entry in
-                        Button {
-                            openURL(AppConfiguration.explorerURL.appending(path: "tx/\(entry.transfer.hash)"))
-                        } label: {
-                            row(entry)
-                        }
-                        .buttonStyle(.plain)
-                        if entry.id != entries.last?.id {
-                            Divider()
-                                .overlay(RecourseColor.nightLine)
-                                .padding(.leading, 56)
+                    ForEach(days) { day in
+                        Text(day.title)
+                            .font(.recourse(12.5, .semibold))
+                            .foregroundStyle(RecourseColor.nightMuted)
+                            .padding(.top, 18)
+                            .padding(.bottom, 4)
+                        ForEach(day.entries) { entry in
+                            Button {
+                                openedTransaction = WebPageLink(
+                                    url: AppConfiguration.explorerURL.appending(path: "tx/\(entry.transfer.hash)")
+                                )
+                            } label: {
+                                row(entry)
+                            }
+                            .buttonStyle(.plain)
+                            if entry.id != day.entries.last?.id {
+                                Divider()
+                                    .overlay(RecourseColor.nightLine)
+                                    .padding(.leading, 56)
+                            }
                         }
                     }
                 }
@@ -92,6 +116,11 @@ struct ActivityView: View {
         }
         .background(RecourseColor.night)
         .navigationTitle("History")
+        // The explorer opens in a sheet, the way the faucet does, so a look at a
+        // transaction never bounces the user out to Safari.
+        .sheet(item: $openedTransaction) { page in
+            SafariWebView(url: page.url)
+        }
         .refreshable { await reload(force: true) }
         .task { await reload(force: false) }
     }
@@ -187,9 +216,8 @@ struct ActivityView: View {
                     .font(.recourse(14, .semibold))
                     .foregroundStyle(RecourseColor.nightText)
                     .lineLimit(1)
-                // Month, day and time, no year: a six decimal amount on the right needs
-                // the width, and the year is the one part of a date nobody reads here.
-                Text("\(entry.kind.title) · \(entry.transfer.timestamp.formatted(.dateTime.month(.abbreviated).day().hour().minute()))")
+                // Time only: the day is the section header above the row.
+                Text("\(entry.kind.title) · \(entry.transfer.timestamp.formatted(.dateTime.hour().minute()))")
                     .font(.recourse(11, .medium))
                     .foregroundStyle(RecourseColor.nightMuted)
                     .lineLimit(1)
@@ -224,6 +252,16 @@ struct ActivityView: View {
     }
 
     // MARK: Copy
+
+    /// Today and yesterday by name, the rest by date, with the year only once it differs.
+    private func dayTitle(_ start: Date, calendar: Calendar) -> String {
+        if calendar.isDateInToday(start) { return "Today" }
+        if calendar.isDateInYesterday(start) { return "Yesterday" }
+        if calendar.isDate(start, equalTo: .now, toGranularity: .year) {
+            return start.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())
+        }
+        return start.formatted(.dateTime.month(.abbreviated).day().year())
+    }
 
     private func amountText(_ entry: HistoryEntry) -> String {
         USDCAmount(baseUnits: entry.transfer.value).decimalString
