@@ -239,6 +239,18 @@ final class SmartAccountStore {
         return outcome
     }
 
+    /// Give up the wallet whose keys are gone and make a new one for this account.
+    /// The emailed code is the proof. The old Safe stays on chain with whatever it
+    /// holds; nothing here can reach it any more, and the screen has said so.
+    func startOver(grantID: String) async throws -> SmartAccountRecord {
+        try await session.withAccessToken { try await api.abandon(grantID: grantID, accessToken: $0) }
+        record = nil
+        phase = .none
+        deactivate()
+        if let cacheKey { defaults.removeObject(forKey: cacheKey) }
+        return try await provision()
+    }
+
     // MARK: Cache
 
     private var cacheKey: String? {

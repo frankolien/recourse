@@ -35,7 +35,6 @@ struct OnboardingWalletSetupView: View {
     @State private var hasCopiedAddress = false
     /// The server has this account's wallet under keys this phone does not hold.
     @State private var needsRecovery = false
-    @State private var showsCloudKeyRecovery = false
     @State private var showsPhoneRestore = false
 
     var body: some View {
@@ -103,37 +102,27 @@ struct OnboardingWalletSetupView: View {
         .task {
             await prepareWallet()
         }
-        .sheet(isPresented: $showsCloudKeyRecovery, onDismiss: { Task { await checkAfterRecovery() } }) {
-            if let environment {
-                NavigationStack { WalletRecoveryView(environment: environment) }
-                    .preferredColorScheme(.dark)
-            }
-        }
         .sheet(isPresented: $showsPhoneRestore, onDismiss: { Task { await checkAfterRecovery() } }) {
             if let environment {
                 NavigationStack { RestoreDeviceView(environment: environment) }
-                    .preferredColorScheme(.dark)
             }
         }
     }
 
-    // The account exists and its keys are elsewhere. Two steps, in order: the Cloud
-    // Key comes back from its PIN backup, then the emailed code swaps this phone in
-    // as the Device Key. Provisioning again would only be refused again.
+    // The account exists and its keys are elsewhere. Provisioning again would only
+    // be refused again, so the one move is the recovery flow, which offers the PIN
+    // backup and, failing that, a fresh wallet.
     private var recoveryRoute: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("This account already has a wallet, and its keys are not on this phone.")
                 .font(.recourse(14, .semibold))
                 .foregroundStyle(RecourseColor.ink)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("Bring the Cloud Key back with your recovery PIN first, then restore this phone with the code we email you.")
+            Text("Bring it to this phone with your recovery PIN and the code we email you, or start a new wallet if you never set a PIN.")
                 .font(.recourse(12.5))
                 .foregroundStyle(RecourseColor.muted)
                 .fixedSize(horizontal: false, vertical: true)
-            HStack(spacing: 10) {
-                recoveryButton("1. Cloud Key", filled: true) { showsCloudKeyRecovery = true }
-                recoveryButton("2. This phone", filled: false) { showsPhoneRestore = true }
-            }
+            recoveryButton("Restore this account", filled: true) { showsPhoneRestore = true }
         }
         .padding(16)
         .background(RecourseColor.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
@@ -197,12 +186,12 @@ struct OnboardingWalletSetupView: View {
             }
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(walletAddress == nil ? "Setting up your account" : "Account ready")
+                Text(cardTitle)
                     .font(.recourse(16, .semibold))
                     .foregroundStyle(RecourseColor.ink)
                 HStack(spacing: 10) {
-                    Text(walletAddress.map(shortAddress) ?? progressText)
-                        .font(.system(size: 12, weight: .medium, design: .monospaced))
+                    Text(cardDetail)
+                        .font(.recourse(13, .medium))
                         .foregroundStyle(RecourseColor.muted)
                         .contentTransition(.numericText())
                     Spacer()
@@ -234,11 +223,23 @@ struct OnboardingWalletSetupView: View {
         }
     }
 
-    private var progressText: String {
-        if let smartAccounts, case .provisioning(let message) = smartAccounts.phase {
-            return message + "..."
+    // The card says where things stand: keys being made, an account found on the
+    // server that needs restoring, or the account ready with its address.
+    private var cardTitle: String {
+        if walletAddress != nil { return "Account ready" }
+        if needsRecovery { return "Your account was found" }
+        return "Setting up your account"
+    }
+
+    private var cardDetail: String {
+        if let walletAddress { return shortAddress(walletAddress) }
+        if needsRecovery {
+            return smartAccounts?.record.map { shortAddress(EthereumAddress(trusted: $0.safe)) } ?? "Made on another phone"
         }
-        return "Making your keys..."
+        if let smartAccounts, case .provisioning(let message) = smartAccounts.phase {
+            return message
+        }
+        return "Making your keys"
     }
 
     @MainActor

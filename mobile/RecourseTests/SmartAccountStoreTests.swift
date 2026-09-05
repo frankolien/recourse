@@ -136,6 +136,8 @@ private actor SmartAccountAPIFake: SmartAccountAPI {
     func executeDeviceSwap(rotationID: Int64, cloudSignature: Data, accessToken: String) async throws -> DeviceRotationOutcome {
         throw SmartAccountAPIError.invalidResponse
     }
+
+    func abandon(grantID: String, accessToken: String) async throws {}
 }
 
 private struct FixedDeviceKey: DeviceKeySigning {

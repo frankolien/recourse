@@ -16,12 +16,13 @@ struct RestoreDeviceView: View {
         case finish(grantID: String)
         case working
         case done(DeviceRotationOutcome)
+        case created(safe: String)
 
         var step: Int {
             switch self {
             case .start: 1
             case .code: 2
-            case .finish, .working, .done: 3
+            case .finish, .working, .done, .created: 3
             }
         }
     }
@@ -34,7 +35,13 @@ struct RestoreDeviceView: View {
     /// The Cloud Key this phone holds, if it is the account's. Nil means it is
     /// missing or a stray, and the way forward is the PIN backup, not the code.
     @State private var cloudAddress: String?
+    /// Whatever Cloud Key this phone holds, the account's or not: the one a new
+    /// wallet would be made with.
+    @State private var localCloud: String?
     @State private var checkedCloud = false
+    /// The second door: no PIN, or no backup, so the old wallet is given up and a
+    /// new one made with the keys on this phone.
+    @State private var startingFresh = false
     @FocusState private var codeFocused: Bool
     @Environment(\.dismiss) private var dismiss
 
@@ -57,6 +64,8 @@ struct RestoreDeviceView: View {
                         finish
                     case .done(let outcome):
                         done(outcome)
+                    case .created(let safe):
+                        created(safe)
                     }
                     if let problem {
                         Text(problem)
@@ -87,7 +96,7 @@ struct RestoreDeviceView: View {
         HStack(spacing: 10) {
             ForEach(1 ... 3, id: \.self) { index in
                 Capsule()
-                    .fill(index <= stage.step ? RecourseColor.nightText : RecourseColor.nightChip)
+                    .fill(index <= stage.step ? RecourseColor.ledger : RecourseColor.nightChip)
                     .frame(height: 5)
             }
         }
@@ -114,18 +123,30 @@ struct RestoreDeviceView: View {
     private func primary(_ label: String, working: Bool = false, enabled: Bool = true, tap: @escaping () -> Void) -> some View {
         Button(action: tap) {
             HStack(spacing: 10) {
-                if working { ProgressView().tint(RecourseColor.night) }
+                if working { ProgressView().tint(.white) }
                 Text(working ? "Recovering" : label)
             }
             .font(.recourse(17, .semibold))
-            .foregroundStyle(RecourseColor.night)
+            .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
             .frame(height: 56)
-            .background(RecourseColor.nightText, in: Capsule())
+            .background(RecourseColor.ledger, in: Capsule())
         }
         .buttonStyle(.plain)
         .disabled(!enabled || working)
         .opacity(enabled ? 1 : 0.5)
+    }
+
+    private func secondary(_ label: String, tap: @escaping () -> Void) -> some View {
+        Button(action: tap) {
+            Text(label)
+                .font(.recourse(17, .semibold))
+                .foregroundStyle(RecourseColor.nightText)
+                .frame(maxWidth: .infinity)
+                .frame(height: 56)
+                .background(RecourseColor.nightChip, in: Capsule())
+        }
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder
@@ -134,27 +155,38 @@ struct RestoreDeviceView: View {
             switch stage {
             case .start:
                 if checkedCloud, cloudAddress == nil {
-                    NavigationLink {
-                        WalletRecoveryView(environment: environment)
-                    } label: {
-                        Text("Bring back the Cloud Key")
-                            .font(.recourse(17, .semibold))
-                            .foregroundStyle(RecourseColor.night)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 56)
-                            .background(RecourseColor.nightText, in: Capsule())
+                    // Two doors: the PIN backup brings the account's key back; without
+                    // a PIN the old wallet is given up and a new one made here.
+                    VStack(spacing: 10) {
+                        NavigationLink {
+                            WalletRecoveryView(environment: environment)
+                        } label: {
+                            Text("Bring back the Cloud Key")
+                                .font(.recourse(17, .semibold))
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 56)
+                                .background(RecourseColor.ledger, in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        secondary("Start a new wallet instead") {
+                            startingFresh = true
+                            showsWarning = true
+                        }
                     }
-                    .buttonStyle(.plain)
                 } else {
-                    primary("Start Recovery", enabled: checkedCloud) { showsWarning = true }
+                    primary("Start Recovery", enabled: checkedCloud) {
+                        startingFresh = false
+                        showsWarning = true
+                    }
                 }
             case .code:
                 primary("Confirm", enabled: code.count == 6) { Task { await verify() } }
             case .finish:
-                primary("Finish Recovery") { Task { await finishRecovery() } }
+                primary(startingFresh ? "Create new wallet" : "Finish Recovery") { Task { await finishRecovery() } }
             case .working:
                 primary("Finish Recovery", working: true) {}
-            case .done:
+            case .done, .created:
                 primary("Done") { dismiss() }
             }
         }
@@ -247,7 +279,9 @@ struct RestoreDeviceView: View {
                 }
                 .buttonStyle(.plain)
             }
-            Text("If you begin and finish your recovery, your Recourse account will no longer be available on the previous phone.")
+            Text(startingFresh
+                ? "Your old wallet stays on Arc with whatever it holds, and no key can reach it any more. This account gets a new wallet with the keys on this phone."
+                : "If you begin and finish your recovery, your Recourse account will no longer be available on the previous phone.")
                 .font(.recourse(17))
                 .foregroundStyle(RecourseColor.nightMuted)
                 .lineSpacing(3)
@@ -366,15 +400,31 @@ struct RestoreDeviceView: View {
 
     private var finish: some View {
         VStack(alignment: .leading, spacing: 0) {
-            title("Finish Recovery")
-            lead("Your Recourse account is ready to be recovered. Check your keys below and confirm.")
+            title(startingFresh ? "Start a new\nwallet" : "Finish Recovery")
+            lead(startingFresh
+                ? "Your new keys are on this phone. Check them below and confirm."
+                : "Your Recourse account is ready to be recovered. Check your keys below and confirm.")
                 .padding(.top, 22)
             VStack(spacing: 12) {
                 keyRow("Device", detail: "This iPhone", glyph: "faceid")
-                keyRow("Cloud", detail: cloudAddress.map(shortened) ?? "Cloud Key", glyph: "icloud.fill")
+                keyRow("Cloud", detail: (startingFresh ? localCloud : cloudAddress).map(shortened) ?? "Cloud Key", glyph: "icloud.fill")
                 keyRow("Recovery", detail: email, glyph: "envelope.fill")
             }
             .padding(.top, 28)
+        }
+    }
+
+    private func created(_ safe: String) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            title("Your new wallet\nis ready")
+            lead("Made on Arc with the keys on this phone. The old one is closed to this account.")
+                .padding(.top, 22)
+            Text(safe)
+                .font(.system(size: 12, design: .monospaced))
+                .foregroundStyle(RecourseColor.nightMuted)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .padding(.top, 20)
         }
     }
 
@@ -418,8 +468,9 @@ struct RestoreDeviceView: View {
 
     private func loadFacts() async {
         let owner = store.record?.cloudOwner
-        if let local = try? await environment.switchableSigner.cloud.address().value,
-           let owner, local.lowercased() == owner.lowercased() {
+        let local = try? await environment.switchableSigner.cloud.address().value
+        localCloud = local
+        if let local, let owner, local.lowercased() == owner.lowercased() {
             cloudAddress = local
         } else {
             cloudAddress = nil
@@ -463,6 +514,11 @@ struct RestoreDeviceView: View {
         problem = nil
         stage = .working
         do {
+            if startingFresh {
+                let record = try await store.startOver(grantID: grantID)
+                stage = .created(safe: record.safe)
+                return
+            }
             let outcome = try await store.restoreDevice(grantID: grantID)
             stage = .done(outcome)
         } catch {

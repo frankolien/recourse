@@ -63,6 +63,12 @@ protocol SmartAccountAPI: Sendable {
     func verifyRecoveryCode(_ code: String, accessToken: String) async throws -> RecoveryGrant
     func prepareDeviceSwap(grantID: String, deviceKey: DevicePublicKey, accessToken: String) async throws -> DeviceRotationPlan
     func executeDeviceSwap(rotationID: Int64, cloudSignature: Data, accessToken: String) async throws -> DeviceRotationOutcome
+    /// Give up the wallet whose keys are gone, proven by the emailed code's grant.
+    func abandon(grantID: String, accessToken: String) async throws
+}
+
+private struct Acknowledged: Decodable {
+    let ok: Bool
 }
 
 actor SmartAccountAPIClient: SmartAccountAPI {
@@ -106,6 +112,10 @@ actor SmartAccountAPIClient: SmartAccountAPI {
             "rotationId": rotationID,
             "cloudSignature": cloudSignature.hexString,
         ], accessToken: accessToken)
+    }
+
+    func abandon(grantID: String, accessToken: String) async throws {
+        let _: Acknowledged = try await request("POST", "api/me/account/abandon", body: ["grantId": grantID], accessToken: accessToken)
     }
 
     private func request<Response: Decodable>(
