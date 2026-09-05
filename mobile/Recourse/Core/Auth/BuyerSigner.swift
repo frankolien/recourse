@@ -5,6 +5,16 @@ protocol BuyerSigner: Sendable {
     func sign(_ transaction: UnsignedTransaction) async throws -> Data
     func signEIP712(_ typedData: Data) async throws -> Data
     func reset() async throws
+
+    // Declared here, not only in the extension below, so a call through `any
+    // BuyerSigner` reaches the signer's own answer. An extension-only method is
+    // dispatched statically, and every caller was getting the default: "yes, there
+    // is a wallet", which made a restore impossible to reach.
+    func exportPrivateKey() async throws -> Data
+    func importPrivateKey(_ privateKey: Data) async throws
+    func signHash(_ digest: Data) async throws -> Data
+    func hasWallet() async -> Bool
+    func setMintsOnDemand(_ allowed: Bool) async
 }
 
 extension BuyerSigner {
@@ -35,6 +45,12 @@ extension BuyerSigner {
     /// caller and exactly wrong here: asking "is there a wallet to restore onto"
     /// must not answer by making one. Signers that always have a key say so.
     func hasWallet() async -> Bool { true }
+
+    /// Whether `address()` may mint a key when none exists. Off while the account
+    /// store is still finding out if this account's wallet lives elsewhere: a key
+    /// minted in that window is a stray that the server then refuses, and the
+    /// reinstall that lost the keychain turns into an afternoon.
+    func setMintsOnDemand(_ allowed: Bool) async {}
 }
 
 enum BuyerSignerError: Error, Equatable, Sendable {
@@ -48,4 +64,7 @@ enum BuyerSignerError: Error, Equatable, Sendable {
     /// Importing onto a device that already has a wallet. Refused rather than
     /// overwritten: the existing key may hold funds nobody else has a copy of.
     case walletAlreadyExists
+    /// No key here, and none may be made yet: the account's wallet is on another
+    /// phone, or the store has not yet found out. Recovery is the way in.
+    case walletElsewhere
 }

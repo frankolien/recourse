@@ -47,9 +47,35 @@ final class SmartAccountStoreTests: XCTestCase {
         XCTAssertEqual(calls, 1)
     }
 
+    func testALiveWalletElsewhereAndNoKeyHereIsARestoreAndMintsNothing() async throws {
+        let api = SmartAccountAPIFake(current: record(status: "live"), provisioned: .success(record(status: "live")))
+        let cloud = AbsentCloudSigner()
+        let store = try await makeStore(api: api, cloud: cloud)
+
+        await store.load()
+
+        XCTAssertEqual(store.phase, .needsRestore)
+        let minting = await cloud.mintsOnDemand
+        XCTAssertFalse(minting, "no key may appear while the account's wallet is elsewhere")
+        let calls = await api.provisionCalls
+        XCTAssertEqual(calls, 0)
+    }
+
+    func testAnAccountWithNoWalletMayMintOne() async throws {
+        let api = SmartAccountAPIFake(current: nil, provisioned: .success(record(status: "live")))
+        let cloud = AbsentCloudSigner()
+        let store = try await makeStore(api: api, cloud: cloud)
+
+        await store.load()
+
+        XCTAssertEqual(store.phase, .none)
+        let minting = await cloud.mintsOnDemand
+        XCTAssertTrue(minting)
+    }
+
     // MARK: Fixtures
 
-    private func makeStore(api: SmartAccountAPIFake) async throws -> SmartAccountStore {
+    private func makeStore(api: SmartAccountAPIFake, cloud: any BuyerSigner = FixedCloudSigner()) async throws -> SmartAccountStore {
         let account = AuthenticatedAccount(
             accountID: 11,
             providerUserID: "apple-user-123",
@@ -77,7 +103,7 @@ final class SmartAccountStoreTests: XCTestCase {
         return SmartAccountStore(
             configuration: .live,
             session: session,
-            signer: SwitchableSigner(cloud: FixedCloudSigner()),
+            signer: SwitchableSigner(cloud: cloud),
             api: api,
             deviceKey: FixedDeviceKey(),
             defaults: UserDefaults(suiteName: "SmartAccountStoreTests-\(UUID().uuidString)")!
@@ -101,17 +127,18 @@ final class SmartAccountStoreTests: XCTestCase {
 }
 
 private actor SmartAccountAPIFake: SmartAccountAPI {
-    let current: SmartAccountRecord
+    let current: SmartAccountRecord?
     let provisioned: Result<SmartAccountRecord, Error>
     private(set) var provisionCalls = 0
 
-    init(current: SmartAccountRecord, provisioned: Result<SmartAccountRecord, Error>) {
+    init(current: SmartAccountRecord?, provisioned: Result<SmartAccountRecord, Error>) {
         self.current = current
         self.provisioned = provisioned
     }
 
     func current(accessToken: String) async throws -> SmartAccountRecord {
-        current
+        guard let current else { throw SmartAccountAPIError.none }
+        return current
     }
 
     func provision(cloudOwner: String, deviceKey: DevicePublicKey, accessToken: String) async throws -> SmartAccountRecord {
@@ -168,4 +195,30 @@ private actor FixedCloudSigner: BuyerSigner {
     }
 
     func reset() async throws {}
+}
+
+/// A phone with no Cloud Key at all, which remembers whether it was allowed to make one.
+private actor AbsentCloudSigner: BuyerSigner {
+    private(set) var mintsOnDemand = true
+
+    func address() async throws -> EthereumAddress {
+        guard mintsOnDemand else { throw BuyerSignerError.walletElsewhere }
+        return EthereumAddress(trusted: "0x9999999999999999999999999999999999999999")
+    }
+
+    func sign(_ transaction: UnsignedTransaction) async throws -> Data {
+        throw BuyerSignerError.signingFailed
+    }
+
+    func signEIP712(_ typedData: Data) async throws -> Data {
+        throw BuyerSignerError.signingFailed
+    }
+
+    func reset() async throws {}
+
+    func hasWallet() async -> Bool { false }
+
+    func setMintsOnDemand(_ allowed: Bool) async {
+        mintsOnDemand = allowed
+    }
 }

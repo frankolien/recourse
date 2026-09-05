@@ -46,6 +46,10 @@ actor SwitchableSigner: BuyerSigner {
         await cloud.hasWallet()
     }
 
+    func setMintsOnDemand(_ allowed: Bool) async {
+        await cloud.setMintsOnDemand(allowed)
+    }
+
     func exportPrivateKey() async throws -> Data {
         try await cloud.exportPrivateKey()
     }

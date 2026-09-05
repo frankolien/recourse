@@ -63,8 +63,10 @@ final class SmartAccountStore {
 
     // MARK: Lifecycle
 
-    /// Adopt the cached record immediately, then ask the server.
+    /// Adopt the cached record immediately, then ask the server. No key is minted
+    /// until the server has said whether this account's wallet already exists.
     func load() async {
+        await signer.setMintsOnDemand(false)
         if let cached = cachedRecord(), cached.isLive {
             await adopt(cached)
         }
@@ -75,14 +77,25 @@ final class SmartAccountStore {
     func refresh() async {
         guard session.isAuthenticated else {
             phase = .unknown
+            await signer.setMintsOnDemand(true)
             return
         }
         do {
             let remote = try await session.withAccessToken { try await api.current(accessToken: $0) }
             guard remote.isLive else {
+                await signer.setMintsOnDemand(true)
                 await finish()
                 return
             }
+            // A live wallet and no Cloud Key here: this is a restore, and the one
+            // thing that must not happen is a fresh key appearing in the meantime.
+            guard await signer.cloud.hasWallet() else {
+                record = remote
+                phase = .needsRestore
+                deactivate()
+                return
+            }
+            await signer.setMintsOnDemand(true)
             if try await holdsDeviceKey(for: remote) {
                 await adopt(remote)
             } else {
@@ -91,11 +104,13 @@ final class SmartAccountStore {
                 deactivate()
             }
         } catch SmartAccountAPIError.none {
+            await signer.setMintsOnDemand(true)
             record = nil
             phase = .none
             deactivate()
         } catch {
-            // Offline keeps whatever was cached; a fresh install with no cache waits.
+            // Offline keeps whatever was cached; a fresh install with no cache waits,
+            // and so does minting, until the server can be asked.
             if phase == .unknown, record == nil { phase = .unknown }
         }
     }
@@ -248,6 +263,7 @@ final class SmartAccountStore {
         phase = .none
         deactivate()
         if let cacheKey { defaults.removeObject(forKey: cacheKey) }
+        await signer.setMintsOnDemand(true)
         return try await provision()
     }
 
@@ -289,6 +305,7 @@ final class SmartAccountStore {
                 return "The Cloud Key on this phone holds no address. Under Keys, use Recovery PIN for the Cloud Key to bring it back, then try again."
             case .signingFailed: return "The Cloud Key could not sign."
             case .walletAlreadyExists: return "This phone already holds a different Cloud Key."
+            case .walletElsewhere: return "This account's wallet was made on another phone. Restore it here first."
             case .entropyUnavailable, .keystoreCreationFailed, .keystoreSerializationFailed:
                 return "This phone could not make a Cloud Key."
             }

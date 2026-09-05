@@ -183,6 +183,12 @@ actor TestnetLocalSigner: BuyerSigner {
         try await store.delete(account: passwordAccount)
     }
 
+    private var mintsOnDemand = true
+
+    func setMintsOnDemand(_ allowed: Bool) async {
+        mintsOnDemand = allowed
+    }
+
     private func loadOrCreateKeystore() async throws -> EthereumKeystoreV3 {
         if let data = try await store.load(account: keystoreAccount) {
             guard let keystore = EthereumKeystoreV3(data) else {
@@ -190,10 +196,12 @@ actor TestnetLocalSigner: BuyerSigner {
             }
             return keystore
         }
- 
+
         if let adopted = try await adoptDeviceWideKeystore() {
             return adopted
         }
+
+        guard mintsOnDemand else { throw BuyerSignerError.walletElsewhere }
 
         let password = try makePassword()
         guard let keystore = try EthereumKeystoreV3(password: password) else {
