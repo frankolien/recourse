@@ -1,4 +1,5 @@
 import Foundation
+import BigInt
 @preconcurrency import BigInt
 
 struct ArcContractGateway: ContractGateway {
@@ -109,6 +110,14 @@ struct ArcContractGateway: ContractGateway {
 
     func vaultWithdraw(shares: UInt64) async throws -> ChainHash {
         try await writer.vaultWithdraw(shares: shares)
+    }
+
+    func approveFXRouterUSDC(amount: USDCAmount) async throws -> ChainHash {
+        try await writer.approveFXRouterUSDC(amount: amount)
+    }
+
+    func swapUSDCForEURC(amountIn: USDCAmount, minAmountOut: BigUInt, deadline: UInt64) async throws -> ChainHash {
+        try await writer.swapUSDCForEURC(amountIn: amountIn, minAmountOut: minAmountOut, deadline: deadline)
     }
 
     func cashCheque(_ cheque: Cheque, signature: Data) async throws -> ChainHash {

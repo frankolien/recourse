@@ -76,6 +76,10 @@ protocol ContractWriting: Sendable {
     func approveVaultUSDC(amount: USDCAmount) async throws -> ChainHash
     func vaultDeposit(amount: USDCAmount) async throws -> ChainHash
     func vaultWithdraw(shares: UInt64) async throws -> ChainHash
+    /// Let the FX router take this much USDC from the account.
+    func approveFXRouterUSDC(amount: USDCAmount) async throws -> ChainHash
+    /// Swap USDC for at least `minAmountOut` EURC through the pool, or revert.
+    func swapUSDCForEURC(amountIn: USDCAmount, minAmountOut: BigUInt, deadline: UInt64) async throws -> ChainHash
     /// Submit someone else's authorization and move their USDC to the person it names.
     func cashCheque(_ cheque: Cheque, signature: Data) async throws -> ChainHash
     /// Burn a cheque's nonce so the authorization can never be used.

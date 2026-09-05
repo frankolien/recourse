@@ -150,6 +150,14 @@ actor FakeContractGateway: ContractGateway {
         DomainFixture.transferHash
     }
 
+    func approveFXRouterUSDC(amount: USDCAmount) async throws -> ChainHash {
+        DomainFixture.transferHash
+    }
+
+    func swapUSDCForEURC(amountIn: USDCAmount, minAmountOut: BigUInt, deadline: UInt64) async throws -> ChainHash {
+        DomainFixture.transferHash
+    }
+
     func approveUSDC(amount: USDCAmount) async throws -> ChainHash {
         calls.append(.approve(amount))
         currentAllowance = amount

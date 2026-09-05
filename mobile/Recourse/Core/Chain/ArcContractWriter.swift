@@ -25,6 +25,8 @@ actor ArcContractWriter: ContractWriting {
     private let registry: EthereumContract
     private let escrow: EthereumContract
     private let vault: EthereumContract
+    // Absent on a chain with no FX venue, in which case Convert never shows.
+    private let fxRouter: EthereumContract?
 
     init(
         configuration: AppConfiguration,
@@ -62,6 +64,37 @@ actor ArcContractWriter: ContractWriting {
             address: configuration.settlementVaultAddress,
             name: ContractABI.settlementVault.rawValue
         )
+        if let router = configuration.fxRouterAddress {
+            fxRouter = try Self.makeContract(abi: ContractABI.fxRouter.load(from: bundle), address: router, name: ContractABI.fxRouter.rawValue)
+        } else {
+            fxRouter = nil
+        }
+    }
+
+    func approveFXRouterUSDC(amount: USDCAmount) async throws -> ChainHash {
+        guard let router = configuration.fxRouterAddress else { throw ContractWriteError.unsupportedMethod("approve(router)") }
+        let data = try encode(
+            contract: erc20,
+            method: "approve",
+            parameters: [try web3Address(router), BigUInt(amount.baseUnits)]
+        )
+        return try await submit(to: configuration.usdcAddress, data: data)
+    }
+
+    /// The pool converts one way, USDC into EURC, and the router refuses to fill
+    /// below `minAmountOut`, which is the slippage floor the quote was shown with.
+    func swapUSDCForEURC(amountIn: USDCAmount, minAmountOut: BigUInt, deadline: UInt64) async throws -> ChainHash {
+        guard let fxRouter, let router = configuration.fxRouterAddress, let eurc = configuration.eurcAddress else {
+            throw ContractWriteError.unsupportedMethod("swapExactTokensForTokens")
+        }
+        let path = [try web3Address(configuration.usdcAddress), try web3Address(eurc)]
+        let recipient = try await signer.address()
+        let data = try encode(
+            contract: fxRouter,
+            method: "swapExactTokensForTokens",
+            parameters: [BigUInt(amountIn.baseUnits), minAmountOut, path, try web3Address(recipient), BigUInt(deadline)]
+        )
+        return try await submit(to: router, data: data)
     }
 
     func approveUSDC(amount: USDCAmount) async throws -> ChainHash {

@@ -17,6 +17,8 @@ import SwiftUI
 /// belongs on the screen rather than in the user's head.
 struct ConvertView: View {
     let reader: (any ContractReading)?
+    /// Absent in previews; Review then shows the quote but cannot fill.
+    var environment: AppEnvironment? = nil
     /// EURC per USDC. Supplied rather than fetched so the check has an origin the
     /// venue cannot influence.
     var referencePrice: Double = 0.867
@@ -67,8 +69,11 @@ struct ConvertView: View {
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showsReview) {
             if let amount, let quote {
-                ConvertReviewSheet(amount: amount, quote: quote)
-                    .presentationDetents([.medium])
+                ConvertReviewSheet(amount: amount, quote: quote, reader: reader, environment: environment, referencePrice: referencePrice) {
+                    amountText = ""
+                }
+                .presentationDetents([.large])
+                .presentationDragIndicator(.hidden)
             }
         }
         .task {
@@ -309,58 +314,291 @@ struct ConvertView: View {
     }
 }
 
-/// What Review shows: the quote as it stands, and the truth that the app quotes
-/// the pool and checks it against the market but does not yet fill from here.
+/// Review, in the shape every swap app has settled on: the two legs with their
+/// marks, the terms of the fill, and one button. The fill is simulated when the
+/// sheet opens; a failed simulation is a red pill at the top and a grey button,
+/// never a signed transaction.
 private struct ConvertReviewSheet: View {
     let amount: USDCAmount
     let quote: FXQuote
-    @Environment(\.dismiss) private var dismiss
+    let reader: (any ContractReading)?
+    let environment: AppEnvironment?
+    let referencePrice: Double
+    let onConverted: () -> Void
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text("Review")
-                .font(.recourse(20, .semibold))
-                .foregroundStyle(RecourseColor.nightText)
-                .padding(.top, 8)
-            row("You pay", "\(amount.decimalString) USDC")
-            row("You receive", "\(EURCAmount(baseUnits: quote.amountOut).formatted) EURC")
-            row("Rate", String(format: "%.4f EURC per USDC", quote.price))
-            row("Minimum received", EURCAmount(baseUnits: quote.minAmountOut).formatted)
-            if let deviation = quote.deviationBps {
-                row("Versus market", deviation <= 0 ? "better by \(abs(deviation)) bps" : "\(deviation) bps worse")
-            }
-            Text("Quoted from Arc's pool and checked against an independent rate. Filling a conversion from the app is not switched on yet.")
-                .font(.recourse(12))
-                .foregroundStyle(RecourseColor.nightMuted)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer()
-            Button {
-                dismiss()
-            } label: {
-                Text("Done")
-                    .font(.recourse(17, .semibold))
-                    .foregroundStyle(RecourseColor.nightText)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 54)
-                    .background(RecourseColor.nightChip, in: Capsule())
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(24)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(RecourseColor.night)
+    @Environment(\.dismiss) private var dismiss
+    @State private var simulation: Simulation = .running
+    @State private var stage: String?
+    @State private var isWorking = false
+    @State private var errorMessage: String?
+    @State private var result: ChainHash?
+
+    enum Simulation: Equatable {
+        case running
+        case passed
+        case failed
     }
 
-    private func row(_ label: String, _ value: String) -> some View {
+    private var canConfirm: Bool {
+        simulation == .passed && environment != nil && !isWorking && result == nil
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            header
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    leg(mark: .usdc, label: "Convert", amount: amount.decimalString, symbol: "USDC")
+                    leg(mark: .eurc, label: "To", amount: EURCAmount(baseUnits: quote.amountOut).formatted, symbol: "EURC")
+                        .padding(.top, 18)
+                    rule.padding(.vertical, 22)
+                    row("Slippage") {
+                        Text(String(format: "%.2f %%", Double(FX.defaultSlippageBps) / 100))
+                            .font(.recourse(15, .semibold))
+                            .foregroundStyle(RecourseColor.nightText)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(RecourseColor.nightChip, in: Capsule())
+                    }
+                    row("Receive at least", value: EURCAmount(baseUnits: quote.minAmountOut).formatted, unit: "EURC")
+                    row("Route", value: "Arc Swap")
+                    row("Price impact", value: impactText, tint: impactTint)
+                    rule.padding(.vertical, 22)
+                    row("Platform fee", value: "Free", tint: RecourseColor.ledger)
+                    row("Onchain fees", value: "Paid in USDC")
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .font(.recourse(13))
+                            .foregroundStyle(.orange)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.top, 18)
+                    }
+                    if let result {
+                        Text("Converted. Transaction \(result.value.prefix(10))... is on Arc; your EURC balance updates with the next refresh.")
+                            .font(.recourse(13))
+                            .foregroundStyle(RecourseColor.ledger)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.top, 18)
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 14)
+            }
+            .scrollIndicators(.hidden)
+            confirmButton
+                .padding(.horizontal, 20)
+                .padding(.bottom, 12)
+        }
+        .background(RecourseColor.night)
+        .overlay(alignment: .top) {
+            if simulation == .failed {
+                toast
+                    .padding(.top, 10)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.snappy(duration: 0.25), value: simulation)
+        .task { await simulate() }
+    }
+
+    private var header: some View {
+        ZStack {
+            Text("Review")
+                .font(.recourse(17, .semibold))
+                .foregroundStyle(RecourseColor.nightText)
+            HStack {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(RecourseColor.nightMuted)
+                        .frame(width: 34, height: 34)
+                        .background(RecourseColor.nightChip, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .disabled(isWorking)
+                Spacer()
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 18)
+        .padding(.bottom, 8)
+    }
+
+    private var toast: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "xmark.circle.fill")
+                .foregroundStyle(.red)
+            Text("Swap simulation failed")
+                .font(.recourse(14, .semibold))
+                .foregroundStyle(.red)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(Color.red.opacity(0.12), in: Capsule())
+        .overlay(Capsule().stroke(Color.red.opacity(0.25), lineWidth: 1))
+    }
+
+    private func leg(mark: BrandMark, label: String, amount: String, symbol: String) -> some View {
+        HStack(spacing: 16) {
+            BrandMarkView(mark: mark, height: 48)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .font(.recourse(14))
+                    .foregroundStyle(RecourseColor.nightMuted)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(amount)
+                        .font(.system(size: 26, weight: .semibold, design: .rounded))
+                        .foregroundStyle(RecourseColor.nightText)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                    Text(symbol)
+                        .font(.recourse(20, .medium))
+                        .foregroundStyle(RecourseColor.nightMuted)
+                }
+            }
+            Spacer()
+        }
+    }
+
+    private var rule: some View {
+        Rectangle().fill(RecourseColor.nightLine).frame(height: 1)
+    }
+
+    private func row(_ label: String, value: String, unit: String? = nil, tint: Color = RecourseColor.nightText) -> some View {
+        row(label) {
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                Text(value)
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(tint)
+                if let unit {
+                    Text(unit)
+                        .font(.recourse(15))
+                        .foregroundStyle(RecourseColor.nightMuted)
+                }
+            }
+        }
+    }
+
+    private func row<Trailing: View>(_ label: String, @ViewBuilder trailing: () -> Trailing) -> some View {
         HStack {
             Text(label)
-                .font(.recourse(14))
+                .font(.recourse(15))
                 .foregroundStyle(RecourseColor.nightMuted)
             Spacer()
-            Text(value)
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                .foregroundStyle(RecourseColor.nightText)
+            trailing()
         }
+        .frame(minHeight: 44)
+    }
+
+    // Fuse shows impact against the pool's own mid price; ours is against the
+    // market, which is the number that decides whether the trade is worth making.
+    private var impactText: String {
+        guard let bps = quote.deviationBps else { return "Unknown" }
+        if abs(bps) < 10 { return "< 0.1 %" }
+        return String(format: "%@%.1f %%", bps < 0 ? "+" : "-", abs(Double(bps)) / 100)
+    }
+
+    private var impactTint: Color {
+        guard let bps = quote.deviationBps else { return RecourseColor.nightMuted }
+        return bps <= 50 ? RecourseColor.ledger : .orange
+    }
+
+    private var confirmButton: some View {
+        Button(action: submit) {
+            HStack(spacing: 8) {
+                if isWorking {
+                    ProgressView().tint(.white)
+                } else if result == nil, canConfirm {
+                    Image(systemName: "faceid")
+                }
+                Text(buttonLabel)
+            }
+            .font(.recourse(17, .semibold))
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
+            .background(canConfirm || isWorking ? RecourseColor.ledger : Color.gray.opacity(0.55), in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .disabled(!canConfirm && result == nil)
+    }
+
+    private var buttonLabel: String {
+        if let stage, isWorking { return stage }
+        if result != nil { return "Done" }
+        if environment == nil { return "Preview only" }
+        return "Confirm"
+    }
+
+    // MARK: Behaviour
+
+    /// The router is asked once more, right now, for the same trade. A quote that
+    /// no longer clears the floor the user was shown is a trade that would revert.
+    private func simulate() async {
+        guard let reader else {
+            simulation = .failed
+            return
+        }
+        do {
+            let out = try await reader.fxAmountOut(amountIn: amount)
+            simulation = out >= quote.minAmountOut ? .passed : .failed
+        } catch {
+            simulation = .failed
+        }
+    }
+
+    private func submit() {
+        if result != nil {
+            dismiss()
+            return
+        }
+        guard canConfirm, let environment else { return }
+        isWorking = true
+        errorMessage = nil
+        Task {
+            do {
+                let gateway = try environment.makeContractGateway()
+                stage = "Approving USDC"
+                let approval = try await gateway.approveFXRouterUSDC(amount: amount)
+                guard try await gateway.waitForReceipt(transactionHash: approval).outcome == .confirmed else {
+                    throw ConvertError.reverted
+                }
+                stage = "Converting on Arc"
+                let deadline = UInt64(Date().timeIntervalSince1970) + 600
+                let hash = try await gateway.swapUSDCForEURC(amountIn: amount, minAmountOut: quote.minAmountOut, deadline: deadline)
+                guard try await gateway.waitForReceipt(transactionHash: hash).outcome == .confirmed else {
+                    throw ConvertError.reverted
+                }
+                await environment.paymentStore.refreshBuyer()
+                result = hash
+                onConverted()
+            } catch {
+                errorMessage = failureMessage(error)
+            }
+            isWorking = false
+            stage = nil
+        }
+    }
+
+    private func failureMessage(_ error: any Error) -> String {
+        switch error {
+        case ConvertError.reverted:
+            "Arc reverted the conversion. Nothing moved."
+        case TransactionAuthorizationError.cancelled:
+            "The conversion was cancelled."
+        case BundlerError.rejected(let reason):
+            "Arc's bundler refused it: \(reason)"
+        case SafeSubmitError.operationFailed:
+            "Arc ran the conversion and it failed. Nothing moved."
+        default:
+            SmartAccountStore.describe(error)
+        }
+    }
+
+    private enum ConvertError: Error {
+        case reverted
     }
 }
 
