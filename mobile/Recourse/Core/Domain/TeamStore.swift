@@ -92,10 +92,47 @@ final class TeamStore {
     /// every ten seconds; the Team screens pass `force` and get it every time.
     private static let minimumInterval: TimeInterval = 45
 
+    private let cache = SnapshotCache.shared
+    private static let snapshotKey = "team"
+
+    private struct Snapshot: Codable {
+        let accounts: [OlienSummary]
+        let details: [String: OlienAccount]
+        let proposals: [String: [OlienProposal]]
+    }
+
+    // The account whose teams are held. Starts unequal to any real scope so the first
+    // refresh opens that account's own snapshot, never the last person's treasuries.
+    private var loadedScope: String? = "unloaded"
+
+    private func adoptScope() {
+        let scope = ActiveAccount.scope
+        guard scope != loadedScope else { return }
+        loadedScope = scope
+        lastUpdated = nil
+        errorMessage = nil
+        let snapshot = cache.load(Snapshot.self, key: Self.snapshotKey, scope: scope)
+        accounts = snapshot?.accounts ?? []
+        details = snapshot?.details ?? [:]
+        proposals = snapshot?.proposals ?? [:]
+    }
+
+    private func persist() {
+        cache.save(Snapshot(accounts: accounts, details: details, proposals: proposals), key: Self.snapshotKey, scope: loadedScope)
+    }
+
+    /// Ask the service again. A failure leaves the teams as they were and says so.
     func refresh(force: Bool = false) async {
+        adoptScope()
         guard !isLoading else { return }
-        guard session.isAuthenticated, smartAccounts.safeAddress != nil else {
+        guard session.isAuthenticated else {
             clear()
+            return
+        }
+        // A Safe still being looked up is not the same as no Safe: the teams stay on
+        // screen until the account is known to have none.
+        guard smartAccounts.safeAddress != nil else {
+            if smartAccounts.phase == SmartAccountStore.Phase.none { clear() }
             return
         }
         if !force, let lastUpdated, Date().timeIntervalSince(lastUpdated) < Self.minimumInterval {
@@ -112,11 +149,13 @@ final class TeamStore {
                     try await api.proposals(account: summary.address, statuses: nil, accessToken: $0)
                 }
             }
+            guard loadedScope == ActiveAccount.scope else { return }
             accounts = list
             proposals = queue
             details = details.filter { entry in list.contains { $0.id == entry.key } }
             errorMessage = nil
             lastUpdated = Date()
+            persist()
         } catch AccountSessionError.signedOut {
             clear()
         } catch {
@@ -136,9 +175,11 @@ final class TeamStore {
                 async let queue = api.proposals(account: address, statuses: nil, accessToken: token)
                 return try await (view, queue)
             }
+            guard loadedScope == ActiveAccount.scope else { return }
             details[view.id] = view
             proposals[view.id] = queue
             errorMessage = nil
+            persist()
         } catch AccountSessionError.signedOut {
             clear()
         } catch {
@@ -152,6 +193,7 @@ final class TeamStore {
         proposals = [:]
         lastUpdated = nil
         errorMessage = nil
+        cache.remove(key: Self.snapshotKey, scope: loadedScope)
     }
 
     // MARK: What this account may do

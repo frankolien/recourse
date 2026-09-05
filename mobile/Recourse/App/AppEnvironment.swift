@@ -215,10 +215,22 @@ final class BuyerPaymentStore {
     private(set) var merchantPayments: [DemoPayment] = []
     private(set) var policies: [PolicyRecord] = []
     private(set) var balance: USDCAmount?
+    /// When the balance on screen was last read from the chain. Survives launches
+    /// with the balance, so the screen can say how old the number is.
+    private(set) var balanceUpdatedAt: Date?
+    /// The last attempt to read the balance failed; the number on screen is the
+    /// previous one. The screen says so instead of showing zero.
+    private(set) var balanceIsStale = false
     private(set) var walletAddress: EthereumAddress?
     private(set) var isLoading = false
     private(set) var errorMessage: String?
     private(set) var lastUpdated: Date?
+    private let cache = SnapshotCache.shared
+
+    private struct BalanceSnapshot: Codable {
+        let baseUnits: UInt64
+        let updatedAt: Date
+    }
 
     init(
         configuration: AppConfiguration = .live,
@@ -328,10 +340,33 @@ final class BuyerPaymentStore {
         merchantPayments = []
         policies = []
         balance = nil
+        balanceUpdatedAt = nil
+        balanceIsStale = false
         walletAddress = nil
         lastUpdated = nil
         errorMessage = nil
         unresolvableOrderRefs = []
+        // The account's own last balance, so the first frame is a number it knew
+        // rather than a zero waiting on the network.
+        if let snapshot = cache.load(BalanceSnapshot.self, key: "balance", scope: current) {
+            balance = USDCAmount(baseUnits: snapshot.baseUnits)
+            balanceUpdatedAt = snapshot.updatedAt
+        }
+    }
+
+    /// A balance that cannot be read stays what it was. Blanking it to zero is the
+    /// one thing a money app must never do to someone on a bad connection.
+    private func readBalance(of address: EthereumAddress) async {
+        do {
+            let fresh = try await fetchBalance(address: address)
+            let now = Date()
+            balance = fresh
+            balanceUpdatedAt = now
+            balanceIsStale = false
+            cache.save(BalanceSnapshot(baseUnits: fresh.baseUnits, updatedAt: now), key: "balance", scope: ActiveAccount.scope)
+        } catch {
+            balanceIsStale = true
+        }
     }
 
     func refreshMerchant() async {
@@ -370,15 +405,16 @@ final class BuyerPaymentStore {
             switch scope {
             case .buyer:
                 payments = displayPayments
-                balance = try? await fetchBalance(address: address)
+                await readBalance(of: address)
             case .merchant:
                 merchantPayments = displayPayments
-                balance = try? await fetchBalance(address: address)
+                await readBalance(of: address)
             }
             errorMessage = nil
             lastUpdated = Date()
         } catch {
             errorMessage = "Live Arc data is unavailable. Pull to retry."
+            balanceIsStale = true
         }
     }
 

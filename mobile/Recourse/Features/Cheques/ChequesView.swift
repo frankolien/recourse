@@ -198,16 +198,24 @@ struct ChequesView: View {
         .contentShape(Rectangle())
     }
 
+    // A server that did not answer is not an empty book, so the empty state says
+    // which one it is.
     @ViewBuilder
     private var empty: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(side == .received ? "No cheques written to you" : "You have not written one")
-                .font(.recourse(15, .semibold))
-                .foregroundStyle(RecourseColor.nightText)
             Text(
-                side == .received
-                    ? "When someone writes you a cheque it lands here, and cashing it is one tap. They do not need to be online for you to take the money."
-                    : "A cheque is a payment the other person collects when they choose to. It costs nothing to write, expires on its own, and you can void it any time before it is cashed."
+                book.errorMessage != nil
+                    ? "Cheques could not be loaded"
+                    : side == .received ? "No cheques written to you" : "You have not written one"
+            )
+            .font(.recourse(15, .semibold))
+            .foregroundStyle(RecourseColor.nightText)
+            Text(
+                book.errorMessage != nil
+                    ? "Recourse is not answering. Pull down to try again."
+                    : side == .received
+                        ? "When someone writes you a cheque it lands here, and cashing it is one tap. They do not need to be online for you to take the money."
+                        : "A cheque is a payment the other person collects when they choose to. It costs nothing to write, expires on its own, and you can void it any time before it is cashed."
             )
             .font(.recourse(12.5))
             .foregroundStyle(RecourseColor.nightMuted)

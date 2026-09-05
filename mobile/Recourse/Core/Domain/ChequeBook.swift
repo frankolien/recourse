@@ -6,7 +6,7 @@ import Observation
 /// Only the spent ones come from the chain; the rest are clock readings. That is why
 /// `expired` is worth a case of its own: nothing on chain marks an expiry, so if the
 /// app did not work it out, a cheque would simply stop working with no explanation.
-enum ChequeStanding: Equatable, Sendable {
+enum ChequeStanding: Codable, Equatable, Sendable {
     case cashable
     /// Written to start later. Rare, but the field is signed over so it can happen.
     case notYet(from: Date)
@@ -24,7 +24,7 @@ enum ChequeStanding: Equatable, Sendable {
 }
 
 /// A cheque with its standing worked out.
-struct ChequeEntry: Identifiable, Equatable, Sendable {
+struct ChequeEntry: Identifiable, Codable, Equatable, Sendable {
     let stored: StoredCheque
     let standing: ChequeStanding
 
@@ -112,7 +112,32 @@ final class ChequeBook {
     /// refresh passes `force` and waits for nobody.
     private static let minimumInterval: TimeInterval = 45
 
+    private let cache = SnapshotCache.shared
+    private static let snapshotKey = "cheques"
+
+    private struct Snapshot: Codable {
+        let received: [ChequeEntry]
+        let written: [ChequeEntry]
+    }
+
+    // The account whose book is held. Starts unequal to any real scope so the first
+    // refresh opens that account's own snapshot, never the last person's cheques.
+    private var loadedScope: String? = "unloaded"
+
+    private func adoptScope() {
+        let scope = ActiveAccount.scope
+        guard scope != loadedScope else { return }
+        loadedScope = scope
+        lastUpdated = nil
+        errorMessage = nil
+        let snapshot = cache.load(Snapshot.self, key: Self.snapshotKey, scope: scope)
+        received = snapshot?.received ?? []
+        written = snapshot?.written ?? []
+    }
+
+    /// Ask the server again. A failure leaves the book as it was and says so.
     func refresh(force: Bool = false) async {
+        adoptScope()
         guard !isLoading else { return }
         if !force, let lastUpdated, Date().timeIntervalSince(lastUpdated) < Self.minimumInterval {
             return
@@ -126,10 +151,14 @@ final class ChequeBook {
                 async let outbox = api.outbox(accessToken: token)
                 return try await (inbox, outbox)
             }
-            received = await resolve(inbox)
-            written = await resolve(outbox)
+            let resolvedInbox = await resolve(inbox)
+            let resolvedOutbox = await resolve(outbox)
+            guard loadedScope == ActiveAccount.scope else { return }
+            received = resolvedInbox
+            written = resolvedOutbox
             errorMessage = nil
             lastUpdated = Date()
+            cache.save(Snapshot(received: received, written: written), key: Self.snapshotKey, scope: loadedScope)
         } catch AccountSessionError.signedOut {
             received = []
             written = []

@@ -233,15 +233,21 @@ struct ActivityView: View {
         .contentShape(Rectangle())
     }
 
+    // An explorer that did not answer is not an empty wallet, so the empty state
+    // says which one it is.
+    private var unreachable: Bool { query.isEmpty && history.errorMessage != nil }
+
     private var empty: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(query.isEmpty ? "Nothing yet" : "No matches")
+            Text(unreachable ? "History could not be loaded" : query.isEmpty ? "Nothing yet" : "No matches")
                 .font(.recourse(15, .semibold))
                 .foregroundStyle(RecourseColor.nightText)
             Text(
-                query.isEmpty
-                    ? "Every dollar that moves in or out of this wallet lands here, whatever moved it."
-                    : "Try a different name, kind or amount."
+                unreachable
+                    ? "Arc is not answering. Pull down to try again."
+                    : query.isEmpty
+                        ? "Every dollar that moves in or out of this wallet lands here, whatever moved it."
+                        : "Try a different name, kind or amount."
             )
             .font(.recourse(12.5))
             .foregroundStyle(RecourseColor.nightMuted)

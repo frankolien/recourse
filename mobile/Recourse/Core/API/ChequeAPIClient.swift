@@ -6,7 +6,7 @@ import Foundation
 /// cheque was written to can find it without the writer staying online, and it can be
 /// wrong about everything except the bytes: whether a cheque is still worth anything is
 /// a question only the token answers, through `authorizationState`.
-struct StoredCheque: Decodable, Equatable, Sendable, Identifiable {
+struct StoredCheque: Codable, Equatable, Sendable, Identifiable {
     let chequeId: Int64
     let from: String
     let to: String

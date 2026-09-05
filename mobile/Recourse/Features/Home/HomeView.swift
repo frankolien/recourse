@@ -125,9 +125,16 @@ struct HomeView: View {
         .task {
             // One live snapshot for the Earn teaser; the Earn screen itself
             // refreshes on every visit.
+            if earnVaultState == nil {
+                earnVaultState = SnapshotCache.shared.load(VaultState.self, key: "earn", scope: ActiveAccount.scope)
+            }
             guard let owner = try? await environment.buyerSigner.address(),
                   let gateway = try? environment.makeContractGateway() else { return }
-            earnVaultState = try? await gateway.vaultState(of: owner)
+            // A read that fails keeps the last position on screen rather than hiding it.
+            if let state = try? await gateway.vaultState(of: owner) {
+                earnVaultState = state
+                SnapshotCache.shared.save(state, key: "earn", scope: ActiveAccount.scope)
+            }
         }
     }
 
@@ -251,6 +258,8 @@ struct HomeView: View {
                             Text(balanceCents)
                                 .foregroundStyle(RecourseColor.nightMuted)
                         }
+                        // Never read yet: the zeros are a placeholder, and look like one.
+                        .opacity(environment.paymentStore.balance == nil ? 0.35 : 1)
                         .transition(.blurReplace)
                     }
                 }
@@ -263,7 +272,17 @@ struct HomeView: View {
                     .foregroundStyle(hasIncoming ? RecourseColor.ledger : RecourseColor.nightMuted)
                     .contentTransition(.opacity)
                     .multilineTextAlignment(.center)
+
+                if let staleNotice {
+                    Text(staleNotice)
+                        .font(.recourse(11.5, .medium))
+                        .foregroundStyle(RecourseColor.nightMuted)
+                        .multilineTextAlignment(.center)
+                        .padding(.top, 2)
+                        .transition(.opacity)
+                }
             }
+            .animation(.easeInOut(duration: 0.25), value: staleNotice)
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
         }
@@ -336,6 +355,17 @@ struct HomeView: View {
             return "\(hidden(promised)) promised in cheques you wrote"
         }
         return "Nothing in motion"
+    }
+
+    /// Said only while the number on screen is not fresh. A balance read a minute ago
+    /// is still the balance; what someone needs to know is that it is old, and why.
+    private var staleNotice: String? {
+        let store = environment.paymentStore
+        guard store.balanceIsStale else { return nil }
+        guard let at = store.balanceUpdatedAt else {
+            return "Arc is not answering. Your balance shows once it does."
+        }
+        return "Arc is not answering. Balance as of \(at.formatted(.relative(presentation: .named)))."
     }
 
     /// Green only when the money is coming toward you. What you have promised away is
@@ -668,7 +698,9 @@ struct HomeView: View {
     /// Nothing held, nothing written, nothing received. A balance alone is not enough
     /// to call someone settled in: money arrives before anything else can happen.
     private var isNewHere: Bool {
-        (environment.paymentStore.balance?.baseUnits ?? 0) == 0
+        // An unread balance is unknown, not zero; nobody is called new on a guess.
+        guard let balance = environment.paymentStore.balance else { return false }
+        return balance.baseUnits == 0
             && book.received.isEmpty
             && book.written.isEmpty
             && invoices.issued.isEmpty

@@ -63,14 +63,23 @@ struct EarnView: View {
         }
     }
 
+    /// The position as last read, then the chain. A failed read keeps the last
+    /// position on screen and says the figures are old.
     private func load() async {
+        if vaultState == nil {
+            vaultState = SnapshotCache.shared.load(VaultState.self, key: "earn", scope: ActiveAccount.scope)
+        }
         do {
             let owner = try await environment.buyerSigner.address()
             let gateway = try environment.makeContractGateway()
-            vaultState = try await gateway.vaultState(of: owner)
+            let state = try await gateway.vaultState(of: owner)
+            vaultState = state
+            SnapshotCache.shared.save(state, key: "earn", scope: ActiveAccount.scope)
             loadError = nil
         } catch {
-            loadError = "Live vault data is unavailable right now. Pull to refresh."
+            loadError = vaultState == nil
+                ? "Live vault data is unavailable right now. Pull to refresh."
+                : "Arc is not answering. These figures are from the last read."
         }
     }
 

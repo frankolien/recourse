@@ -1,7 +1,7 @@
 import Foundation
 
 /// One token movement on the wallet, as the explorer saw it.
-struct TokenTransfer: Identifiable, Equatable, Sendable {
+struct TokenTransfer: Identifiable, Codable, Equatable, Sendable {
     let hash: String
     let blockNumber: UInt64
     let timestamp: Date

@@ -7,7 +7,7 @@ import Observation
 /// clock, which is fine because none of it is a claim about money having moved: an
 /// invoice that says "signed" is saying a signature exists, and the token is still the
 /// only thing that decides whether it was used.
-enum InvoiceStanding: Equatable, Sendable {
+enum InvoiceStanding: Codable, Equatable, Sendable {
     /// Nobody has answered it, and it can still be answered.
     case open
     /// Nobody answered it in time.
@@ -31,7 +31,7 @@ enum InvoiceStanding: Equatable, Sendable {
     }
 }
 
-struct InvoiceEntry: Identifiable, Equatable, Sendable {
+struct InvoiceEntry: Identifiable, Codable, Equatable, Sendable {
     let stored: StoredInvoice
     let standing: InvoiceStanding
 
@@ -105,7 +105,32 @@ final class InvoiceBook {
     /// as the cheque book: every unsettled invoice costs a chain read.
     private static let minimumInterval: TimeInterval = 45
 
+    private let cache = SnapshotCache.shared
+    private static let snapshotKey = "invoices"
+
+    private struct Snapshot: Codable {
+        let issued: [InvoiceEntry]
+        let received: [InvoiceEntry]
+    }
+
+    // The account whose invoices are held. Starts unequal to any real scope so the
+    // first refresh opens that account's own snapshot, never the last person's bills.
+    private var loadedScope: String? = "unloaded"
+
+    private func adoptScope() {
+        let scope = ActiveAccount.scope
+        guard scope != loadedScope else { return }
+        loadedScope = scope
+        lastUpdated = nil
+        errorMessage = nil
+        let snapshot = cache.load(Snapshot.self, key: Self.snapshotKey, scope: scope)
+        issued = snapshot?.issued ?? []
+        received = snapshot?.received ?? []
+    }
+
+    /// Ask the server again. A failure leaves the invoices as they were and says so.
     func refresh(force: Bool = false) async {
+        adoptScope()
         guard !isLoading else { return }
         if !force, let lastUpdated, Date().timeIntervalSince(lastUpdated) < Self.minimumInterval {
             return
@@ -119,10 +144,14 @@ final class InvoiceBook {
                 async let outbox = api.outbox(accessToken: token)
                 return try await (inbox, outbox)
             }
-            received = await resolve(inbox)
-            issued = await resolve(outbox)
+            let resolvedInbox = await resolve(inbox)
+            let resolvedOutbox = await resolve(outbox)
+            guard loadedScope == ActiveAccount.scope else { return }
+            received = resolvedInbox
+            issued = resolvedOutbox
             errorMessage = nil
             lastUpdated = Date()
+            cache.save(Snapshot(issued: issued, received: received), key: Self.snapshotKey, scope: loadedScope)
         } catch AccountSessionError.signedOut {
             received = []
             issued = []

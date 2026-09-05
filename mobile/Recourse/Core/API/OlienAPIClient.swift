@@ -1,7 +1,7 @@
 import Foundation
 
 /// A treasury the signed-in account is a member of, as its list row.
-struct OlienSummary: Decodable, Equatable, Sendable, Identifiable {
+struct OlienSummary: Codable, Equatable, Sendable, Identifiable {
     let address: String
     let name: String
     let status: String
@@ -21,7 +21,7 @@ struct OlienSummary: Decodable, Equatable, Sendable, Identifiable {
 
 /// One member of a treasury. `kind` is the curve or contract the account checks
 /// signatures against; people read it as the word.
-struct OlienSigner: Decodable, Equatable, Sendable, Identifiable {
+struct OlienSigner: Codable, Equatable, Sendable, Identifiable {
     let signerId: String
     let kind: String
     let address: String?
@@ -51,7 +51,7 @@ struct OlienSigner: Decodable, Equatable, Sendable, Identifiable {
     }
 }
 
-struct OlienAccountMembership: Decodable, Equatable, Sendable {
+struct OlienAccountMembership: Codable, Equatable, Sendable {
     let creator: Bool
     let signerIds: [String]
 }
@@ -59,7 +59,7 @@ struct OlienAccountMembership: Decodable, Equatable, Sendable {
 /// A treasury as its home screen needs it: rules, members and who the caller is
 /// among them. The service sends more (limits, lanes, sub-accounts); the phone
 /// decodes what it shows.
-struct OlienAccount: Decodable, Equatable, Sendable, Identifiable {
+struct OlienAccount: Codable, Equatable, Sendable, Identifiable {
     let address: String
     let name: String
     let status: String
@@ -84,13 +84,13 @@ struct OlienAccount: Decodable, Equatable, Sendable, Identifiable {
     }
 }
 
-struct OlienCall: Decodable, Equatable, Sendable {
+struct OlienCall: Codable, Equatable, Sendable {
     let to: String
     let value: String
     let data: String
 }
 
-struct OlienDecodedCall: Decodable, Equatable, Sendable {
+struct OlienDecodedCall: Codable, Equatable, Sendable {
     let to: String
     let label: String
     let summary: String
@@ -98,7 +98,7 @@ struct OlienDecodedCall: Decodable, Equatable, Sendable {
     let readable: Bool
 }
 
-struct OlienConfirmation: Decodable, Equatable, Sendable, Identifiable {
+struct OlienConfirmation: Codable, Equatable, Sendable, Identifiable {
     let signerId: String
     let address: String?
     let label: String
@@ -110,7 +110,7 @@ struct OlienConfirmation: Decodable, Equatable, Sendable, Identifiable {
     var signedDate: Date { Date(timeIntervalSince1970: TimeInterval(signedAt)) }
 }
 
-struct OlienMissingSigner: Decodable, Equatable, Sendable, Identifiable {
+struct OlienMissingSigner: Codable, Equatable, Sendable, Identifiable {
     let signerId: String
     let label: String
     let mine: Bool
@@ -118,19 +118,19 @@ struct OlienMissingSigner: Decodable, Equatable, Sendable, Identifiable {
     var id: String { signerId.lowercased() }
 }
 
-struct OlienHardRule: Decodable, Equatable, Sendable {
+struct OlienHardRule: Codable, Equatable, Sendable {
     let rule: String
     let seconds: Int64
     let text: String
 }
 
-struct OlienSimulation: Decodable, Equatable, Sendable {
+struct OlienSimulation: Codable, Equatable, Sendable {
     let ok: Bool
     let error: String?
     let checkedAt: Int64
 }
 
-struct OlienVeto: Decodable, Equatable, Sendable, Identifiable {
+struct OlienVeto: Codable, Equatable, Sendable, Identifiable {
     let signerId: String
     let label: String
     let tx: String
@@ -139,7 +139,7 @@ struct OlienVeto: Decodable, Equatable, Sendable, Identifiable {
     var id: String { signerId.lowercased() }
 }
 
-struct OlienProposer: Decodable, Equatable, Sendable {
+struct OlienProposer: Codable, Equatable, Sendable {
     let accountId: Int64
     let name: String
 }
@@ -160,7 +160,7 @@ struct OlienRecipient: Equatable, Sendable {
 
 /// Where a proposal stands, in the service's words. Unknown words decode rather
 /// than fail, so a status added on the server does not blank the whole queue.
-enum OlienProposalStatus: String, Decodable, Sendable, Equatable {
+enum OlienProposalStatus: String, Codable, Sendable, Equatable {
     case open
     case ready
     case blocked
@@ -210,7 +210,7 @@ enum OlienProposalStatus: String, Decodable, Sendable, Equatable {
 /// A proposal as the service shows it, with what the phone needs to act on it:
 /// the decoded calls to read, the confirmations to count, and the typed data to
 /// hash before anything is signed.
-struct OlienProposal: Decodable, Equatable, Sendable, Identifiable {
+struct OlienProposal: Codable, Equatable, Sendable, Identifiable {
     let txHash: String
     let account: String
     let nonceKey: String
@@ -316,7 +316,7 @@ struct OlienProposal: Decodable, Equatable, Sendable, Identifiable {
 }
 
 /// What a member's own wallet sends to veto a scheduled change.
-struct VetoCall: Decodable, Equatable, Sendable {
+struct VetoCall: Codable, Equatable, Sendable {
     let to: String
     let data: String
     let signerIds: [String]

@@ -206,15 +206,23 @@ struct InvoicesView: View {
     }
 
     @ViewBuilder
+    // A server that did not answer is not an empty list, so the empty state says
+    // which one it is.
     private var empty: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(side == .owed ? "You have not asked for anything" : "Nobody has billed you")
-                .font(.recourse(15, .semibold))
-                .foregroundStyle(RecourseColor.nightText)
             Text(
-                side == .owed
-                    ? "An invoice fixes the amount, the date and who pays before they ever see it. They answer with a signature, and you collect whenever you like."
-                    : "When someone bills you it lands here. Paying is one signature, it costs you no gas, and the amount can never be changed after you sign."
+                book.errorMessage != nil
+                    ? "Invoices could not be loaded"
+                    : side == .owed ? "You have not asked for anything" : "Nobody has billed you"
+            )
+            .font(.recourse(15, .semibold))
+            .foregroundStyle(RecourseColor.nightText)
+            Text(
+                book.errorMessage != nil
+                    ? "Recourse is not answering. Pull down to try again."
+                    : side == .owed
+                        ? "An invoice fixes the amount, the date and who pays before they ever see it. They answer with a signature, and you collect whenever you like."
+                        : "When someone bills you it lands here. Paying is one signature, it costs you no gas, and the amount can never be changed after you sign."
             )
             .font(.recourse(12.5))
             .foregroundStyle(RecourseColor.nightMuted)

@@ -188,21 +188,49 @@ final class TransferHistory {
     private let signer: any BuyerSigner
     private let explorer: any ExplorerAPI
 
+    private let cache: SnapshotCache
+
     private(set) var transfers: [TokenTransfer] = []
     private(set) var isLoading = false
     private(set) var errorMessage: String?
     private(set) var lastUpdated: Date?
     private(set) var me: String?
 
-    init(configuration: AppConfiguration, signer: any BuyerSigner, explorer: any ExplorerAPI) {
+    init(configuration: AppConfiguration, signer: any BuyerSigner, explorer: any ExplorerAPI, cache: SnapshotCache = .shared) {
         self.configuration = configuration
         self.signer = signer
         self.explorer = explorer
+        self.cache = cache
+    }
+
+    private struct Snapshot: Codable {
+        let me: String?
+        let transfers: [TokenTransfer]
+    }
+
+    private static let snapshotKey = "history"
+
+    // The account whose rows are held. Starts unequal to any real scope so the first
+    // refresh always opens the account's own snapshot, never the last person's rows.
+    private var loadedScope: String? = "unloaded"
+
+    private func adoptScope() {
+        let scope = ActiveAccount.scope
+        guard scope != loadedScope else { return }
+        loadedScope = scope
+        lastUpdated = nil
+        errorMessage = nil
+        let snapshot = cache.load(Snapshot.self, key: Self.snapshotKey, scope: scope)
+        transfers = snapshot?.transfers ?? []
+        me = snapshot?.me
     }
 
     private static let minimumInterval: TimeInterval = 45
 
+    /// Ask the explorer again. A failure leaves the rows as they were and says so;
+    /// rows that vanish on a bad connection read as money that vanished.
     func refresh(force: Bool = false) async {
+        adoptScope()
         guard !isLoading else { return }
         if !force, let lastUpdated, Date().timeIntervalSince(lastUpdated) < Self.minimumInterval {
             return
@@ -211,10 +239,13 @@ final class TransferHistory {
         defer { isLoading = false }
         do {
             let address = try await signer.address()
+            let fetched = try await explorer.tokenTransfers(for: address)
+            guard loadedScope == ActiveAccount.scope else { return }
             me = address.value.lowercased()
-            transfers = try await explorer.tokenTransfers(for: address)
+            transfers = fetched
             errorMessage = nil
             lastUpdated = Date()
+            cache.save(Snapshot(me: me, transfers: transfers), key: Self.snapshotKey, scope: loadedScope)
         } catch {
             errorMessage = "History could not be loaded. Pull to retry."
         }

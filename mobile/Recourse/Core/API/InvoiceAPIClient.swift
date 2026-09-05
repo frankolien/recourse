@@ -7,7 +7,7 @@ import Foundation
 /// exactly those terms, and the issuer submits it to collect. So `signature` is the
 /// whole state machine: absent means unanswered, present means the money is collectable
 /// and the only remaining question is whether the token has seen it yet.
-struct StoredInvoice: Decodable, Equatable, Sendable, Identifiable {
+struct StoredInvoice: Codable, Equatable, Sendable, Identifiable {
     let invoiceId: Int64
     let issuer: String
     let payer: String

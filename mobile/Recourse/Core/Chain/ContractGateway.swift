@@ -14,7 +14,7 @@ struct ChainReceipt: Hashable, Sendable {
 
 // Live LP snapshot of the settlement vault. Share price and position value are
 // display math; the contract's own conversion is what moves funds.
-struct VaultState: Hashable, Sendable {
+struct VaultState: Codable, Hashable, Sendable {
     let totalAssets: USDCAmount
     let totalShares: UInt64
     let outstanding: USDCAmount
