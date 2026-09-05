@@ -147,11 +147,7 @@ struct RestoreDeviceView: View {
     }
 
     private func describe(_ error: Error) -> String {
-        if let error = error as? SmartAccountAPIError { return error.message }
-        if let error = error as? DeviceKeyError, case .enclaveUnavailable(let reason) = error {
-            return "This phone could not make a key: \(reason)"
-        }
-        return "Could not restore this phone. Try again."
+        SmartAccountStore.describe(error)
     }
 
     // MARK: Pieces

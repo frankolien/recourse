@@ -255,15 +255,31 @@ final class SmartAccountStore {
         defaults.set(data, forKey: cacheKey)
     }
 
-    private static func describe(_ error: Error) -> String {
+    /// The reason, in words. A blanket "try again" hides which of the three keys or
+    /// two servers refused, and that is exactly what someone locked out needs to know.
+    static func describe(_ error: Error) -> String {
         if let error = error as? SmartAccountAPIError { return error.message }
         if let error = error as? DeviceKeyError {
             switch error {
             case .enclaveUnavailable(let reason): return "This phone could not make a device key: \(reason)"
-            default: return "This phone could not sign with its device key."
+            case .notFound: return "This phone has no device key yet. Close the app and open it again."
+            case .signingFailed(let reason): return "This phone's key could not sign: \(reason)"
+            case .malformedSignature, .digestNotThirtyTwoBytes: return "This phone's key produced a signature the account cannot read."
             }
         }
-        return "Something went wrong setting up your account."
+        if let error = error as? BuyerSignerError {
+            switch error {
+            case .missingPassword, .corruptKeystore, .invalidAccount:
+                return "The Cloud Key on this phone cannot be read. Check that iCloud Keychain is on for this Apple ID, then try again."
+            case .signingFailed: return "The Cloud Key could not sign."
+            case .walletAlreadyExists: return "This phone already holds a different Cloud Key."
+            case .entropyUnavailable, .keystoreCreationFailed, .keystoreSerializationFailed:
+                return "This phone could not make a Cloud Key."
+            }
+        }
+        if error is URLError { return "No connection to Recourse. Try again." }
+        if error is DecodingError { return "Recourse answered in a shape this app did not expect." }
+        return "Something went wrong: \(String(describing: error))"
     }
 }
 
