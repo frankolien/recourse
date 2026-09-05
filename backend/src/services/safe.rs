@@ -5,7 +5,10 @@
 
 use alloy::network::EthereumWallet;
 use alloy::primitives::{Address, Bytes, B256, U256};
+use alloy::providers::fillers::{ChainIdFiller, GasFiller, NonceFiller, SimpleNonceManager};
 use alloy::providers::{DynProvider, Provider, ProviderBuilder};
+
+use crate::services::olien::retry_nonce;
 use alloy::signers::local::PrivateKeySigner;
 use alloy::sol;
 use alloy::sol_types::SolCall;
@@ -87,7 +90,14 @@ impl SafeClient {
     ) -> Result<Self> {
         let signer: PrivateKeySigner = private_key.trim().parse().context("parsing the deployer key")?;
         let url = rpc_url.parse().context("parsing RPC URL for the Safe client")?;
+        // The deployer key is shared with the Olien relayer and with scripts, so the
+        // nonce is read from the node at every send rather than cached: a cached nonce
+        // goes stale the moment another process spends from the same key.
         let provider = ProviderBuilder::new()
+            .disable_recommended_fillers()
+            .filler(GasFiller)
+            .filler(ChainIdFiller::default())
+            .filler(NonceFiller::new(SimpleNonceManager::default()))
             .wallet(EthereumWallet::from(signer))
             .connect_http(url)
             .erased();
@@ -119,9 +129,7 @@ impl SafeClient {
             return Ok(address);
         }
         let factory = IP256OwnerFactory::new(self.p256_owner_factory, &self.provider);
-        let receipt = factory
-            .create(x, y)
-            .send()
+        let receipt = retry_nonce(|| async { factory.create(x, y).send().await.map_err(anyhow::Error::from) })
             .await
             .context("sending the device owner deployment")?
             .get_receipt()
@@ -171,12 +179,12 @@ impl SafeClient {
     pub async fn deploy_safe(&self, initializer: &Bytes, salt: U256) -> Result<Deployed> {
         let address = self.predict_safe(initializer, salt).await?;
         let factory = ISafeProxyFactory::new(self.safe.proxy_factory, &self.provider);
-        let receipt = factory
-            .createProxyWithNonce(self.safe.singleton, initializer.clone(), salt)
-            .send()
-            .await
-            .context("sending the Safe deployment")?
-            .get_receipt()
+        let receipt = retry_nonce(|| async {
+            factory.createProxyWithNonce(self.safe.singleton, initializer.clone(), salt).send().await.map_err(anyhow::Error::from)
+        })
+        .await
+        .context("sending the Safe deployment")?
+        .get_receipt()
             .await
             .context("waiting for the Safe deployment")?;
         if !receipt.status() {
@@ -246,23 +254,28 @@ impl SafeClient {
     /// pays the gas.
     pub async fn exec_swap_owner(&self, safe: Address, data: &Bytes, signatures: &[OwnerSignature]) -> Result<B256> {
         let contract = ISafe::new(safe, &self.provider);
-        let receipt = contract
-            .execTransaction(
-                safe,
-                U256::ZERO,
-                data.clone(),
-                0,
-                U256::ZERO,
-                U256::ZERO,
-                U256::ZERO,
-                Address::ZERO,
-                Address::ZERO,
-                pack_signatures(signatures),
-            )
-            .send()
-            .await
-            .context("sending the owner swap")?
-            .get_receipt()
+        let packed = pack_signatures(signatures);
+        let receipt = retry_nonce(|| async {
+            contract
+                .execTransaction(
+                    safe,
+                    U256::ZERO,
+                    data.clone(),
+                    0,
+                    U256::ZERO,
+                    U256::ZERO,
+                    U256::ZERO,
+                    Address::ZERO,
+                    Address::ZERO,
+                    packed.clone(),
+                )
+                .send()
+                .await
+                .map_err(anyhow::Error::from)
+        })
+        .await
+        .context("sending the owner swap")?
+        .get_receipt()
             .await
             .context("waiting for the owner swap")?;
         if !receipt.status() {
