@@ -1,1 +1,1 @@
-Recourse: disputes are computed, not decided. Buyer protection for USDC on Arc.
+Recourse: the money app for dollars on your phone. Send by name, two keys, no seed phrase. USDC on Arc, beta on TestFlight.
