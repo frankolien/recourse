@@ -67,7 +67,7 @@ struct DepositSheet: View {
                         availability: .live
                     )
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(DepositCardPress())
 
                 // CCTP is Circle's own bridge and Arc supports it, so this is the next
                 // one to become real rather than a wish. Addresses are already recorded
@@ -184,9 +184,35 @@ private struct DepositCard: View {
         // Small enough that both rows and the footnote sit inside the sheet's medium
         // detent; a floor rather than a fixed height so larger type still fits.
         .frame(maxWidth: .infinity, minHeight: 124, alignment: .topLeading)
-        .background(fill, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .background {
+            let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
+            shape.fill(fill)
+            if !dimmed {
+                // The one that works is lit from its top-left corner, the way a card
+                // lights under a finger, except it stays on.
+                shape.fill(
+                    RadialGradient(
+                        colors: [Color.white.opacity(0.14), Color.white.opacity(0.05), .clear],
+                        center: .topLeading,
+                        startRadius: 0,
+                        endRadius: 230
+                    )
+                )
+                shape.strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+            }
+        }
         .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(availability == .soon ? "\(title), coming soon. \(detail)" : "\(title). \(detail)")
+    }
+}
+
+/// The plain style's press look was the lift the live card now wears all the time,
+/// so a press needs a different tell: the card settles under the finger.
+private struct DepositCardPress: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(.snappy(duration: 0.15), value: configuration.isPressed)
     }
 }
