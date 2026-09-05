@@ -48,6 +48,11 @@ struct TeamView: View {
                 try? await Task.sleep(for: .seconds(10))
             }
         }
+        // The first visit to Teams is the moment alerts make sense: a proposal
+        // waiting, a change to veto. Asking any earlier is asking about nothing.
+        .task {
+            if store.isMember { await environment.push.enableTeamAlerts() }
+        }
     }
 
     private func row(_ account: OlienSummary) -> some View {

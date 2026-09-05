@@ -18,6 +18,7 @@ final class AppEnvironment {
     private(set) var invoiceBook: InvoiceBook!
     private(set) var transferHistory: TransferHistory!
     private(set) var teamStore: TeamStore!
+    private(set) var push: PushCoordinator!
 
     init(
         configuration: AppConfiguration,
@@ -70,6 +71,10 @@ final class AppEnvironment {
             configuration: configuration,
             signer: self.buyerSigner,
             explorer: ArcscanClient(baseURL: AppConfiguration.explorerURL)
+        )
+        push = PushCoordinator(
+            session: self.accountSession,
+            api: PushAPIClient(baseURL: configuration.apiURL)
         )
         // The Safe is the member of any treasury, so the store reads it from the smart
         // account store and sends a veto through the submitter every Safe write uses.

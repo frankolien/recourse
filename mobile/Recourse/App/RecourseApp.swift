@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct RecourseApp: App {
+    @UIApplicationDelegateAdaptor(PushBridge.self) private var pushBridge
     @State private var environment = AppEnvironment.live()
 
     var body: some Scene {
