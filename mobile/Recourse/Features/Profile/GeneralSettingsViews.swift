@@ -11,6 +11,7 @@ import UserNotifications
 /// nothing. Cheque expiry reminders are the natural replacement.
 struct NotificationsSettingsView: View {
     let paymentStore: BuyerPaymentStore
+    let push: PushCoordinator
 
     @State private var authorizationStatus: UNAuthorizationStatus?
     @State private var pendingReminders: [PendingReminder] = []
@@ -25,6 +26,7 @@ struct NotificationsSettingsView: View {
     var body: some View {
         List {
             permissionSection
+            registrationSection
 
             if pendingReminders.isEmpty {
                 Section {
@@ -99,9 +101,10 @@ struct NotificationsSettingsView: View {
                 .buttonStyle(.plain)
             default:
                 Button {
+                    // Permission alone is not enough; the phone also has to fetch a
+                    // token and hand it to the server, which enableAlerts does.
                     Task {
-                        _ = try? await UNUserNotificationCenter.current()
-                            .requestAuthorization(options: [.alert, .sound, .badge])
+                        await push.enableAlerts()
                         await refreshState()
                     }
                 } label: {
@@ -111,6 +114,62 @@ struct NotificationsSettingsView: View {
                 }
                 .buttonStyle(.plain)
             }
+        }
+    }
+
+    // Whether the server knows this phone. Without this row a missing alert is a
+    // mystery; with it the answer is on screen.
+    @ViewBuilder
+    private var registrationSection: some View {
+        Section {
+            Label {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(registrationTitle)
+                        .font(.recourse(14, .medium))
+                        .foregroundStyle(RecourseColor.nightText)
+                    if let detail = registrationDetail {
+                        Text(detail)
+                            .font(.recourse(11))
+                            .foregroundStyle(RecourseColor.nightMuted)
+                    }
+                }
+            } icon: {
+                Image(systemName: push.registration == .registered ? "iphone.badge.checkmark" : "iphone.slash")
+                    .foregroundStyle(push.registration == .registered ? RecourseColor.ledger : RecourseColor.nightMuted)
+            }
+            Button {
+                Task {
+                    await push.reregister()
+                    await refreshState()
+                }
+            } label: {
+                Label("Register this iPhone again", systemImage: "arrow.clockwise")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(RecourseColor.ledger)
+            }
+            .buttonStyle(.plain)
+        } header: {
+            Text("Alerts from Recourse")
+        } footer: {
+            Text("Builds from Xcode reach Apple's test gateway and TestFlight builds the live one. This build uses the \(PushCoordinator.environment) gateway.")
+        }
+    }
+
+    private var registrationTitle: String {
+        switch push.registration {
+        case .registered: "This iPhone is registered"
+        case .waitingForToken: "Waiting for Apple to issue a token"
+        case .failed: "Registration failed"
+        case .none: "Not registered yet"
+        }
+    }
+
+    private var registrationDetail: String? {
+        switch push.registration {
+        case .registered: "The server can alert this phone."
+        case .waitingForToken: "iOS usually answers within a second on a real device."
+        case .failed(let reason): reason
+        case .none: "Allow notifications above, or register again."
         }
     }
 

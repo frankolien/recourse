@@ -88,7 +88,7 @@ struct AccountFoundationView: View {
                             value: environment.addressBook.recipients.isEmpty ? nil : "\(environment.addressBook.recipients.count)")
                     }
                     NavigationLink {
-                        NotificationsSettingsView(paymentStore: environment.paymentStore)
+                        NotificationsSettingsView(paymentStore: environment.paymentStore, push: environment.push)
                     } label: {
                         row("Notifications", "bell.fill", tint: Color(red: 0.93, green: 0.33, blue: 0.31))
                     }

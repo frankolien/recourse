@@ -20,6 +20,9 @@ final class PushBridge: NSObject, UIApplicationDelegate, UNUserNotificationCente
         }
     }
     private(set) var latestToken: String?
+    /// Why Apple would not hand out a token, kept so Settings can say so.
+    private(set) var registrationFailure: String?
+    var onFailure: ((String) -> Void)?
     private var pendingRoute: AppRoute?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
@@ -30,6 +33,7 @@ final class PushBridge: NSObject, UIApplicationDelegate, UNUserNotificationCente
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         let token = deviceToken.map { String(format: "%02x", $0) }.joined()
         latestToken = token
+        registrationFailure = nil
         onToken?(token)
     }
 
@@ -37,6 +41,8 @@ final class PushBridge: NSObject, UIApplicationDelegate, UNUserNotificationCente
         // The simulator and a build without the entitlement land here. Alerts are
         // an extra, so the app carries on without them.
         print("push: registration failed: \(error.localizedDescription)")
+        registrationFailure = error.localizedDescription
+        onFailure?(error.localizedDescription)
     }
 
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
