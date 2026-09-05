@@ -129,27 +129,29 @@ struct OnboardingAuthenticationView: View {
             .padding(.horizontal, 20)
             .padding(.top, 20)
 
-            VStack(alignment: .leading, spacing: compact ? 8 : 11) {
-                ForEach(items) { item in
-                    let isActive = item.id == activeIndex
-
-                    HStack(spacing: 13) {
-                        if isActive {
-                            StoryIcon(icon: item.icon, size: compact ? 34 : 40)
-                                .transition(.move(edge: .leading).combined(with: .opacity).combined(with: .scale))
-                        }
-
-                        Text(item.title)
-                            .font(.system(size: isActive ? (compact ? 32 : 38) : (compact ? 22 : 26), weight: .semibold))
-                            .foregroundStyle(isActive ? RecourseColor.ink : RecourseColor.ink.opacity(0.14))
-                    }
-                    .frame(height: compact ? 42 : 48, alignment: .leading)
-                    .animation(.smooth(duration: 0.55), value: activeIndex)
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-            .padding(.horizontal, 40)
-            .padding(.bottom, 4)
+            // The Hold, Send, Request, Earn list is off for now; the band keeps only
+            // the close button. Restore the block below to bring it back.
+            // VStack(alignment: .leading, spacing: compact ? 8 : 11) {
+            //     ForEach(items) { item in
+            //         let isActive = item.id == activeIndex
+            //
+            //         HStack(spacing: 13) {
+            //             if isActive {
+            //                 StoryIcon(icon: item.icon, size: compact ? 34 : 40)
+            //                     .transition(.move(edge: .leading).combined(with: .opacity).combined(with: .scale))
+            //             }
+            //
+            //             Text(item.title)
+            //                 .font(.system(size: isActive ? (compact ? 32 : 38) : (compact ? 22 : 26), weight: .semibold))
+            //                 .foregroundStyle(isActive ? RecourseColor.ink : RecourseColor.ink.opacity(0.14))
+            //         }
+            //         .frame(height: compact ? 42 : 48, alignment: .leading)
+            //         .animation(.smooth(duration: 0.55), value: activeIndex)
+            //     }
+            // }
+            // .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+            // .padding(.horizontal, 40)
+            // .padding(.bottom, 4)
         }
         .accessibilityHidden(true)
     }
