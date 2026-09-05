@@ -129,6 +129,25 @@ pub async fn recovery_verify(pool: web::Data<PgPool>, req: HttpRequest, body: we
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct AbandonBody {
+    pub grant_id: String,
+}
+
+/// POST /api/me/account/abandon - give up a wallet whose keys are gone, so the
+/// account can make a new one. The grant from the emailed code is the proof.
+pub async fn abandon(pool: web::Data<PgPool>, req: HttpRequest, body: web::Json<AbandonBody>) -> HttpResponse {
+    let profile = match caller(pool.get_ref(), &req).await {
+        Ok(profile) => profile,
+        Err(response) => return response,
+    };
+    match smart_accounts::abandon_wallet(pool.get_ref(), profile.account_id, &body.grant_id).await {
+        Ok(()) => HttpResponse::Ok().json(serde_json::json!({ "ok": true })),
+        Err(error) => failed(error),
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PrepareBody {
     pub grant_id: String,
     pub device_key: DeviceKeyBody,

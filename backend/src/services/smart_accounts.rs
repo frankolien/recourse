@@ -378,6 +378,42 @@ pub async fn verify_recovery_code(
 /// The new Device Key's owner contract is deployed here, before the swap is staged,
 /// so the Safe transaction names a contract that exists. Its address is a function
 /// of the key, so the phone can check it is being asked to sign for its own key.
+/// Give up a wallet whose keys are gone, proven by the emailed code, so the account
+/// can make a new one. The row moves to the abandoned table rather than vanishing:
+/// the Safe is still on chain and may still hold money a found key could reach.
+pub async fn abandon_wallet(pool: &PgPool, account_id: i64, grant_id: &str) -> Result<(), AccountAuthError> {
+    recovery::assert_grant(pool, account_id, PURPOSE_DEVICE_ROTATION, grant_id).await?;
+    if !recovery::consume_grant(pool, account_id, grant_id).await? {
+        return Err(AccountAuthError::Unauthorized("that code was already used; ask for a new one".into()));
+    }
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|error| AccountAuthError::Internal(format!("starting the abandon: {error}")))?;
+    let moved = sqlx::query(
+        "INSERT INTO smart_accounts_abandoned \
+         (account_id, safe_address, salt_nonce, cloud_owner, device_owner, device_x, device_y, recovery_owner, threshold, status, created_at) \
+         SELECT account_id, safe_address, salt_nonce, cloud_owner, device_owner, device_x, device_y, recovery_owner, threshold, status, created_at \
+         FROM smart_accounts WHERE account_id = $1",
+    )
+    .bind(account_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|error| AccountAuthError::Internal(format!("keeping the abandoned wallet: {error}")))?;
+    if moved.rows_affected() == 0 {
+        return Err(AccountAuthError::BadRequest("this account has no wallet to abandon".into()));
+    }
+    sqlx::query("DELETE FROM smart_accounts WHERE account_id = $1")
+        .bind(account_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|error| AccountAuthError::Internal(format!("releasing the account: {error}")))?;
+    tx.commit()
+        .await
+        .map_err(|error| AccountAuthError::Internal(format!("finishing the abandon: {error}")))?;
+    Ok(())
+}
+
 pub async fn prepare_rotation(
     pool: &PgPool,
     service: &SmartAccounts,
