@@ -3,7 +3,6 @@ import SwiftUI
 private enum OnboardingStage: Int {
     case welcome
     case authentication
-    case role
     case wallet
     case ready
 }
@@ -14,7 +13,6 @@ struct OnboardingFlowView: View {
     private let buyerSigner: any BuyerSigner
     private let smartAccounts: SmartAccountStore?
     @State private var stage: OnboardingStage = .welcome
-    @State private var selectedRole: OnboardingRole = .buyer
     @State private var walletAddress: EthereumAddress?
 
     init(
@@ -43,22 +41,15 @@ struct OnboardingFlowView: View {
                     OnboardingAuthenticationView(
                         accountSession: accountSession,
                         onBack: { advance(to: .welcome) },
-                        onAuthenticated: { advance(to: .role) }
-                    )
-                case .role:
-                    OnboardingSetupView(
-                        accountLabel: accountSession.account?.accountLabel ?? "APPLE ACCOUNT",
-                        onBack: { advance(to: .authentication) },
-                        onContinue: { role in
-                            selectedRole = role
-                            advance(to: role == .buyer ? .wallet : .ready)
-                        }
+                        // Everyone is a person with money now. The old question of
+                        // buyer or merchant is gone with the checkout it served.
+                        onAuthenticated: { advance(to: .wallet) }
                     )
                 case .wallet:
                     OnboardingWalletSetupView(
                         signer: buyerSigner,
                         smartAccounts: smartAccounts,
-                        onBack: { advance(to: .role) },
+                        onBack: { advance(to: .authentication) },
                         onContinue: { address in
                             walletAddress = address
                             advance(to: .ready)
@@ -66,9 +57,9 @@ struct OnboardingFlowView: View {
                     )
                 case .ready:
                     OnboardingReadyView(
-                        role: selectedRole,
+                        role: .buyer,
                         walletAddress: walletAddress,
-                        onComplete: { onComplete(selectedRole) }
+                        onComplete: { onComplete(.buyer) }
                     )
                 }
             }
@@ -76,7 +67,7 @@ struct OnboardingFlowView: View {
         }
         .onAppear {
             guard accountSession.isAuthenticated, stage == .welcome else { return }
-            stage = .role
+            stage = .wallet
         }
     }
 

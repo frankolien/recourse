@@ -269,8 +269,12 @@ final class SmartAccountStore {
         }
         if let error = error as? BuyerSignerError {
             switch error {
-            case .missingPassword, .corruptKeystore, .invalidAccount:
-                return "The Cloud Key on this phone cannot be read. Check that iCloud Keychain is on for this Apple ID, then try again."
+            case .missingPassword:
+                return "The Cloud Key is on this phone but its password is not. Under Keys, use Recovery PIN for the Cloud Key to bring it back, then try again."
+            case .corruptKeystore:
+                return "The Cloud Key on this phone is damaged. Under Keys, use Recovery PIN for the Cloud Key to bring it back, then try again."
+            case .invalidAccount:
+                return "The Cloud Key on this phone holds no address. Under Keys, use Recovery PIN for the Cloud Key to bring it back, then try again."
             case .signingFailed: return "The Cloud Key could not sign."
             case .walletAlreadyExists: return "This phone already holds a different Cloud Key."
             case .entropyUnavailable, .keystoreCreationFailed, .keystoreSerializationFailed:
