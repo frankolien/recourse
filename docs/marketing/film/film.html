@@ -1,0 +1,118 @@
+<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="base.css">
+<style>
+  html, body { background: #f6faf7; }
+  /* Two soft ledger-green pools drifting behind everything: the Recourse gradient
+     on an off-white ground. Transforms only, so a frame costs nothing to draw. */
+  .pool { position: absolute; width: 1500px; height: 1500px; border-radius: 50%; background: radial-gradient(closest-side, rgba(7, 91, 70, 0.20), rgba(7, 91, 70, 0.07) 45%, rgba(7, 91, 70, 0) 70%); }
+  .copy { position: absolute; top: 340px; width: 860px; opacity: 0; will-change: transform, opacity; }
+  .copy.left { left: 160px; }
+  .copy.right { left: 1010px; }
+  .copy h1 { margin: 0; font-size: 108px; line-height: 1.02; font-weight: 600; letter-spacing: -0.035em; }
+  .copy p { margin: 28px 0 0; font-size: 34px; line-height: 1.35; color: var(--muted); max-width: 24ch; }
+  .rig { position: absolute; left: 0; top: 0; width: calc(880px * 1179 / 2556); height: 880px; transform-origin: 50% 55%; will-change: transform; }
+  .rig .phone { --h: 880px; left: 0; top: 0; }
+  .phone .island { top: calc(var(--h) * 0.014); height: calc(var(--h) * 0.044); width: calc(var(--w) * 0.46); }
+  .patch { position: absolute; left: calc(240 / 1179 * 100%); top: calc(552 / 2556 * 100%); width: calc(700 / 1179 * 100%); height: calc(150 / 2556 * 100%); background: linear-gradient(#061410, #06100d); display: flex; align-items: center; justify-content: center; font-family: "SF Pro Rounded", ui-rounded, Geist, system-ui; font-weight: 700; font-size: calc(880px * 0.0465); letter-spacing: -0.02em; color: #edf2ed; font-variant-numeric: tabular-nums; }
+  .patch small { font-size: inherit; color: #8c9991; }
+  .card { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px; opacity: 0; }
+  .card img { width: 128px; height: 128px; border-radius: 30px; }
+  .card h1 { margin: 0; font-size: 84px; font-weight: 600; letter-spacing: -0.035em; }
+  .card p { margin: 0; font-size: 30px; color: var(--muted); }
+  .card p b { color: var(--green); font-weight: 500; }
+</style>
+<div class="stage">
+  <div class="pool" id="pool1"></div><div class="pool" id="pool2"></div>
+  <div id="copies"></div>
+  <div class="rig" id="rig"><div class="phone"><div class="screen"><img id="shot" src="assets/home.png"><div class="patch" id="bal"></div></div><div class="island"></div><div class="glare"></div></div></div>
+  <div class="card" id="card"><img src="assets/mark.png"><h1>Recourse</h1><p>Beta on TestFlight <b>@useRecourse</b></p></div>
+</div>
+<script>
+  // The film is one timeline. Each beat knows its length, which side the phone
+  // sits on, and its frames; the phone swings to the other side across every
+  // boundary and the screen cuts at the top of the swing, where it is edge-on.
+  const FPS = 60;
+  const BEATS = [
+    { id: "home", ms: 5000, side: "right", h1: ["Dollars on", "your phone."], p: "A balance, the people you pay, and what happens between you." },
+    { id: "send", ms: 6520, side: "left", frames: 391, h1: ["Sent by", "name."], p: "Type a handle, hold Face ID, done." },
+    { id: "cheque", ms: 5550, side: "right", frames: 333, h1: ["Write a", "cheque."], p: "They cash it when they like. Void it before they do." },
+    { id: "convert", ms: 4100, side: "left", frames: 246, h1: ["Dollars to", "euros."], p: "The rate is checked before you sign." },
+    { id: "earn", ms: 4850, side: "right", frames: 291, h1: ["Idle dollars", "earn."], p: "Deposit and withdraw any time." },
+    { id: "teams", ms: 3780, side: "left", frames: 227, h1: ["Approve", "together."], p: "A team account with rules the chain enforces." },
+    { id: "close", ms: 3200 },
+  ];
+  let t = 0; for (const b of BEATS) { b.start = t; t += b.ms; b.end = t; }
+  const SWING = 700;
+  const X = { right: 1300, left: 230 }, RY = { right: -6, left: 6 };
+
+  const copies = document.getElementById("copies");
+  for (const b of BEATS) {
+    if (!b.h1) continue;
+    const el = document.createElement("div");
+    el.className = "copy " + (b.side === "right" ? "left" : "right");
+    el.innerHTML = `<h1><span>${b.h1[0]}</span><br><span>${b.h1[1]}</span></h1><p>${b.p}</p>`;
+    copies.appendChild(el); b.el = el;
+    b.cache = b.frames ? Array.from({ length: b.frames }, (_, i) => { const im = new Image(); im.src = `work/${b.id}/${String(i + 1).padStart(4, "0")}.jpg`; return im; }) : null;
+  }
+  const clamp = (v) => Math.max(0, Math.min(1, v));
+  const easeOut = (u) => 1 - Math.pow(1 - u, 3);
+  const easeInOut = (u) => u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
+  const easeIn = (u) => u * u * u;
+  const shot = document.getElementById("shot"), bal = document.getElementById("bal"), rig = document.getElementById("rig"), card = document.getElementById("card");
+
+  window.__tick = (ms) => {
+    const k = Math.min(BEATS.length - 1, BEATS.findIndex((b) => ms < b.end) === -1 ? BEATS.length - 1 : BEATS.findIndex((b) => ms < b.end));
+    const b = BEATS[k], local = ms - b.start;
+
+    // Screen: home art with the counting balance, then the cut recordings.
+    if (b.id === "home") {
+      shot.src = "assets/home.png"; bal.style.display = "flex";
+      const v = 47.98 * easeOut(clamp((ms - 1000) / 1500));
+      const [w, c] = v.toFixed(2).split("."); bal.innerHTML = `$${w}<small>.${c}</small>`;
+    } else {
+      bal.style.display = "none";
+      const src = b.cache ? b : BEATS[k - 1], f = b.cache ? Math.floor(local / 1000 * FPS) : src.frames - 1;
+      shot.src = src.cache[Math.min(src.frames - 1, f)].src;
+    }
+
+    // Copy: rises 250ms into the beat, leaves 400ms before it ends.
+    for (const c of BEATS) {
+      if (!c.el) continue;
+      const l = ms - c.start;
+      let o = 0, y = 18;
+      if (l >= 250 && l < c.ms - 400) { const u = easeOut(clamp((l - 250) / 500)); o = u; y = 18 * (1 - u); }
+      else if (l >= c.ms - 400 && l < c.ms) { const u = easeIn(clamp((l - (c.ms - 400)) / 250)); o = 1 - u; y = -10 * u; }
+      c.el.style.opacity = o; c.el.style.transform = `translateY(${y}px)`;
+    }
+
+    // Phone: parked on its side, drifting; across a boundary it glides over,
+    // dips, and swings through edge-on at the exact cut.
+    const prev = BEATS[k - 1], next = BEATS[k + 1];
+    let x, y = 100, ry, rz = 0, s = 1, o = 1;
+    const side = b.side ?? prev.side;
+    const drift = easeInOut(clamp(local / b.ms));
+    x = X[side]; ry = RY[side] + (side === "right" ? 4 : -4) * drift; y = 100 - 14 * drift;
+    const into = local < SWING / 2 && prev, outof = local > b.ms - SWING / 2 && next;
+    if (b.id === "close") {
+      const u = easeIn(clamp(local / 900));
+      x = X[prev.side] + (960 - 203 - X[prev.side]) * easeInOut(clamp(local / 900)); y = 100 + 1100 * u; s = 1 - 0.15 * u; ry = RY[prev.side] * (1 - u);
+      card.style.opacity = easeOut(clamp((local - 500) / 600)); card.style.transform = `translateY(${18 * (1 - easeOut(clamp((local - 500) / 600)))}px)`;
+    } else if (into && prev.side) {
+      const u = 0.5 + local / SWING, e = easeInOut(u);
+      x = X[prev.side] + (X[side] - X[prev.side]) * e;
+      ry = RY[prev.side] + (RY[side] - RY[prev.side]) * e + (side === "left" ? 70 : -70) * Math.sin(u * Math.PI);
+      y = 100 + 40 * Math.sin(u * Math.PI); s = 1 - 0.07 * Math.sin(u * Math.PI); rz = (side === "left" ? 3 : -3) * Math.sin(u * Math.PI);
+    } else if (outof && next.side) {
+      const u = (local - (b.ms - SWING / 2)) / SWING, e = easeInOut(u);
+      x = X[side] + (X[next.side] - X[side]) * e;
+      ry = RY[side] + (RY[next.side] - RY[side]) * e + (next.side === "left" ? 70 : -70) * Math.sin(u * Math.PI);
+      y = 100 + 40 * Math.sin(u * Math.PI); s = 1 - 0.07 * Math.sin(u * Math.PI); rz = (next.side === "left" ? 3 : -3) * Math.sin(u * Math.PI);
+    }
+    rig.style.transform = `translate(${x}px, ${y}px) perspective(2600px) rotateY(${ry}deg) rotateZ(${rz}deg) scale(${s})`;
+
+    // The green pools wander slowly for the whole film.
+    const p = ms / t;
+    document.getElementById("pool1").style.transform = `translate(${-500 + 500 * p}px, ${-700 + 300 * p}px)`;
+    document.getElementById("pool2").style.transform = `translate(${1100 - 300 * p}px, ${400 + 200 * p}px)`;
+  };
+  window.__tick(0);
+</script>
