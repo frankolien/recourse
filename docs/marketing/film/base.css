@@ -1,0 +1,21 @@
+@font-face { font-family: Geist; src: url(assets/Geist-Regular.woff2) format("woff2"); font-weight: 400; }
+@font-face { font-family: Geist; src: url(assets/Geist-Medium.woff2) format("woff2"); font-weight: 500; }
+@font-face { font-family: Geist; src: url(assets/Geist-SemiBold.woff2) format("woff2"); font-weight: 600; }
+@font-face { font-family: Geist; src: url(assets/Geist-Bold.woff2) format("woff2"); font-weight: 700; }
+@font-face { font-family: "Geist Mono"; src: url(assets/GeistMono-Regular.woff2) format("woff2"); font-weight: 400; }
+@font-face { font-family: "Geist Mono"; src: url(assets/GeistMono-Medium.woff2) format("woff2"); font-weight: 500; }
+
+:root {
+  --ink: #111b19; --muted: #66706d; --line: #e4e7e2; --white: #ffffff; --mint: #edf3ef;
+  --green: #075b46; --night: #070907; --night-green: #3ecf8e;
+}
+html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--white); font-family: Geist, system-ui, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+.stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; }
+
+/* The phone: an iPhone 15 Pro at 9:19.5, drawn as a titanium slab with a black
+   bezel, a dynamic island, and the real screenshot inside. Sized by --h. */
+.phone { --h: 820px; --w: calc(var(--h) * 1179 / 2556); position: absolute; width: var(--w); height: var(--h); border-radius: calc(var(--h) * 0.068); background: linear-gradient(160deg, #3a3c3b, #1c1d1d 40%, #2a2b2b); box-shadow: 0 60px 120px -40px rgba(17, 27, 25, 0.55), 0 20px 40px -20px rgba(17, 27, 25, 0.35), inset 0 0 0 2px rgba(255,255,255,0.18); }
+.phone .screen { position: absolute; inset: calc(var(--h) * 0.012); border-radius: calc(var(--h) * 0.058); overflow: hidden; background: #000; }
+.phone .screen img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.phone .island { position: absolute; top: calc(var(--h) * 0.026); left: 50%; transform: translateX(-50%); width: calc(var(--w) * 0.31); height: calc(var(--h) * 0.036); border-radius: 999px; background: #000; }
+.phone .glare { position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(115deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0) 35%); pointer-events: none; }

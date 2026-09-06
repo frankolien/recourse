@@ -1,0 +1,15 @@
+:root { --in: cubic-bezier(0.23, 1, 0.32, 1); --out: cubic-bezier(0.4, 0, 1, 1); --move: cubic-bezier(0.4, 0, 0.2, 1); }
+.copy { position: absolute; left: 160px; top: 360px; width: 860px; }
+.copy h1 { margin: 0; font-size: 108px; line-height: 1.02; font-weight: 600; letter-spacing: -0.035em; }
+.copy h1 span { display: block; opacity: 0; animation: rise 500ms var(--in) both, leave 250ms var(--leave) var(--out) forwards; }
+.copy h1 span:nth-child(1) { animation-delay: 200ms, var(--leave); }
+.copy h1 span:nth-child(2) { animation-delay: 270ms, var(--leave); }
+.copy p { margin: 28px 0 0; font-size: 34px; line-height: 1.35; color: var(--muted); max-width: 24ch; opacity: 0; animation: rise 500ms 700ms var(--in) both, leave 250ms var(--leave) var(--out) forwards; }
+@keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes leave { to { opacity: 0; transform: translateY(-10px); } }
+.rig { position: absolute; right: 250px; top: 100px; width: calc(880px * 1179 / 2556); height: 880px; transform-origin: 50% 60%; animation: drift var(--len) var(--move) both; }
+@keyframes drift { from { transform: perspective(2600px) rotateY(-6deg) rotateX(1deg) translateY(0); } to { transform: perspective(2600px) rotateY(-2deg) rotateX(0deg) translateY(-14px); } }
+.rig .phone { --h: 880px; left: 0; top: 0; }
+/* Screen recordings carry the red recording pill beside the island; a wider
+   island covers it. */
+.phone.rec .island { top: calc(var(--h) * 0.014); height: calc(var(--h) * 0.044); width: calc(var(--w) * 0.46); }

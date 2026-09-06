@@ -1,0 +1,13 @@
+<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="base.css">
+<style>
+  :root { --in: cubic-bezier(0.23, 1, 0.32, 1); }
+  .card { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px; }
+  .card img { width: 128px; height: 128px; border-radius: 30px; opacity: 0; animation: rise 500ms 150ms var(--in) both; }
+  .card h1 { margin: 0; font-size: 84px; font-weight: 600; letter-spacing: -0.035em; opacity: 0; animation: rise 500ms 300ms var(--in) both; }
+  .card p { margin: 0; font-size: 30px; color: var(--muted); opacity: 0; animation: rise 500ms 550ms var(--in) both; }
+  .card p b { color: var(--green); font-weight: 500; }
+  @keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+</style>
+<div class="stage"><div class="card">
+  <img src="assets/mark.png"><h1>Recourse</h1><p>Beta on TestFlight <b>@useRecourse</b></p>
+</div></div>
