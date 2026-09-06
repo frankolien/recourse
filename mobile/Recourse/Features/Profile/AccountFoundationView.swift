@@ -108,6 +108,12 @@ struct AccountFoundationView: View {
                     }
                     .buttonStyle(.plain)
                     Button {
+                        openURL(URL(string: "https://x.com/useRecourse")!)
+                    } label: {
+                        row("Follow @useRecourse", "at", tint: Color(red: 0.11, green: 0.36, blue: 0.27))
+                    }
+                    .buttonStyle(.plain)
+                    Button {
                         presentedWebPage = WebPageLink(url: AppConfiguration.webAppURL.appending(path: "privacy"))
                     } label: {
                         row("Privacy policy", "hand.raised.fill", tint: Color(red: 0.45, green: 0.47, blue: 0.50))

@@ -3,16 +3,20 @@
 Account: @useRecourse. Voice matches the site: short sentences, plain words, dollars
 not "crypto", no hype. Every claim below is true today on Arc testnet; nothing says
 mainnet until 2026-09-16 has happened and the app points at chain 5042. Post the
-thread first, then one post a day. Attach the phone screenshots from `web/public/app`
-where a post names a screen.
+thread first, then one post a day. Each day post carries one beat of the film, cut
+as its own clip in `docs/marketing/motion/cuts/` (home, send, cheque, keys, convert,
+earn, teams), three to five seconds each. The clips are not in git; regenerate
+them from the film with the trims in the marketing README if they are missing.
 
 ## Launch thread
 
 Shaped like Fuse's Solana launch thread (Dec 2023): one argument across six posts.
-Image 1 is `images/x-launch-1.png`: a white card, the headline, three lines, the
-Home screenshot in a phone frame, "Built on Safe, on Arc" at the foot. Image 2 is
-`images/x-launch-2.png`: the three-key diagram, Device, iCloud, Recovery key, then
-"Safe 2 of 3", then "Safe contracts on Arc". Both 3200 by 1800, X's 16:9.
+Post 1 carries the film: `docs/marketing/motion/app-film-v3.mp4`, 36 seconds,
+1080p60, 16:9, muted. It walks Home, Send, Cheque, Keys, Convert, Earn, Teams and
+ends on the mark and the handle. Post 2 carries `images/x-launch-2.png`: the
+three-key diagram, Device, iCloud, Recovery key, then "Safe 2 of 3", then "Safe
+contracts on Arc". `images/x-launch-1.png` (the white card with the Home phone) is
+the fallback if the video fails to upload.
 
 1/ Money on your phone needs an upgrade.
 
@@ -21,7 +25,7 @@ no seed phrase, and every payment signed by two keys.
 
 Beta on TestFlight: [link]
 
-[image 1]
+[film]
 
 2/ Every Recourse account is a Safe, the most used smart account contracts in
 Ethereum, deployed on Arc with three keys and a 2 of 3 threshold. One key lives in
@@ -54,36 +58,36 @@ Apply for the beta: [TestFlight link]
 
 ## The first week
 
-Day 1, after the thread. Screenshot: Home.
+Day 1, after the thread. Clip: home.
 > One screen. Your balance, what is in motion, and four things you can do with it:
 > Send, Request, Cheque, Convert. Nothing else on it.
 
-Day 2. Screenshot: Send.
+Day 2. Clip: send.
 > Why names and not addresses. An address is 42 characters and one wrong one loses
 > the money. A name is checked before you sign and shown back to you as the person.
 > We are not going to ask people to copy hex strings in 2026.
 
-Day 3. Screenshot: Keys.
-> Where your keys are. One in the phone's Secure Enclave, one in your iCloud
-> Keychain. Every payment needs both. We hold a third key that can only help you get
-> back in and can never spend. The screen in the app shows you all three.
+Day 3. Clip: keys.
+> Your keys, your rules. One in the phone's Secure Enclave, one in your iCloud
+> Keychain, and a sealed third that can only get you back in. Any two sign a
+> payment. Recourse holds none of them. No seed phrase, nothing to write down.
 
-Day 4. Screenshot: Cheques.
+Day 4. Clip: cheque.
 > Cheques, in a money app. You write one, they cash it later. They are paid without
 > needing to be online for it. You can void it up until the moment it is cashed. This
 > is how most payments between people actually happen: not at the same time.
 
-Day 5.
+Day 5. Clip: earn.
 > Gas in dollars. On Arc, the fee for a payment is paid in USDC. Recourse shows the
 > fee in the same number as the amount. No "you need 0.002 of something else first".
 
-Day 6. Screenshot: Convert.
+Day 6. Clip: convert.
 > Dollars to euros, with a check. The app prices your conversion against the market
 > before it lets you sign. If the on-chain rate is worse than it should be, the button
 > stays grey and the screen tells you why. A wallet should refuse a bad trade, not
 > just warn about it.
 
-Day 7.
+Day 7. Clip: teams.
 > Teams next. The same two-key idea, grown up: a treasury with a threshold, a spending
 > limit that does not need a vote, a time lock on changes and a veto for the people
 > who did not sign. It is called Olien and it runs on Arc. More soon.

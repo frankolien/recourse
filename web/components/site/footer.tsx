@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 export const GITHUB_URL = "https://github.com/frankolien/recourse";
+export const X_URL = "https://x.com/useRecourse";
 
 export function SiteFooter() {
   return (
@@ -13,6 +14,9 @@ export function SiteFooter() {
           <Link href="/support">Support</Link>
           <a href={GITHUB_URL} target="_blank" rel="noreferrer">
             GitHub
+          </a>
+          <a href={X_URL} target="_blank" rel="noreferrer">
+            @useRecourse
           </a>
         </nav>
       </div>
