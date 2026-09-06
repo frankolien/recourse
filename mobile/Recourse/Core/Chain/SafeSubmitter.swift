@@ -90,7 +90,17 @@ actor SafeSubmitter: ArcSubmitter {
             maxPriorityFeePerGas: price.maxPriorityFeePerGas,
             signature: Self.frame(try await signer.placeholderSignature())
         )
-        let gas = try await bundler.estimate(operation, entryPoint: entryPoint)
+        let estimated = try await bundler.estimate(operation, entryPoint: entryPoint)
+        // The estimate ran with a placeholder signature, and the Safe stops at the
+        // first owner it cannot recover, so the P-256 check for the Device Key and its
+        // precompile never ran during estimation. Without this margin the real
+        // operation runs out of gas inside validation, which the bundler reports as
+        // "AA23 reverted 0x" and nothing else. Unused gas comes back.
+        let gas = UserOperationGas(
+            callGasLimit: estimated.callGasLimit + estimated.callGasLimit / 5,
+            verificationGasLimit: estimated.verificationGasLimit + Self.deviceKeyVerificationGas,
+            preVerificationGas: estimated.preVerificationGas
+        )
         operation.callGasLimit = gas.callGasLimit
         operation.verificationGasLimit = gas.verificationGasLimit
         operation.preVerificationGas = gas.preVerificationGas
@@ -122,6 +132,10 @@ actor SafeSubmitter: ArcSubmitter {
         }
         throw SafeSubmitError.operationTimedOut
     }
+
+    /// Room for one P-256 verification through the owner contract, precompile first
+    /// and the Solidity fallback if the precompile answers nothing.
+    static let deviceKeyVerificationGas = BigUInt(300_000)
 
     /// The module reads six bytes of validAfter and six of validUntil ahead of the
     /// owner signatures. Both zero: valid whenever the bundler includes it.
