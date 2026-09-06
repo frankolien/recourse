@@ -94,7 +94,11 @@ final class PushCoordinator {
     private func upload(_ token: String) async {
         guard session.isAuthenticated else { return }
         let stamp = "\(token):\(ActiveAccount.scope ?? "")"
-        guard defaults.string(forKey: Self.uploadedKey) != stamp else { return }
+        guard defaults.string(forKey: Self.uploadedKey) != stamp else {
+            // The server already has this token for this account.
+            registration = .registered
+            return
+        }
         do {
             try await session.withAccessToken { try await api.register(token: token, environment: Self.environment, accessToken: $0) }
             defaults.set(stamp, forKey: Self.uploadedKey)

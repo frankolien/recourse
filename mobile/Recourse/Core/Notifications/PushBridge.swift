@@ -4,6 +4,11 @@ import UserNotifications
 /// The one object UIKit talks to about pushes. It keeps nothing of its own: the
 /// token goes to whoever asked for it, and a tapped alert goes to the router. Both
 /// arrive before the app has built its environment, so each is held until claimed.
+///
+/// The app-delegate adaptor makes its own instance of this class, so UIKit calls
+/// that one; everything it hears is forwarded to `shared`, which is the instance
+/// the rest of the app listens to. Forgetting that once meant every token Apple
+/// issued was dropped on the floor.
 @MainActor
 final class PushBridge: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     static let shared = PushBridge()
@@ -26,23 +31,30 @@ final class PushBridge: NSObject, UIApplicationDelegate, UNUserNotificationCente
     private var pendingRoute: AppRoute?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-        UNUserNotificationCenter.current().delegate = self
+        UNUserNotificationCenter.current().delegate = PushBridge.shared
         return true
     }
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        let token = deviceToken.map { String(format: "%02x", $0) }.joined()
-        latestToken = token
-        registrationFailure = nil
-        onToken?(token)
+        PushBridge.shared.receive(token: deviceToken.map { String(format: "%02x", $0) }.joined())
     }
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
         // The simulator and a build without the entitlement land here. Alerts are
         // an extra, so the app carries on without them.
         print("push: registration failed: \(error.localizedDescription)")
-        registrationFailure = error.localizedDescription
-        onFailure?(error.localizedDescription)
+        PushBridge.shared.fail(error.localizedDescription)
+    }
+
+    func receive(token: String) {
+        latestToken = token
+        registrationFailure = nil
+        onToken?(token)
+    }
+
+    func fail(_ reason: String) {
+        registrationFailure = reason
+        onFailure?(reason)
     }
 
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
