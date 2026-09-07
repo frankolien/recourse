@@ -129,6 +129,21 @@ async fn main() -> Result<()> {
         });
     }
 
+    // Deposits from another chain. Needs somewhere to read and a key to pay with; any
+    // piece missing and the door stays shut rather than handing out a dead address.
+    let deposits = build_deposits(&config);
+    match &deposits {
+        Some(client) => {
+            let client = client.clone();
+            let pool = pool.clone();
+            let interval = config.index_interval_secs;
+            actix_web::rt::spawn(async move {
+                jobs::deposit_sweeper::run(client, pool, interval).await;
+            });
+        }
+        None => tracing::info!("deposits from another chain disabled (set DEPOSIT_RPC_URL, DEPOSIT_FACTORY, RELAYER_PK)"),
+    }
+
     tracing::info!(
         "recourse-backend listening on :{} (Arc chain {})",
         config.port,
@@ -152,6 +167,7 @@ async fn main() -> Result<()> {
             cloudinary.clone(),
             smart_accounts.clone(),
             treasury.clone(),
+            deposits.clone(),
         )
     })
     .bind(bind)?
@@ -249,4 +265,27 @@ fn build_smart_accounts(config: &AppConfig) -> Result<SmartAccounts> {
         }
     };
     Ok(SmartAccounts { safe, vault, mailer })
+}
+
+/// The deposit chain client, when this deployment has one. Base is chosen from the Arc
+/// chain the rest of the service is pointed at, so a testnet build can never be handed a
+/// mainnet address by a stray environment variable.
+fn build_deposits(config: &services::AppConfig) -> Option<std::sync::Arc<services::deposits::DepositClient>> {
+    let rpc = config.deposit_rpc_url.clone()?;
+    let factory = config.deposit_factory?;
+    let key = config.relayer_pk.clone()?;
+    let chain = services::deposits::chains_for(match config.chain_id {
+        5042002 => 84532,
+        5042 => 8453,
+        _ => return None,
+    })
+    .into_iter()
+    .next()?;
+    match services::deposits::DepositClient::new(&rpc, &key, factory, chain) {
+        Ok(client) => Some(std::sync::Arc::new(client)),
+        Err(e) => {
+            tracing::warn!("deposits disabled: {e:#}");
+            None
+        }
+    }
 }

@@ -5,6 +5,7 @@ pub mod auth;
 pub mod chain;
 pub mod cheques;
 pub mod cloudinary;
+pub mod deposits;
 pub mod evidence;
 pub mod google_auth;
 pub mod handles;
@@ -123,6 +124,10 @@ pub struct AppConfig {
     pub usdc: Address,
     // APNs token auth: the key id and team id from the developer account, the .p8
     // key itself, and the app's bundle id as the topic. All four or no pushes.
+    // Deposits from another chain. Absent means the deposit door stays shut rather
+    // than handing out an address nothing can sweep.
+    pub deposit_rpc_url: Option<String>,
+    pub deposit_factory: Option<Address>,
     pub apns_key_id: Option<String>,
     pub apns_team_id: Option<String>,
     pub apns_key_p8: Option<String>,
@@ -204,6 +209,8 @@ impl AppConfig {
             olien: deployment.olien,
             relayer_pk: optional_env("RELAYER_PK").or_else(|| optional_env("ATTESTOR_PK")),
             usdc: deployment.usdc,
+            deposit_rpc_url: optional_env("DEPOSIT_RPC_URL"),
+            deposit_factory: optional_env("DEPOSIT_FACTORY").and_then(|v| v.trim().parse().ok()),
             apns_key_id: optional_env("APNS_KEY_ID"),
             apns_team_id: optional_env("APNS_TEAM_ID"),
             apns_key_p8: optional_env("APNS_KEY_P8"),

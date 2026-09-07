@@ -28,6 +28,7 @@ use crate::services::apple_auth::AppleAuthService;
 use crate::services::attestor::AttestorClient;
 use crate::services::chain::ChainClient;
 use crate::services::cloudinary::Cloudinary;
+use crate::services::deposits::DepositClient;
 use crate::services::evidence::EvidenceStore;
 use crate::services::google_auth::GoogleAuthService;
 use crate::services::orders::OrderStore;
@@ -53,6 +54,7 @@ pub fn build_app(
     cloudinary: Option<Cloudinary>,
     smart_accounts: SmartAccounts,
     treasury: Treasury,
+    deposits: Option<std::sync::Arc<DepositClient>>,
 ) -> App<
     impl actix_web::dev::ServiceFactory<
         actix_web::dev::ServiceRequest,
@@ -76,6 +78,7 @@ pub fn build_app(
         .app_data(web::Data::new(cloudinary))
         .app_data(web::Data::new(smart_accounts))
         .app_data(web::Data::new(treasury))
+        .app_data(web::Data::new(deposits))
         // Registered before the /api scope: a scope matches by prefix, and the treasury
         // routes would otherwise be looked up inside it and not found.
         .service(handlers::treasury::routes(web::scope("/api/treasury")))
@@ -205,6 +208,7 @@ pub fn build_app(
                 .route("/me/account/device/prepare", web::post().to(handlers::accounts::device_prepare))
                 .route("/me/account/device/execute", web::post().to(handlers::accounts::device_execute))
                 .route("/me/account/abandon", web::post().to(handlers::accounts::abandon))
+                .route("/me/deposit-address", web::get().to(handlers::deposits::address))
                 .route("/me/push-token", web::put().to(handlers::push::register))
                 .route("/me/push-token", web::delete().to(handlers::push::unregister))
                 // Verify + record a payment's evidence list against the onchain root.

@@ -2,6 +2,7 @@ pub mod accounts;
 pub mod auth;
 pub mod cheques;
 pub mod demo;
+pub mod deposits;
 pub mod disputes;
 pub mod evidence;
 pub mod handles;
