@@ -11,6 +11,7 @@ enum BrandMark: Identifiable, Hashable {
     case eurc
     case arc
     case base
+    case arbitrum
     case solana
     case ethereum
     case visa
@@ -39,6 +40,7 @@ enum BrandMark: Identifiable, Hashable {
         case .eurc: "EURC"
         case .arc: "Arc"
         case .base: "Base"
+        case .arbitrum: "Arbitrum"
         case .solana: "Solana"
         case .ethereum: "Ethereum"
         case .visa: "Visa"
@@ -62,6 +64,7 @@ struct BrandMarkView: View {
             case .eurc: eurc
             case .arc: arc
             case .base: base
+            case .arbitrum: arbitrum
             case .solana: solana
             case .ethereum: ethereum
             case .visa: visa
@@ -112,6 +115,24 @@ struct BrandMarkView: View {
                 .frame(width: height * 0.42, height: height * 0.14)
         }
         .clipShape(Circle())
+    }
+
+    /// Arbitrum: the navy disc with its pale blue chevron. Drawn rather than
+    /// imported, since the CC0 set this app uses does not carry it.
+    private var arbitrum: some View {
+        ZStack {
+            Circle().fill(Color(red: 0.129, green: 0.192, blue: 0.278))
+            Path { path in
+                path.move(to: CGPoint(x: height * 0.5, y: height * 0.28))
+                path.addLine(to: CGPoint(x: height * 0.71, y: height * 0.72))
+                path.addLine(to: CGPoint(x: height * 0.6, y: height * 0.72))
+                path.addLine(to: CGPoint(x: height * 0.5, y: height * 0.5))
+                path.addLine(to: CGPoint(x: height * 0.4, y: height * 0.72))
+                path.addLine(to: CGPoint(x: height * 0.29, y: height * 0.72))
+                path.closeSubpath()
+            }
+            .fill(Color(red: 0.071, green: 0.667, blue: 1))
+        }
     }
 
     private var solana: some View {

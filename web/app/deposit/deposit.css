@@ -1,0 +1,287 @@
+/* The deposit page wears the app's interior rather than the marketing site's
+   white, because it opens inside the app and a change of ground there reads as
+   leaving Recourse for somewhere else. */
+
+.dep {
+  min-height: 100vh;
+  background: var(--night);
+  color: var(--night-text);
+}
+
+.dep-wrap {
+  max-width: 460px;
+  margin: 0 auto;
+  padding: 28px 20px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.dep-head h1 {
+  margin: 0 0 6px;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.dep-head p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--night-muted);
+}
+
+.dep-to {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--night-chip);
+  border: 1px solid var(--night-line);
+  font-size: 13px;
+  color: var(--night-muted);
+}
+
+.dep-to span {
+  font-family: var(--mono);
+  color: var(--night-text);
+}
+
+.dep-field {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.dep-label,
+.dep-label-row {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--night-muted);
+}
+
+.dep-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.dep-max {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #3ecf8e;
+}
+
+.dep-chains {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.dep-chain {
+  padding: 13px 8px;
+  border-radius: 14px;
+  border: 1px solid var(--night-line);
+  background: var(--night-chip);
+  color: var(--night-muted);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
+}
+
+.dep-chain.is-on {
+  border-color: #3ecf8e;
+  background: rgba(62, 207, 142, 0.1);
+  color: var(--night-text);
+}
+
+.dep-chain:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.dep-amount {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 16px 16px 18px;
+  border-radius: 16px;
+  border: 1px solid var(--night-line);
+  background: var(--night-chip);
+}
+
+.dep-amount input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: 0;
+  outline: none;
+  color: var(--night-text);
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.dep-amount input::placeholder {
+  color: #3c4741;
+}
+
+.dep-amount span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--night-muted);
+}
+
+.dep-summary {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dep-summary div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dep-summary dt {
+  font-size: 13px;
+  color: var(--night-muted);
+}
+
+.dep-summary dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: right;
+}
+
+.dep-go {
+  width: 100%;
+  padding: 16px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--green);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 140ms ease;
+}
+
+.dep-go:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.dep-connect,
+.dep-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dep-empty p:first-child {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.dep-error {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #ff8f7a;
+}
+
+.dep-fine,
+.dep-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--night-muted);
+}
+
+.dep-done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+  padding: 40px 0 8px;
+}
+
+.dep-done h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.dep-done p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--night-muted);
+  max-width: 34ch;
+}
+
+.dep-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: #3ecf8e;
+}
+
+.dep-tick,
+.dep-spin {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+}
+
+.dep-tick {
+  background: rgba(62, 207, 142, 0.14);
+  position: relative;
+}
+
+.dep-tick::after {
+  content: "";
+  position: absolute;
+  left: 19px;
+  top: 15px;
+  width: 12px;
+  height: 21px;
+  border: solid #3ecf8e;
+  border-width: 0 2.5px 2.5px 0;
+  transform: rotate(45deg);
+}
+
+.dep-spin {
+  border: 2.5px solid var(--night-line);
+  border-top-color: #3ecf8e;
+  animation: dep-turn 900ms linear infinite;
+}
+
+@keyframes dep-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dep-spin {
+    animation-duration: 3s;
+  }
+}

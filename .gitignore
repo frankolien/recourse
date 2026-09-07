@@ -66,4 +66,4 @@ backend/secrets/*
 .vercel
 
 # Marketing renders live on disk and in Drive, not in git
-docs/marketing/motion/*.mp4
+docs/marketing/motion/**/*.mp4

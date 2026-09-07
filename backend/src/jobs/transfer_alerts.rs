@@ -100,6 +100,11 @@ async fn save_cursor(pool: &PgPool, block: u64) -> anyhow::Result<()> {
 
 /// A Recourse account by @handle, an Olien by its name, anyone else by short address.
 async fn sender_name(pool: &PgPool, from: Address) -> String {
+    // A bridge mint is a transfer out of nowhere, so there is no sender to name.
+    // Saying where it came from is the useful half anyway.
+    if from == Address::ZERO {
+        return "another chain".to_string();
+    }
     let lower = format!("{from:#x}");
     let handle: Option<(String,)> = sqlx::query_as(
         "SELECT h.handle FROM account_handles h

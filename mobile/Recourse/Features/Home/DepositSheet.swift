@@ -10,6 +10,11 @@ import SwiftUI
 struct DepositSheet: View {
     let environment: AppEnvironment
 
+    /// The bridge names this account as the recipient of the mint on Arc, so the
+    /// sheet cannot offer that door until it knows the address.
+    @State private var address: String?
+    @State private var presentedWebPage: WebPageLink?
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -29,6 +34,21 @@ struct DepositSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
         }
+        .task {
+            address = try? await environment.buyerSigner.address().value
+        }
+        .sheet(item: $presentedWebPage) { page in
+            SafariWebView(url: page.url).ignoresSafeArea()
+        }
+    }
+
+    /// The burn is signed in the person's own wallet, which lives in a browser,
+    /// not here. The page is handed the account so the money comes straight back.
+    private var bridgeURL: URL? {
+        guard let address else { return nil }
+        var components = URLComponents(url: AppConfiguration.webAppURL.appending(path: "deposit"), resolvingAgainstBaseURL: false)
+        components?.queryItems = [URLQueryItem(name: "to", value: address)]
+        return components?.url
     }
 
     private var header: some View {
@@ -69,16 +89,23 @@ struct DepositSheet: View {
                 }
                 .buttonStyle(DepositCardPress())
 
-                // CCTP is Circle's own bridge and Arc supports it, so this is the next
-                // one to become real rather than a wish. Addresses are already recorded
-                // in deployments/arc-config.json.
-                DepositCard(
-                    icon: "arrow.left.arrow.right",
-                    title: "Another chain",
-                    detail: "USDC from Base, Solana or Ethereum",
-                    marks: [.base, .solana, .ethereum],
-                    availability: .soon
-                )
+                // Circle's own bridge: the USDC is burned on the chain it sits on
+                // and minted on Arc, so what lands is real Arc USDC and not a claim
+                // on somebody's vault. Circle finishes the mint, which is why no
+                // gas on Arc is needed to receive it.
+                Button {
+                    if let bridgeURL { presentedWebPage = WebPageLink(url: bridgeURL) }
+                } label: {
+                    DepositCard(
+                        icon: "arrow.left.arrow.right",
+                        title: "Another chain",
+                        detail: "USDC from Base, Arbitrum or Ethereum",
+                        marks: [.base, .arbitrum, .ethereum],
+                        availability: address == nil ? .soon : .live
+                    )
+                }
+                .buttonStyle(DepositCardPress())
+                .disabled(address == nil)
 
                 // Both of these need a registered business before any provider will
                 // issue production keys, which is why they are dated by paperwork
