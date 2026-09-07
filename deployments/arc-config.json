@@ -30,7 +30,9 @@
     "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9",
     "gatewayMinter": "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B",
     "cctpDomain": 26,
-    "cctpNote": "CCTP V2 only. Verified on chain 2026-09-07: MessageTransmitterV2.localDomain()=26, TokenMessengerV2 wired to this MessageTransmitter and TokenMinter, remote messengers registered for domains 0,1,2,3,5,6,7,10,11, and Base and Ethereum USDC both map to the local 0x3600...0000. Arc mainnet has no CCTP deployment yet."
+    "cctpNote": "CCTP V2 only. Verified on chain 2026-09-07: MessageTransmitterV2.localDomain()=26, TokenMessengerV2 wired to this MessageTransmitter and TokenMinter, remote messengers registered for domains 0,1,2,3,5,6,7,10,11, and Base and Ethereum USDC both map to the local 0x3600...0000. Arc mainnet has no CCTP deployment yet.",
+    "usycNote": "The USYC teller is an ERC-4626 vault whose asset is Arc USDC and whose share is USYC. Verified on chain 2026-09-07: asset() returns 0x3600...0000, previewRedeem of one USYC returns 1.135836 USDC which matches the USYC/USD oracle at 0x52b56c7642E71dc54714d879127d97cd0B3D4581 to the last digit, and a fresh address is not blocked from depositing. Two numbers shaped the design: the teller held 5,160 USDC of cash against 751,910 of assets, so redeeming at size fails, and the oracle had not updated for 147 hours, so a balance priced off it moves in steps rather than continuously. SettlementVault therefore keeps a cash buffer.",
+    "usycOracle": "0x52b56c7642E71dc54714d879127d97cd0B3D4581"
   },
   "deposits": {
     "note": "Deposit addresses on chains that are not Arc. The factory is deployed through the Arachnid CREATE2 proxy with a fixed salt, so it holds this address on every chain it is put on, which keeps one person's deposit address the same everywhere. The supported chains are a table inside the factory rather than settings, because settings someone can edit are settings someone can point at a fake bridge. The cost of that is that adding a chain changes the factory's code and therefore its address, so the chain list is meant to be settled once. contracts/src/deposit is the rule book.",

@@ -8,6 +8,7 @@ import {PolicyRegistry} from "../src/PolicyRegistry.sol";
 import {MockUSYCAdapter} from "../src/MockUSYCAdapter.sol";
 import {RecourseEscrow} from "../src/RecourseEscrow.sol";
 import {SettlementVault} from "../src/SettlementVault.sol";
+import {IUSYCTeller} from "../src/interfaces/IUSYCTeller.sol";
 import {TestUSDC} from "../test/mocks/TestUSDC.sol";
 
 // Deploys the protocol and writes the address book that everything downstream reads
@@ -40,7 +41,16 @@ contract Deploy is Script {
         MockUSYCAdapter adapter = new MockUSYCAdapter(usdc);
         RecourseEscrow escrow =
             new RecourseEscrow(usdc, registry, adapter, attestor, treasury, yieldFeeBps, resolveDelay);
-        SettlementVault vault = new SettlementVault(usdc, escrow);
+        // The real USYC teller when the chain has one, so idle float earns; zero
+        // elsewhere, which leaves the vault all cash and behaving as it always did.
+        // Read inline rather than into locals: this function is already at the stack's
+        // limit and two more names push it over.
+        SettlementVault vault = new SettlementVault(
+            usdc,
+            escrow,
+            IUSYCTeller(vm.envOr("USYC_TELLER", address(0))),
+            IERC20(vm.envOr("USYC_TOKEN", address(0)))
+        );
         escrow.setVault(address(vault));
 
         // Only the local mock can be minted; the real USDC buffer is funded from the faucet separately.
@@ -51,6 +61,7 @@ contract Deploy is Script {
         vm.stopBroadcast();
 
         _writeAddresses(usdc, registry, adapter, escrow, vault, attestor, treasury);
+
     }
 
     function _writeAddresses(
@@ -67,6 +78,8 @@ contract Deploy is Script {
         vm.serializeAddress(o, "usdc", address(usdc));
         vm.serializeAddress(o, "policyRegistry", address(registry));
         vm.serializeAddress(o, "yieldAdapter", address(adapter));
+        // Recorded so the app and the backend read the same teller the vault invests in.
+        vm.serializeAddress(o, "usycTeller", address(vault.teller()));
         vm.serializeAddress(o, "escrow", address(escrow));
         vm.serializeAddress(o, "settlementVault", address(vault));
         vm.serializeAddress(o, "attestor", attestor);

@@ -7,6 +7,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import {RecourseEscrow} from "./RecourseEscrow.sol";
+import {IUSYCTeller} from "./interfaces/IUSYCTeller.sol";
 
 // USDC liquidity pool that fronts merchants at T+0. On advance it pays the merchant
 // net of fee and takes assignment of the escrow claim; at settlement the claim pays
@@ -21,6 +22,17 @@ contract SettlementVault is Ownable, ReentrancyGuard {
 
     IERC20 public immutable usdc;
     RecourseEscrow public immutable escrow;
+
+    // Where idle dollars earn. USYC is a treasury fund, so its teller holds well under
+    // a percent of its assets as cash: 5,160 USDC against 751,910 on Arc testnet the
+    // day this was written. Redeeming on demand at size would therefore fail, which is
+    // why the vault keeps its own buffer and only invests what is above it.
+    IUSYCTeller public immutable teller;
+    IERC20 public immutable usyc;
+
+    /// Share of the liquid pool held as cash rather than USYC, so an ordinary
+    /// withdrawal never has to wait on the fund. Owner tunable; 20 percent to start.
+    uint16 public bufferBps = 2000;
 
     uint256 public totalShares;
     mapping(address => uint256) public sharesOf;
@@ -65,15 +77,93 @@ contract SettlementVault is Ownable, ReentrancyGuard {
     error UnknownAdvance();
     error NotSettled();
     error NotOurClaim();
+    error BufferTooHigh();
+    error YieldNotConfigured();
+    error CouldNotFreeCash();
 
-    constructor(IERC20 _usdc, RecourseEscrow _escrow) Ownable(msg.sender) {
+    event BufferSet(uint16 bps);
+    event Invested(uint256 assets, uint256 shares);
+    event Divested(uint256 shares, uint256 assets);
+
+    /// `_teller` and `_usyc` may both be zero, which leaves the vault exactly as it was
+    /// before yield: all cash, no fund position. That is how the tests and any chain
+    /// without a teller run.
+    constructor(IERC20 _usdc, RecourseEscrow _escrow, IUSYCTeller _teller, IERC20 _usyc) Ownable(msg.sender) {
         usdc = _usdc;
         escrow = _escrow;
+        teller = _teller;
+        usyc = _usyc;
     }
 
-    // Idle USDC plus advanced claims carried at par.
+    function _cash() internal view returns (uint256) {
+        return usdc.balanceOf(address(this));
+    }
+
+    /// What the vault's USYC is worth in dollars, priced by the teller itself.
+    function investedAssets() public view returns (uint256) {
+        if (address(teller) == address(0)) return 0;
+        uint256 shares = usyc.balanceOf(address(this));
+        if (shares == 0) return 0;
+        return teller.previewRedeem(shares);
+    }
+
+    // Cash, plus the fund position, plus advanced claims carried at par.
     function totalAssets() public view returns (uint256) {
-        return usdc.balanceOf(address(this)) + outstanding;
+        return _cash() + investedAssets() + outstanding;
+    }
+
+    /// Move everything above the buffer into the fund. Called after a deposit, and by
+    /// the owner to top up after cash has built back up. Never touches `outstanding`,
+    /// which is money already out of the door.
+    function invest() public {
+        if (address(teller) == address(0)) return;
+        uint256 cash = _cash();
+        uint256 liquid = cash + investedAssets();
+        uint256 keep = (liquid * bufferBps) / 10000;
+        if (cash <= keep) return;
+        uint256 put = cash - keep;
+        usdc.forceApprove(address(teller), put);
+        uint256 before = usyc.balanceOf(address(this));
+        teller.deposit(put, address(this));
+        // Measured rather than taken from the return value, so a teller that reports
+        // one number and mints another cannot move share price.
+        uint256 minted = usyc.balanceOf(address(this)) - before;
+        usdc.forceApprove(address(teller), 0);
+        emit Invested(put, minted);
+    }
+
+    /// Make sure at least `need` dollars are in hand, redeeming from the fund if not.
+    /// Redeems a little extra so the next small withdrawal does not pay for a redeem.
+    function _freeCash(uint256 need) internal {
+        uint256 cash = _cash();
+        if (cash >= need) return;
+        if (address(teller) == address(0)) revert InsufficientIdle();
+
+        uint256 short = need - cash;
+        uint256 shares = usyc.balanceOf(address(this));
+        if (shares == 0) revert InsufficientIdle();
+
+        // Redeem proportionally to what is short, rounded up, capped at what is held.
+        uint256 held = teller.previewRedeem(shares);
+        uint256 take = held == 0 ? shares : (shares * short + held - 1) / held;
+        if (take > shares) take = shares;
+
+        uint256 cashBefore = cash;
+        // The teller pulls the shares, so it needs standing to take them.
+        usyc.forceApprove(address(teller), take);
+        teller.redeem(take, address(this), address(this));
+        usyc.forceApprove(address(teller), 0);
+        emit Divested(take, _cash() - cashBefore);
+
+        // The fund is allowed to be short of cash; the vault is not allowed to pretend
+        // it paid when it did not.
+        if (_cash() < need) revert CouldNotFreeCash();
+    }
+
+    function setBufferBps(uint16 bps) external onlyOwner {
+        if (bps > 10000) revert BufferTooHigh();
+        bufferBps = bps;
+        emit BufferSet(bps);
     }
 
     function convertToAssets(uint256 shares) public view returns (uint256) {
@@ -93,6 +183,7 @@ contract SettlementVault is Ownable, ReentrancyGuard {
         totalShares = supply + minted;
         sharesOf[msg.sender] += minted;
         emit Deposited(msg.sender, assets, minted);
+        invest();
     }
 
     function withdraw(uint256 shares) external nonReentrant returns (uint256 assetsOut) {
@@ -100,8 +191,10 @@ contract SettlementVault is Ownable, ReentrancyGuard {
         if (shares > sharesOf[msg.sender]) revert InsufficientShares();
 
         assetsOut = (shares * totalAssets()) / totalShares;
-        // Capital tied up in outstanding advances cannot be withdrawn.
-        if (assetsOut > usdc.balanceOf(address(this))) revert InsufficientIdle();
+        // Capital tied up in outstanding advances cannot be withdrawn; the fund
+        // position can be, so it is sold before the balance is called short.
+        if (assetsOut > _cash() + investedAssets()) revert InsufficientIdle();
+        _freeCash(assetsOut);
 
         sharesOf[msg.sender] -= shares;
         totalShares -= shares;
@@ -135,6 +228,7 @@ contract SettlementVault is Ownable, ReentrancyGuard {
         outstanding += pmt.amount;
         advances[paymentId] = AdvanceInfo({merchant: pmt.merchant, amount: pmt.amount, exists: true, reconciled: false});
 
+        _freeCash(net);
         usdc.safeTransfer(pmt.merchant, net);
         escrow.assign(paymentId, address(this));
         emit Advanced(paymentId, pmt.merchant, pmt.amount, fee);

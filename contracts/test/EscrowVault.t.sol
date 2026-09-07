@@ -7,6 +7,8 @@ import {PolicyRegistry} from "../src/PolicyRegistry.sol";
 import {MockUSYCAdapter} from "../src/MockUSYCAdapter.sol";
 import {RecourseEscrow} from "../src/RecourseEscrow.sol";
 import {SettlementVault} from "../src/SettlementVault.sol";
+import {IUSYCTeller} from "../src/interfaces/IUSYCTeller.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {TestUSDC} from "./mocks/TestUSDC.sol";
 
 // End-to-end flows across escrow, adapter, and vault, asserting exact USDC movement
@@ -44,7 +46,7 @@ contract EscrowVaultTest is Test {
         registry = new PolicyRegistry();
         adapter = new MockUSYCAdapter(usdc);
         escrow = new RecourseEscrow(usdc, registry, adapter, attestor, treasury, YIELD_FEE_BPS, RESOLVE_DELAY);
-        vault = new SettlementVault(usdc, escrow);
+        vault = new SettlementVault(usdc, escrow, IUSYCTeller(address(0)), IERC20(address(0)));
         escrow.setVault(address(vault));
 
         vm.prank(merchant);
