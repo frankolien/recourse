@@ -26,3 +26,6 @@ is up for the whole clip (seconds in, seconds out): home 0 to 4.5, send 4.85 to
 ```
 ffmpeg -ss 4.85 -to 10.15 -i app-film-v3.mp4 -c:v libx264 -crf 18 -pix_fmt yuv420p cuts/send.mp4
 ```
+
+Note: the cut frames under `work/` are regenerable and are cleared when disk is
+tight. Run `node build.mjs` again before rendering.
