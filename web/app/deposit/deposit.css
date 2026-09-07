@@ -285,3 +285,23 @@
     animation-duration: 3s;
   }
 }
+
+.dep-empty-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* The wallets after the first are the same offer, not a lesser one, so they are
+   outlined rather than dimmed. */
+.dep-go--quiet {
+  background: var(--night-chip);
+  border: 1px solid var(--night-line);
+  color: var(--night-text);
+}
+
+a.dep-go {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+}

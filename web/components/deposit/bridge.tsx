@@ -300,26 +300,19 @@ type ConnectProps = {
 
 function Connect({ connect, connectors, connecting }: ConnectProps) {
   // wagmi always offers the generic injected connector, whether or not a wallet
-  // put anything in the page, so the page asks the window itself. A phone's own
-  // browser has nothing, and being told where this does work beats a dead button.
+  // put anything in the page, so the page asks the window itself.
   const [hasWallet, setHasWallet] = useState(false);
+  const [phone, setPhone] = useState(false);
   useEffect(() => {
-    setHasWallet(typeof window !== "undefined" && "ethereum" in window);
+    setHasWallet("ethereum" in window);
+    setPhone(/iphone|ipad|android/i.test(navigator.userAgent));
   }, []);
 
   const named = connectors.filter((connector) => connector.id !== "injected");
   const list = named.length ? named : connectors;
+  const bare = list.length === 0 || (named.length === 0 && !hasWallet);
 
-  if (list.length === 0 || (named.length === 0 && !hasWallet)) {
-    return (
-      <div className="dep-empty">
-        <p>No wallet here.</p>
-        <p className="dep-fine">
-          On a phone, open this page inside your wallet app&apos;s own browser. On a computer, install MetaMask or Rabby and reload.
-        </p>
-      </div>
-    );
-  }
+  if (bare) return <HandOff phone={phone} />;
 
   return (
     <div className="dep-connect">
@@ -328,6 +321,56 @@ function Connect({ connect, connectors, connecting }: ConnectProps) {
           {connecting ? "Opening your wallet" : connector.id === "injected" ? "Connect wallet" : `Connect ${connector.name}`}
         </button>
       ))}
+    </div>
+  );
+}
+
+/**
+ * No wallet can reach a page in Safari, in the app's own browser or otherwise:
+ * a wallet only puts itself into its own app's browser, and Safari extensions do
+ * not load in an in-app view. So rather than a dead end, the page hands itself
+ * over. These links open this same page, address and all, inside the wallet,
+ * where the signature is possible.
+ */
+function HandOff({ phone }: { phone: boolean }) {
+  const [copied, setCopied] = useState(false);
+  const here = typeof window === "undefined" ? "" : window.location.href;
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(here);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  if (!phone) {
+    return (
+      <div className="dep-empty">
+        <p>No wallet in this browser.</p>
+        <p className="dep-fine">Install MetaMask or Rabby and reload this page.</p>
+      </div>
+    );
+  }
+
+  const bare = here.replace(/^https?:\/\//, "");
+  return (
+    <div className="dep-connect">
+      <p className="dep-empty-title">Open this in your wallet</p>
+      <a className="dep-go" href={`https://metamask.app.link/dapp/${bare}`}>
+        Open in MetaMask
+      </a>
+      <a className="dep-go dep-go--quiet" href={`https://go.cb-w.com/dapp?cb_url=${encodeURIComponent(here)}`}>
+        Open in Coinbase Wallet
+      </a>
+      <button type="button" className="dep-go dep-go--quiet" onClick={copy}>
+        {copied ? "Link copied" : "Copy the link instead"}
+      </button>
+      <p className="dep-fine">
+        A wallet can only sign inside its own app. These open this same page there, still paying into your Recourse account.
+      </p>
     </div>
   );
 }
