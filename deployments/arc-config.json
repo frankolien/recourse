@@ -31,5 +31,19 @@
     "gatewayMinter": "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B",
     "cctpDomain": 26,
     "cctpNote": "CCTP V2 only. Verified on chain 2026-09-07: MessageTransmitterV2.localDomain()=26, TokenMessengerV2 wired to this MessageTransmitter and TokenMinter, remote messengers registered for domains 0,1,2,3,5,6,7,10,11, and Base and Ethereum USDC both map to the local 0x3600...0000. Arc mainnet has no CCTP deployment yet."
+  },
+  "deposits": {
+    "note": "Deposit addresses on chains that are not Arc. The factory is deployed through the Arachnid CREATE2 proxy with a fixed salt, so it holds this address on every chain it is put on, which keeps one person's deposit address the same everywhere. contracts/src/deposit is the rule book.",
+    "factory": "0x0641fBa0218Bb061c18da4cc600Dd6f3307D6c03",
+    "chains": {
+      "base-sepolia": {
+        "chainId": 84532,
+        "rpcUrl": "https://sepolia.base.org",
+        "usdc": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "deployed": "2026-09-07",
+        "tx": "0x8610e7a33376319b03d34a1f3dd5a5ebea4bbe30729e77eeae0c0a54624d38fc",
+        "verified": "code present; usdc, messenger and destination domain 26 read back from the chain"
+      }
+    }
   }
 }
