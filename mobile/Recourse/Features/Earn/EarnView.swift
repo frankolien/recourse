@@ -16,7 +16,7 @@ struct EarnView: View {
     @Environment(\.dismiss) private var dismiss
 
     static let productName = "Settlement Yield"
-    static let productBlurb = "Put USDC into the settlement vault. It pays merchants at T+0 and earns the advance fees plus float yield while it waits."
+    static let productBlurb = "Your dollars sit in Circle's USYC treasury fund and earn what it earns. Some is kept in cash so you can take money out at once, and the vault also pays merchants at T+0 and keeps the advance fees."
     static let earnTint = Color(red: 0.55, green: 0.36, blue: 0.96)
 
     var body: some View {
