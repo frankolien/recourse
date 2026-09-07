@@ -20,6 +20,9 @@ final class AppEnvironment {
     private(set) var teamStore: TeamStore!
     private(set) var push: PushCoordinator!
     let appLock = AppLock()
+    /// Where to send dollars from a chain that is not Arc. Stateless, so it is made once
+    /// and asked when a screen needs it rather than polled.
+    private(set) var depositAPI: (any DepositAPI)!
 
     init(
         configuration: AppConfiguration,
@@ -77,6 +80,7 @@ final class AppEnvironment {
             session: self.accountSession,
             api: PushAPIClient(baseURL: configuration.apiURL)
         )
+        depositAPI = DepositAPIClient(baseURL: configuration.apiURL)
         // The Safe is the member of any treasury, so the store reads it from the smart
         // account store and sends a veto through the submitter every Safe write uses.
         teamStore = TeamStore(
