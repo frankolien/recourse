@@ -348,11 +348,37 @@ contract DepositTest is Test {
     }
 
     function test_KnownChainsResolve() public {
-        uint256[6] memory ids = [uint256(8453), 84532, 1, 11155111, 42161, 421614];
+        uint256[16] memory ids = [
+            uint256(8453), 84532, 1, 11155111, 42161, 421614, 10, 11155420, 137, 80002, 43114, 43113, 130, 1301, 59144, 59141
+        ];
         for (uint256 i; i < ids.length; ++i) {
             vm.chainId(ids[i]);
             assertTrue(factory.usdc() != address(0), "usdc");
             assertTrue(factory.messenger() != address(0), "messenger");
+        }
+    }
+
+    /// Two rows pointing at one token would send a chain's deposits to the wrong
+    /// place, and the table is hand written, so it is worth asserting rather than
+    /// reading. Every row must also be one of Circle's two messengers.
+    function test_EveryChainHasItsOwnToken() public {
+        uint256[16] memory ids = [
+            uint256(8453), 84532, 1, 11155111, 42161, 421614, 10, 11155420, 137, 80002, 43114, 43113, 130, 1301, 59144, 59141
+        ];
+        address[16] memory seen;
+        for (uint256 i; i < ids.length; ++i) {
+            vm.chainId(ids[i]);
+            address token = factory.usdc();
+            address bridge = factory.messenger();
+            assertTrue(
+                bridge == 0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d
+                    || bridge == 0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA,
+                "messenger is one of Circle's"
+            );
+            for (uint256 j; j < i; ++j) {
+                assertTrue(seen[j] != token, "two chains share a token address");
+            }
+            seen[i] = token;
         }
     }
 

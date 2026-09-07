@@ -132,16 +132,18 @@ async fn main() -> Result<()> {
     // Deposits from another chain. Needs somewhere to read and a key to pay with; any
     // piece missing and the door stays shut rather than handing out a dead address.
     let deposits = build_deposits(&config);
-    match &deposits {
-        Some(client) => {
-            let client = client.clone();
-            let pool = pool.clone();
-            let interval = config.index_interval_secs;
-            actix_web::rt::spawn(async move {
-                jobs::deposit_sweeper::run(client, pool, interval).await;
-            });
-        }
-        None => tracing::info!("deposits from another chain disabled (set DEPOSIT_RPC_URL, DEPOSIT_FACTORY, RELAYER_PK)"),
+    if deposits.is_empty() {
+        tracing::info!("deposits from another chain disabled (set DEPOSIT_FACTORY and RELAYER_PK)");
+    }
+    // One watcher per chain. Each checks for the factory before it starts, so a chain
+    // listed but not deployed to costs nothing and lights up when it is.
+    for client in &deposits {
+        let client = client.clone();
+        let pool = pool.clone();
+        let interval = config.index_interval_secs;
+        actix_web::rt::spawn(async move {
+            jobs::deposit_sweeper::run(client, pool, interval).await;
+        });
     }
 
     tracing::info!(
@@ -267,25 +269,26 @@ fn build_smart_accounts(config: &AppConfig) -> Result<SmartAccounts> {
     Ok(SmartAccounts { safe, vault, mailer })
 }
 
-/// The deposit chain client, when this deployment has one. Base is chosen from the Arc
-/// chain the rest of the service is pointed at, so a testnet build can never be handed a
-/// mainnet address by a stray environment variable.
-fn build_deposits(config: &services::AppConfig) -> Option<std::sync::Arc<services::deposits::DepositClient>> {
-    let rpc = config.deposit_rpc_url.clone()?;
-    let factory = config.deposit_factory?;
-    let key = config.relayer_pk.clone()?;
-    let chain = services::deposits::chains_for(match config.chain_id {
-        5042002 => 84532,
-        5042 => 8453,
-        _ => return None,
-    })
-    .into_iter()
-    .next()?;
-    match services::deposits::DepositClient::new(&rpc, &key, factory, chain) {
-        Ok(client) => Some(std::sync::Arc::new(client)),
-        Err(e) => {
-            tracing::warn!("deposits disabled: {e:#}");
-            None
-        }
-    }
+/// A client per chain we take deposits on. The set comes from the Arc chain the rest of
+/// the service points at, so a testnet build can never be handed a mainnet chain by a
+/// stray environment variable. Endpoints default to public ones and can be replaced
+/// per chain with DEPOSIT_RPCS, for example "base=https://...,linea=https://...".
+fn build_deposits(config: &services::AppConfig) -> Vec<std::sync::Arc<services::deposits::DepositClient>> {
+    let (Some(factory), Some(key)) = (config.deposit_factory, config.relayer_pk.clone()) else {
+        return Vec::new();
+    };
+    let overrides = &config.deposit_rpcs;
+    services::deposits::chains_for(config.chain_id)
+        .into_iter()
+        .filter_map(|chain| {
+            let rpc = overrides.get(&chain.key).cloned().unwrap_or_else(|| chain.rpc.clone());
+            match services::deposits::DepositClient::new(&rpc, &key, factory, chain) {
+                Ok(client) => Some(std::sync::Arc::new(client)),
+                Err(e) => {
+                    tracing::warn!("deposits disabled on one chain: {e:#}");
+                    None
+                }
+            }
+        })
+        .collect()
 }

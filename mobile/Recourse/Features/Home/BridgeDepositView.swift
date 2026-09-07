@@ -14,7 +14,7 @@ import UIKit
 struct BridgeDepositView: View {
     let environment: AppEnvironment
 
-    @State private var addresses: [DepositAddress] = []
+    @State private var deposit: DepositAddress?
     @State private var loadFailed = false
     @State private var copied: String?
 
@@ -33,10 +33,11 @@ struct BridgeDepositView: View {
     @ViewBuilder
     private var content: some View {
         VStack(spacing: 20) {
-            if let deposit = addresses.first {
+            if let deposit, deposit.isOpen {
                 header(deposit)
                 qr(for: deposit)
                 addressBlock(deposit)
+                chainList(deposit)
                 steps(deposit)
             } else if loadFailed {
                 unavailable
@@ -51,10 +52,10 @@ struct BridgeDepositView: View {
 
     private func header(_ deposit: DepositAddress) -> some View {
         VStack(spacing: 6) {
-            Text("Your \(deposit.chainName) address")
+            Text("Your deposit address")
                 .font(.recourse(17, .semibold))
                 .foregroundStyle(RecourseColor.nightText)
-            Text("Send USDC on \(deposit.chainName) here and it arrives in your Recourse balance.")
+            Text("Send USDC here from any of these chains and it arrives in your Recourse balance.")
                 .font(.recourse(12, .medium))
                 .foregroundStyle(RecourseColor.nightMuted)
                 .multilineTextAlignment(.center)
@@ -110,11 +111,24 @@ struct BridgeDepositView: View {
         }
     }
 
+    /// One address on every chain is the unusual part, so it is shown rather than
+    /// claimed: the chains are named, and the sentence says the address is the same
+    /// on all of them.
+    private func chainList(_ deposit: DepositAddress) -> some View {
+        VStack(spacing: 10) {
+            FlowChips(names: deposit.chains.map(\.chainName))
+            Text("The same address on every one of them.")
+                .font(.recourse(11.5, .medium))
+                .foregroundStyle(RecourseColor.nightMuted)
+        }
+        .padding(.horizontal, 22)
+    }
+
     /// The two things that lose people money here are sending the wrong token and
     /// sending on the wrong chain, so both are said plainly rather than in a footnote.
     private func steps(_ deposit: DepositAddress) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            rule("USDC only, on \(deposit.chainName)", detail: "Anything else sent here cannot be recovered.", icon: "exclamationmark.triangle.fill", tint: RecourseColor.nightText)
+            rule("USDC only", detail: "On the chains above. Anything else sent here cannot be recovered.", icon: "exclamationmark.triangle.fill", tint: RecourseColor.nightText)
             rule("At least \(deposit.minimum) USDC", detail: "Less than that waits here until you add more.", icon: "arrow.down.circle.fill", tint: RecourseColor.nightMuted)
             rule("Arrives in about a minute", detail: "Circle moves it to Arc. You are told when it lands.", icon: "clock.fill", tint: RecourseColor.nightMuted)
             rule("Nobody holds it but you", detail: "This address can only pay your Recourse account, and nothing else.", icon: "lock.fill", tint: RecourseColor.nightMuted)
@@ -166,13 +180,13 @@ struct BridgeDepositView: View {
 
     @MainActor
     private func load() async {
-        guard addresses.isEmpty else { return }
+        guard deposit == nil else { return }
         do {
             let found = try await environment.accountSession.withAccessToken { token in
                 try await environment.depositAPI.addresses(accessToken: token)
             }
-            addresses = found
-            loadFailed = found.isEmpty
+            deposit = found
+            loadFailed = !found.isOpen
         } catch {
             loadFailed = true
         }
@@ -186,5 +200,79 @@ struct BridgeDepositView: View {
         let scaled = output.transformed(by: CGAffineTransform(scaleX: 12, y: 12))
         guard let cgImage = CIContext().createCGImage(scaled, from: scaled.extent) else { return nil }
         return UIImage(cgImage: cgImage)
+    }
+}
+
+/// Chain names that wrap onto as many rows as they need. A fixed grid would leave a
+/// ragged gap when eight names of different lengths meet a narrow phone.
+private struct FlowChips: View {
+    let names: [String]
+
+    var body: some View {
+        FlowLayout(spacing: 8) {
+            ForEach(names, id: \.self) { name in
+                Text(name)
+                    .font(.recourse(12, .semibold))
+                    .foregroundStyle(RecourseColor.nightText)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(RecourseColor.nightChip, in: Capsule())
+                    .overlay(Capsule().stroke(RecourseColor.nightLine, lineWidth: 1))
+            }
+        }
+    }
+}
+
+private struct FlowLayout: Layout {
+    var spacing: CGFloat = 8
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? .infinity
+        let rows = arrange(subviews: subviews, width: width)
+        let height = rows.reduce(CGFloat.zero) { $0 + $1.height } + spacing * CGFloat(max(0, rows.count - 1))
+        return CGSize(width: width == .infinity ? rows.map(\.width).max() ?? 0 : width, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let rows = arrange(subviews: subviews, width: bounds.width)
+        var y = bounds.minY
+        for row in rows {
+            // Centred, because a left aligned last row of two chips reads as a mistake.
+            var x = bounds.minX + (bounds.width - row.width) / 2
+            for index in row.indices {
+                let size = subviews[index].sizeThatFits(.unspecified)
+                subviews[index].place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
+                x += size.width + spacing
+            }
+            y += row.height + spacing
+        }
+    }
+
+    private struct Row {
+        var indices: [Int] = []
+        var width: CGFloat = 0
+        var height: CGFloat = 0
+    }
+
+    private func arrange(subviews: Subviews, width: CGFloat) -> [Row] {
+        var rows: [Row] = []
+        var row = Row()
+        for index in subviews.indices {
+            let size = subviews[index].sizeThatFits(.unspecified)
+            let next = row.indices.isEmpty ? size.width : row.width + spacing + size.width
+            if next > width, !row.indices.isEmpty {
+                rows.append(row)
+                row = Row()
+                row.indices = [index]
+                row.width = size.width
+                row.height = size.height
+            } else {
+                row.indices.append(index)
+                row.width = next
+                row.height = max(row.height, size.height)
+            }
+        }
+        if !row.indices.isEmpty { rows.append(row) }
+        return rows
     }
 }

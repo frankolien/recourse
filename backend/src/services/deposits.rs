@@ -42,6 +42,10 @@ pub struct DepositChain {
     pub name: String,
     pub chain_id: u64,
     pub usdc: Address,
+    /// Where to read this chain, unless the deployment names its own. A public
+    /// endpoint is enough for a job that reads a log range once a cycle, and having
+    /// one means adding a chain needs a deploy rather than a pile of settings.
+    pub rpc: String,
 }
 
 pub struct DepositClient {
@@ -149,25 +153,47 @@ impl DepositClient {
     }
 }
 
-/// The chains this build accepts deposits on. Base first because it is where dollars are
-/// cheapest to move and what most exchanges withdraw to.
+/// The chains this build accepts deposits on, and where to read each one.
+///
+/// The factory holds the same address on every chain, so one person has one deposit
+/// address across all of them. A chain listed here but without the factory deployed on
+/// it costs nothing: the sweeper checks for the code and idles, and the dollars sit in
+/// the vault until the factory arrives, which is the whole point of an address that is
+/// known before it exists.
 pub fn chains_for(chain_id: u64) -> Vec<DepositChain> {
-    match chain_id {
-        // Base Sepolia, the testnet pair for Arc testnet.
-        84532 => vec![DepositChain {
-            key: "base".into(),
-            name: "Base".into(),
-            chain_id: 84532,
-            usdc: "0x036CbD53842c5426634e7929541eC2318f3dCF7e".parse().unwrap(),
-        }],
-        8453 => vec![DepositChain {
-            key: "base".into(),
-            name: "Base".into(),
-            chain_id: 8453,
-            usdc: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913".parse().unwrap(),
-        }],
-        _ => Vec::new(),
-    }
+    let rows: &[(&str, &str, u64, &str, &str)] = match chain_id {
+        // Testnets, paired with Arc testnet.
+        5042002 | 84532 => &[
+            ("base", "Base", 84532, "0x036CbD53842c5426634e7929541eC2318f3dCF7e", "https://sepolia.base.org"),
+            ("arbitrum", "Arbitrum", 421614, "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d", "https://sepolia-rollup.arbitrum.io/rpc"),
+            ("optimism", "Optimism", 11155420, "0x5fd84259d66Cd46123540766Be93DFE6D43130D7", "https://sepolia.optimism.io"),
+            ("ethereum", "Ethereum", 11155111, "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238", "https://ethereum-sepolia-rpc.publicnode.com"),
+            ("polygon", "Polygon", 80002, "0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582", "https://polygon-amoy-bor-rpc.publicnode.com"),
+            ("avalanche", "Avalanche", 43113, "0x5425890298aed601595a70AB815c96711a31Bc65", "https://api.avax-test.network/ext/bc/C/rpc"),
+            ("unichain", "Unichain", 1301, "0x31d0220469e10c4E71834a79b1f276d740d3768F", "https://sepolia.unichain.org"),
+            ("linea", "Linea", 59141, "0xFEce4462D57bD51A6A552365A011b95f0E16d9B7", "https://rpc.sepolia.linea.build"),
+        ],
+        5042 | 8453 => &[
+            ("base", "Base", 8453, "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", "https://mainnet.base.org"),
+            ("arbitrum", "Arbitrum", 42161, "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", "https://arb1.arbitrum.io/rpc"),
+            ("optimism", "Optimism", 10, "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85", "https://mainnet.optimism.io"),
+            ("ethereum", "Ethereum", 1, "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "https://ethereum-rpc.publicnode.com"),
+            ("polygon", "Polygon", 137, "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359", "https://polygon-bor-rpc.publicnode.com"),
+            ("avalanche", "Avalanche", 43114, "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E", "https://api.avax.network/ext/bc/C/rpc"),
+            ("unichain", "Unichain", 130, "0x078D782b760474a361dDA0AF3839290b0EF57AD6", "https://mainnet.unichain.org"),
+            ("linea", "Linea", 59144, "0x176211869cA2b568f2A7D4EE941E073a821EE1ff", "https://rpc.linea.build"),
+        ],
+        _ => &[],
+    };
+    rows.iter()
+        .map(|(key, name, id, usdc, rpc)| DepositChain {
+            key: (*key).into(),
+            name: (*name).into(),
+            chain_id: *id,
+            usdc: usdc.parse().expect("deposit chain USDC address"),
+            rpc: (*rpc).into(),
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -175,14 +201,38 @@ mod tests {
     use super::*;
 
     #[test]
-    fn base_chains_are_known_by_id() {
+    fn base_leads_and_arc_ids_resolve() {
+        // The Arc chain the service runs on picks the set, so a testnet build can
+        // never be handed a mainnet chain by a stray setting.
+        assert_eq!(chains_for(5042002)[0].name, "Base");
+        assert_eq!(chains_for(5042)[0].name, "Base");
         assert_eq!(chains_for(84532)[0].name, "Base");
-        assert_eq!(chains_for(8453)[0].name, "Base");
         assert!(chains_for(1).is_empty());
     }
 
     #[test]
-    fn base_usdc_differs_between_testnet_and_mainnet() {
-        assert_ne!(chains_for(84532)[0].usdc, chains_for(8453)[0].usdc);
+    fn every_chain_is_listed_once_with_its_own_token() {
+        for arc in [5042002u64, 5042] {
+            let chains = chains_for(arc);
+            assert_eq!(chains.len(), 8, "eight source chains");
+            for (i, chain) in chains.iter().enumerate() {
+                for other in chains.iter().skip(i + 1) {
+                    assert_ne!(chain.key, other.key, "a chain key is listed twice");
+                    assert_ne!(chain.chain_id, other.chain_id, "a chain id is listed twice");
+                    assert_ne!(chain.usdc, other.usdc, "two chains share a USDC address");
+                }
+                assert!(chain.rpc.starts_with("https://"), "{} needs an endpoint", chain.key);
+            }
+        }
+    }
+
+    #[test]
+    fn testnet_and_mainnet_never_share_a_token() {
+        for testnet in chains_for(5042002) {
+            for mainnet in chains_for(5042) {
+                assert_ne!(testnet.usdc, mainnet.usdc);
+                assert_ne!(testnet.chain_id, mainnet.chain_id);
+            }
+        }
     }
 }

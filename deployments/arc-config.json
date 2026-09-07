@@ -33,17 +33,49 @@
     "cctpNote": "CCTP V2 only. Verified on chain 2026-09-07: MessageTransmitterV2.localDomain()=26, TokenMessengerV2 wired to this MessageTransmitter and TokenMinter, remote messengers registered for domains 0,1,2,3,5,6,7,10,11, and Base and Ethereum USDC both map to the local 0x3600...0000. Arc mainnet has no CCTP deployment yet."
   },
   "deposits": {
-    "note": "Deposit addresses on chains that are not Arc. The factory is deployed through the Arachnid CREATE2 proxy with a fixed salt, so it holds this address on every chain it is put on, which keeps one person's deposit address the same everywhere. contracts/src/deposit is the rule book.",
-    "factory": "0x0641fBa0218Bb061c18da4cc600Dd6f3307D6c03",
+    "note": "Deposit addresses on chains that are not Arc. The factory is deployed through the Arachnid CREATE2 proxy with a fixed salt, so it holds this address on every chain it is put on, which keeps one person's deposit address the same everywhere. The supported chains are a table inside the factory rather than settings, because settings someone can edit are settings someone can point at a fake bridge. The cost of that is that adding a chain changes the factory's code and therefore its address, so the chain list is meant to be settled once. contracts/src/deposit is the rule book.",
+    "factory": "0x9C24d756781171e8839Ce0a5e37522BE5528FD82",
     "chains": {
-      "base-sepolia": {
-        "chainId": 84532,
-        "rpcUrl": "https://sepolia.base.org",
-        "usdc": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-        "deployed": "2026-09-07",
-        "tx": "0x8610e7a33376319b03d34a1f3dd5a5ebea4bbe30729e77eeae0c0a54624d38fc",
-        "verified": "code present; usdc, messenger and destination domain 26 read back from the chain"
+      "note": "Eight source chains, testnet ids paired with Arc testnet and mainnet ids with Arc mainnet. Every USDC address below was read off its own chain on 2026-09-07: symbol USDC, six decimals, and a burn limit set by Circle's minter, which is what proves the bridge accepts it. The Arachnid deployer was confirmed present on all eight testnets, which is what lets one factory address hold everywhere.",
+      "base": {
+        "testnet": 84532,
+        "mainnet": 8453
+      },
+      "arbitrum": {
+        "testnet": 421614,
+        "mainnet": 42161
+      },
+      "optimism": {
+        "testnet": 11155420,
+        "mainnet": 10
+      },
+      "ethereum": {
+        "testnet": 11155111,
+        "mainnet": 1
+      },
+      "polygon": {
+        "testnet": 80002,
+        "mainnet": 137
+      },
+      "avalanche": {
+        "testnet": 43113,
+        "mainnet": 43114
+      },
+      "unichain": {
+        "testnet": 1301,
+        "mainnet": 130
+      },
+      "linea": {
+        "testnet": 59141,
+        "mainnet": 59144
       }
+    },
+    "supersedes": {
+      "factory": "0x0641fBa0218Bb061c18da4cc600Dd6f3307D6c03",
+      "note": "The first factory, Base only, deployed to Base Sepolia 2026-09-07 and replaced the same day when the chain list was widened from three to eight. It is still deployed and still works: USDC sent to a deposit address it issued is swept by calling collect on it, so nothing sent there is lost."
+    },
+    "deployedTo": {
+      "note": "Nothing yet on the widened factory. Deploy per chain with contracts/script/DeployDepositFactory.s.sol; a chain the backend lists but has no factory on is left out of what the app offers rather than advertised."
     }
   }
 }

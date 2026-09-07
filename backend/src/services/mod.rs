@@ -126,7 +126,8 @@ pub struct AppConfig {
     // key itself, and the app's bundle id as the topic. All four or no pushes.
     // Deposits from another chain. Absent means the deposit door stays shut rather
     // than handing out an address nothing can sweep.
-    pub deposit_rpc_url: Option<String>,
+    /// Endpoint per chain key, replacing the built in default for that chain.
+    pub deposit_rpcs: std::collections::HashMap<String, String>,
     pub deposit_factory: Option<Address>,
     pub apns_key_id: Option<String>,
     pub apns_team_id: Option<String>,
@@ -136,6 +137,28 @@ pub struct AppConfig {
 
 fn env_or(key: &str, default: &str) -> String {
     std::env::var(key).unwrap_or_else(|_| default.to_string())
+}
+
+/// Endpoints for the deposit chains, as "base=https://...,linea=https://...".
+/// DEPOSIT_RPC_URL still works and means Base, since that is what it meant when Base
+/// was the only chain.
+fn deposit_rpc_overrides() -> std::collections::HashMap<String, String> {
+    let mut map = std::collections::HashMap::new();
+    if let Some(url) = optional_env("DEPOSIT_RPC_URL") {
+        map.insert("base".to_string(), url);
+    }
+    if let Some(raw) = optional_env("DEPOSIT_RPCS") {
+        for entry in raw.split(',') {
+            let entry = entry.trim();
+            if let Some((key, url)) = entry.split_once('=') {
+                let (key, url) = (key.trim(), url.trim());
+                if !key.is_empty() && !url.is_empty() {
+                    map.insert(key.to_lowercase(), url.to_string());
+                }
+            }
+        }
+    }
+    map
 }
 
 fn optional_env(key: &str) -> Option<String> {
@@ -209,7 +232,7 @@ impl AppConfig {
             olien: deployment.olien,
             relayer_pk: optional_env("RELAYER_PK").or_else(|| optional_env("ATTESTOR_PK")),
             usdc: deployment.usdc,
-            deposit_rpc_url: optional_env("DEPOSIT_RPC_URL"),
+            deposit_rpcs: deposit_rpc_overrides(),
             deposit_factory: optional_env("DEPOSIT_FACTORY").and_then(|v| v.trim().parse().ok()),
             apns_key_id: optional_env("APNS_KEY_ID"),
             apns_team_id: optional_env("APNS_TEAM_ID"),

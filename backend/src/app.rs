@@ -54,7 +54,7 @@ pub fn build_app(
     cloudinary: Option<Cloudinary>,
     smart_accounts: SmartAccounts,
     treasury: Treasury,
-    deposits: Option<std::sync::Arc<DepositClient>>,
+    deposits: Vec<std::sync::Arc<DepositClient>>,
 ) -> App<
     impl actix_web::dev::ServiceFactory<
         actix_web::dev::ServiceRequest,

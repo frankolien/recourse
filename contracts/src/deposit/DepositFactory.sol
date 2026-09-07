@@ -21,6 +21,9 @@ contract DepositFactory is IDepositConfig {
     /// Where the burned dollars are minted. 26 is Arc.
     uint32 public constant ARC_DOMAIN = 26;
 
+    address internal constant MESSENGER_MAINNET = 0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d;
+    address internal constant MESSENGER_TESTNET = 0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA;
+
     error UnsupportedChain(uint256 chainId);
 
     event VaultDeployed(bytes32 indexed beneficiary, address vault);
@@ -34,15 +37,35 @@ contract DepositFactory is IDepositConfig {
     /// and every deposit address hangs off that.
     function _chain() internal view returns (address token, address bridge) {
         uint256 id = block.chainid;
+        // Circle deploys its messenger at one address across every EVM mainnet, and a
+        // second across every testnet, which is why only the token changes per row.
+        // Every pair below was read off that chain on 2026-09-07: the token answers
+        // USDC with six decimals, and Circle's minter carries a burn limit for it,
+        // which is what proves the bridge will accept it.
         // Base
-        if (id == 8453) return (0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913, 0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d);
-        if (id == 84532) return (0x036CbD53842c5426634e7929541eC2318f3dCF7e, 0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA);
+        if (id == 8453) return (0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913, MESSENGER_MAINNET);
+        if (id == 84532) return (0x036CbD53842c5426634e7929541eC2318f3dCF7e, MESSENGER_TESTNET);
         // Ethereum
-        if (id == 1) return (0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48, 0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d);
-        if (id == 11155111) return (0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238, 0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA);
+        if (id == 1) return (0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48, MESSENGER_MAINNET);
+        if (id == 11155111) return (0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238, MESSENGER_TESTNET);
         // Arbitrum
-        if (id == 42161) return (0xaf88d065e77c8cC2239327C5EDb3A432268e5831, 0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d);
-        if (id == 421614) return (0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d, 0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA);
+        if (id == 42161) return (0xaf88d065e77c8cC2239327C5EDb3A432268e5831, MESSENGER_MAINNET);
+        if (id == 421614) return (0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d, MESSENGER_TESTNET);
+        // Optimism
+        if (id == 10) return (0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85, MESSENGER_MAINNET);
+        if (id == 11155420) return (0x5fd84259d66Cd46123540766Be93DFE6D43130D7, MESSENGER_TESTNET);
+        // Polygon
+        if (id == 137) return (0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359, MESSENGER_MAINNET);
+        if (id == 80002) return (0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582, MESSENGER_TESTNET);
+        // Avalanche
+        if (id == 43114) return (0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E, MESSENGER_MAINNET);
+        if (id == 43113) return (0x5425890298aed601595a70AB815c96711a31Bc65, MESSENGER_TESTNET);
+        // Unichain
+        if (id == 130) return (0x078D782b760474a361dDA0AF3839290b0EF57AD6, MESSENGER_MAINNET);
+        if (id == 1301) return (0x31d0220469e10c4E71834a79b1f276d740d3768F, MESSENGER_TESTNET);
+        // Linea
+        if (id == 59144) return (0x176211869cA2b568f2A7D4EE941E073a821EE1ff, MESSENGER_MAINNET);
+        if (id == 59141) return (0xFEce4462D57bD51A6A552365A011b95f0E16d9B7, MESSENGER_TESTNET);
         revert UnsupportedChain(id);
     }
 
