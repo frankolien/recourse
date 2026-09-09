@@ -14,6 +14,7 @@ pub mod olien;
 pub mod push;
 pub mod orders;
 pub mod passkey;
+pub mod payroll;
 pub mod recovery;
 pub mod safe;
 pub mod smart_accounts;

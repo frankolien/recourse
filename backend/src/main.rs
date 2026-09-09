@@ -110,13 +110,12 @@ async fn main() -> Result<()> {
         Some(_) => tracing::info!("push alerts enabled (APNs)"),
         None => tracing::warn!("push alerts disabled (set APNS_KEY_ID, APNS_TEAM_ID, APNS_KEY_P8, APNS_BUNDLE_ID)"),
     }
-    if let Some(client) = treasury.client.clone() {
+    if treasury.client.is_some() {
         let pool = pool.clone();
         let interval = config.index_interval_secs;
-        let relayer = treasury.relayer.clone();
-        let push = treasury.push.clone();
+        let treasury = treasury.clone();
         actix_web::rt::spawn(async move {
-            jobs::olien_indexer::run(client, pool, interval, relayer, push).await;
+            jobs::olien_indexer::run(treasury, pool, interval).await;
         });
     }
     // Money arriving in a consumer account is worth a push too, and needs only the
