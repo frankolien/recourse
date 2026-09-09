@@ -75,6 +75,31 @@ final class SmartAccountStoreTests: XCTestCase {
 
     // MARK: Fixtures
 
+    func testStoppingARecoveryRemovesItFromWhatIsShown() async throws {
+        let api = SmartAccountAPIFake(current: nil, provisioned: .failure(SmartAccountAPIError.invalidResponse))
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        await api.setPending([
+            PendingRecovery(
+                rotationId: 7,
+                kind: "cloud",
+                readyAt: formatter.string(from: Date().addingTimeInterval(3600)),
+                createdAt: formatter.string(from: Date())
+            )
+        ])
+        let store = try await makeStore(api: api)
+
+        await store.refreshPendingRecoveries()
+        let shown = await store.pendingRecoveries
+        XCTAssertEqual(shown.count, 1, "the warning is on screen")
+
+        try await store.stopRecovery(shown[0])
+        let after = await store.pendingRecoveries
+        XCTAssertTrue(after.isEmpty, "and gone once stopped")
+        let cancelled = await api.cancelled
+        XCTAssertEqual(cancelled, ["cloud-7"], "the right one was stopped")
+    }
+
     private func makeStore(api: SmartAccountAPIFake, cloud: any BuyerSigner = FixedCloudSigner()) async throws -> SmartAccountStore {
         let account = AuthenticatedAccount(
             accountID: 11,
@@ -164,6 +189,22 @@ private actor SmartAccountAPIFake: SmartAccountAPI {
         throw SmartAccountAPIError.invalidResponse
     }
 
+    var pending: [PendingRecovery] = []
+    private(set) var cancelled: [String] = []
+
+    func setPending(_ list: [PendingRecovery]) {
+        pending = list
+    }
+
+    func pendingRecoveries(accessToken: String) async throws -> [PendingRecovery] {
+        pending
+    }
+
+    func cancelRecovery(kind: String, rotationID: Int64, accessToken: String) async throws {
+        cancelled.append("\(kind)-\(rotationID)")
+        pending.removeAll { $0.kind == kind && $0.rotationId == rotationID }
+    }
+
     func abandon(grantID: String, accessToken: String) async throws {}
 }
 
@@ -221,4 +262,35 @@ private actor AbsentCloudSigner: BuyerSigner {
     func setMintsOnDemand(_ allowed: Bool) async {
         mintsOnDemand = allowed
     }
+}
+
+/// The warning a person sees when someone is taking their account, and the button
+/// that ends it. Both are the reason the server's delay is worth anything.
+final class PendingRecoveryTests: XCTestCase {
+    private func recovery(kind: String, readyIn seconds: TimeInterval) -> PendingRecovery {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return PendingRecovery(
+            rotationId: 7,
+            kind: kind,
+            readyAt: formatter.string(from: Date().addingTimeInterval(seconds)),
+            createdAt: formatter.string(from: Date())
+        )
+    }
+
+    func testTheServerTimeIsReadEvenWithFractionalSeconds() {
+        let pending = recovery(kind: "cloud", readyIn: 3600)
+        XCTAssertNotNil(pending.ready, "a time the server actually sends must parse")
+    }
+
+    func testTimesWithoutFractionalSecondsStillRead() {
+        let pending = PendingRecovery(rotationId: 1, kind: "device", readyAt: "2026-09-09T12:00:00Z", createdAt: "2026-09-09T11:00:00Z")
+        XCTAssertNotNil(pending.ready)
+    }
+
+    func testEachKeyIsNamedInWordsRatherThanJargon() {
+        XCTAssertEqual(recovery(kind: "cloud", readyIn: 60).whatIsChanging, "Your iCloud key")
+        XCTAssertEqual(recovery(kind: "device", readyIn: 60).whatIsChanging, "Your phone key")
+    }
+
 }

@@ -52,6 +52,14 @@ struct HomeView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 18) {
                     scrollPositionReader
+                    // Above the balance on purpose. If the account is being taken,
+                    // nothing further down the screen matters.
+                    ForEach(environment.smartAccounts.pendingRecoveries) { pending in
+                        PendingRecoveryBanner(environment: environment, pending: pending) {
+                            Task { await environment.smartAccounts.refreshPendingRecoveries() }
+                        }
+                        .padding(.horizontal, 20)
+                    }
                     balanceHero
                     balanceChart
                     primaryActions
@@ -123,6 +131,10 @@ struct HomeView: View {
                 await invoices.refresh()
                 await history.refresh()
                 await environment.teamStore.refresh()
+                // A recovery someone else started is the one thing here worth
+                // interrupting the person for, so it is polled with everything else
+                // rather than waiting for a push that may not have been allowed.
+                await environment.smartAccounts.refreshPendingRecoveries()
                 environment.publishWalletSnapshot()
                 try? await Task.sleep(for: .seconds(10))
             }

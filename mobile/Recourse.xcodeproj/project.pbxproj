@@ -139,6 +139,7 @@
 		C4566E0E89BEDCB0A96E73A368D42B7B /* ArcscanClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C94F1B739330F3F98C518CFEF7DBE13 /* ArcscanClient.swift */; };
 		C5B490E70B235E76C9860924E8652342 /* InvoiceWorkflow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 339AECC3E0C8CD8E63541C2831350B04 /* InvoiceWorkflow.swift */; };
 		C5C53D24590EB49375DE2ECD7F8EDDD6 /* LockScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28A33AAAFA2D4E6F25341EB425C81277 /* LockScreenView.swift */; };
+		A1B2C3D4E5F60718293A4B5C6D7E8F90 /* PendingRecoveryBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A2B3C4D5E6F708192A3B4C5D6E7F80 /* PendingRecoveryBanner.swift */; };
 		C7353779795521FFF4DDE865EE5E6F69 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 461E2A2E3C422B764B056DAFBD485F46 /* Foundation.framework */; };
 		CA6416488D3EB56A0CC943A2214B7C8D /* OnboardingSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2370DFB84A115974984C4E929CFF3446 /* OnboardingSetupView.swift */; };
 		CB413C2FB0FA058FC7B0EF280F80F66A /* web3swift in Frameworks */ = {isa = PBXBuildFile; productRef = 98F2C310C160FB4BBC7687C5560DD82F /* web3swift */; };
@@ -238,6 +239,7 @@
 		259494046278010BA2DAFDEE6CD62254 /* ArcContractReader.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ArcContractReader.swift; sourceTree = "<group>"; };
 		260A02B25DAE7CD0FE1BCFECA4ED1D38 /* Deployment.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Deployment.swift; sourceTree = "<group>"; };
 		28A33AAAFA2D4E6F25341EB425C81277 /* LockScreenView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LockScreenView.swift; sourceTree = "<group>"; };
+		F1A2B3C4D5E6F708192A3B4C5D6E7F80 /* PendingRecoveryBanner.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PendingRecoveryBanner.swift; sourceTree = "<group>"; };
 		2A3D16DE5F5446970F365D71ED84A181 /* RecourseApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecourseApp.swift; sourceTree = "<group>"; };
 		2C6AF00C7C7720242AF4D0AB04E9D86E /* InvoicesView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = InvoicesView.swift; sourceTree = "<group>"; };
 		2E611A88BA9CC11B2FC4DB9879D714D4 /* EthereumAddress.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EthereumAddress.swift; sourceTree = "<group>"; };
@@ -809,6 +811,7 @@
 			isa = PBXGroup;
 			children = (
 				28A33AAAFA2D4E6F25341EB425C81277 /* LockScreenView.swift */,
+				F1A2B3C4D5E6F708192A3B4C5D6E7F80 /* PendingRecoveryBanner.swift */,
 			);
 			name = Security;
 			path = Security;
@@ -1226,6 +1229,7 @@
 				83C14F0384A1BAAB157CE9EB2CC2FDDA /* WalletExportView.swift in Sources */,
 				BDF625BC0D1CA210BFC068AE5D59C5D4 /* WalletRecoveryView.swift in Sources */,
 				C5C53D24590EB49375DE2ECD7F8EDDD6 /* LockScreenView.swift in Sources */,
+				A1B2C3D4E5F60718293A4B5C6D7E8F90 /* PendingRecoveryBanner.swift in Sources */,
 				54DDE2149D1DF97AC5B5A96460117EE8 /* SendWorkflow.swift in Sources */,
 				E7FFE37A258F9E3CFF44FBB45CE19096 /* SendMoneyView.swift in Sources */,
 				ADC18A103AF85C558C65C73B1C23326F /* SupportView.swift in Sources */,

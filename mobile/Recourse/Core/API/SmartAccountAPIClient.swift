@@ -34,6 +34,32 @@ struct DeviceRotationPlan: Decodable, Equatable, Sendable {
     let newDeviceOwner: String
     let prevOwner: String
     let safeNonce: String
+    /// Not before this. Until then whoever still holds a key can call it off.
+    let readyAt: String
+}
+
+/// A key change waiting out its delay. Shown so it can be refused: a wait nobody is
+/// told about protects nobody.
+struct PendingRecovery: Decodable, Equatable, Sendable, Identifiable {
+    let rotationId: Int64
+    /// "device" or "cloud", naming the key being replaced.
+    let kind: String
+    let readyAt: String
+    let createdAt: String
+
+    var id: String { "\(kind)-\(rotationId)" }
+
+    /// The server sends RFC 3339 with fractional seconds, which the plain ISO parser
+    /// refuses, so both shapes are tried.
+    var ready: Date? { PendingRecovery.parse(readyAt) }
+
+    static func parse(_ text: String) -> Date? {
+        let withFraction = ISO8601DateFormatter()
+        withFraction.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return withFraction.date(from: text) ?? ISO8601DateFormatter().date(from: text)
+    }
+
+    var whatIsChanging: String { kind == "cloud" ? "Your iCloud key" : "Your phone key" }
 }
 
 struct DeviceRotationOutcome: Decodable, Equatable, Sendable {
@@ -64,6 +90,8 @@ protocol SmartAccountAPI: Sendable {
     func prepareDeviceSwap(grantID: String, deviceKey: DevicePublicKey, accessToken: String) async throws -> DeviceRotationPlan
     func executeDeviceSwap(rotationID: Int64, cloudSignature: Data, accessToken: String) async throws -> DeviceRotationOutcome
     /// Give up the wallet whose keys are gone, proven by the emailed code's grant.
+    func pendingRecoveries(accessToken: String) async throws -> [PendingRecovery]
+    func cancelRecovery(kind: String, rotationID: Int64, accessToken: String) async throws
     func abandon(grantID: String, accessToken: String) async throws
 }
 
@@ -112,6 +140,19 @@ actor SmartAccountAPIClient: SmartAccountAPI {
             "rotationId": rotationID,
             "cloudSignature": cloudSignature.hexString,
         ], accessToken: accessToken)
+    }
+
+    func pendingRecoveries(accessToken: String) async throws -> [PendingRecovery] {
+        try await request("GET", "api/me/account/recovery/pending", body: nil, accessToken: accessToken)
+    }
+
+    func cancelRecovery(kind: String, rotationID: Int64, accessToken: String) async throws {
+        let _: Acknowledged = try await request(
+            "POST",
+            "api/me/account/recovery/cancel",
+            body: ["kind": kind, "rotationId": rotationID],
+            accessToken: accessToken
+        )
     }
 
     func abandon(grantID: String, accessToken: String) async throws {

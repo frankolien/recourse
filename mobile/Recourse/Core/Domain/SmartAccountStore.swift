@@ -26,6 +26,9 @@ final class SmartAccountStore {
 
     private(set) var record: SmartAccountRecord?
     private(set) var phase: Phase = .unknown
+    /// Key changes waiting out their delay. Kept on the store rather than fetched by
+    /// the screen so Home can show the alarm without owning any of the plumbing.
+    private(set) var pendingRecoveries: [PendingRecovery] = []
     /// The Safe signer while live; the gateway builds its submitter from it.
     private(set) var safeSigner: SafeAccountSigner?
     /// The provision in flight, so a second caller waits on it instead of asking the
@@ -206,6 +209,28 @@ final class SmartAccountStore {
         let hash = try await gateway.transferUSDC(to: safeAddress, amount: amount)
         _ = try await gateway.waitForReceipt(transactionHash: hash)
         return hash
+    }
+
+    // MARK: A recovery someone else started
+
+    /// Quiet on failure on purpose: a dropped request must not clear a warning that
+    /// is already on screen, and must not invent one that is not.
+    func refreshPendingRecoveries() async {
+        guard session.isAuthenticated else {
+            pendingRecoveries = []
+            return
+        }
+        guard let found = try? await session.withAccessToken({ try await api.pendingRecoveries(accessToken: $0) }) else {
+            return
+        }
+        pendingRecoveries = found
+    }
+
+    func stopRecovery(_ pending: PendingRecovery) async throws {
+        try await session.withAccessToken {
+            try await api.cancelRecovery(kind: pending.kind, rotationID: pending.rotationId, accessToken: $0)
+        }
+        pendingRecoveries.removeAll { $0.id == pending.id }
     }
 
     // MARK: Restore on a new phone
