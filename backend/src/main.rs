@@ -215,7 +215,7 @@ async fn build_attestor(config: &AppConfig) -> Result<Option<AttestorClient>> {
 fn build_treasury(config: &AppConfig) -> Result<Treasury> {
     let client = match (&config.olien, &config.relayer_pk) {
         (Some(deployment), Some(pk)) => {
-            let client = OlienClient::new(&config.rpc_url, pk, deployment.clone(), config.usdc)?;
+            let client = OlienClient::new(&config.rpc_url, pk, deployment.clone(), config.usdc, config.eurc)?;
             tracing::info!(
                 "treasury service enabled (factory {:#x}, implementation {:#x}, verifier {:#x}, sub-accounts {:#x}, relayer {:#x})",
                 deployment.factory, deployment.implementation, deployment.verifier, deployment.sub_account_implementation, client.relayer()

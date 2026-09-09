@@ -122,6 +122,9 @@ pub struct AppConfig {
     pub olien: Option<olien::OlienDeployment>,
     pub relayer_pk: Option<String>,
     pub usdc: Address,
+    /// EURC on this chain, where it exists. Arc testnet has one; Arc mainnet has not
+    /// opened yet, so it stays absent rather than guessed.
+    pub eurc: Option<Address>,
     // APNs token auth: the key id and team id from the developer account, the .p8
     // key itself, and the app's bundle id as the topic. All four or no pushes.
     // Deposits from another chain. Absent means the deposit door stays shut rather
@@ -142,6 +145,18 @@ fn env_or(key: &str, default: &str) -> String {
 /// Endpoints for the deposit chains, as "base=https://...,linea=https://...".
 /// DEPOSIT_RPC_URL still works and means Base, since that is what it meant when Base
 /// was the only chain.
+/// Verified on Arc testnet on 2026-09-07: symbol EURC, six decimals. Overridable so a
+/// chain that gains one later needs a setting rather than a release.
+fn eurc_for(chain_id: u64) -> Option<Address> {
+    if let Some(text) = optional_env("EURC_ADDRESS") {
+        return text.trim().parse().ok();
+    }
+    match chain_id {
+        5042002 => "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a".parse().ok(),
+        _ => None,
+    }
+}
+
 fn deposit_rpc_overrides() -> std::collections::HashMap<String, String> {
     let mut map = std::collections::HashMap::new();
     if let Some(url) = optional_env("DEPOSIT_RPC_URL") {
@@ -232,6 +247,7 @@ impl AppConfig {
             olien: deployment.olien,
             relayer_pk: optional_env("RELAYER_PK").or_else(|| optional_env("ATTESTOR_PK")),
             usdc: deployment.usdc,
+            eurc: eurc_for(deployment.chain_id),
             deposit_rpcs: deposit_rpc_overrides(),
             deposit_factory: optional_env("DEPOSIT_FACTORY").and_then(|v| v.trim().parse().ok()),
             apns_key_id: optional_env("APNS_KEY_ID"),
