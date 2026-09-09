@@ -18,6 +18,7 @@ pub mod recovery;
 pub mod safe;
 pub mod smart_accounts;
 pub mod treasury;
+pub mod treasury_keys;
 pub mod wallet_backups;
 
 use alloy::primitives::Address;
