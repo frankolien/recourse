@@ -157,6 +157,7 @@ pub struct PrepareBody {
 pub async fn device_prepare(
     pool: web::Data<PgPool>,
     service: web::Data<SmartAccounts>,
+    push: web::Data<Option<std::sync::Arc<crate::services::push::Push>>>,
     req: HttpRequest,
     body: web::Json<PrepareBody>,
 ) -> HttpResponse {
@@ -172,7 +173,10 @@ pub async fn device_prepare(
         (Err(response), _) | (_, Err(response)) => return response,
     };
     match smart_accounts::prepare_rotation(pool.get_ref(), service.get_ref(), profile.account_id, &body.grant_id, x, y).await {
-        Ok(plan) => HttpResponse::Ok().json(plan),
+        Ok(plan) => {
+            warn_of_recovery(pool.get_ref(), push.get_ref(), profile.account_id, "device", plan.ready_at).await;
+            HttpResponse::Ok().json(plan)
+        }
         Err(error) => failed(error),
     }
 }
@@ -208,6 +212,200 @@ pub async fn device_execute(
         .await
     {
         Ok(outcome) => HttpResponse::Ok().json(outcome),
+        Err(error) => failed(error),
+    }
+}
+
+/// Tell the account a key change has been scheduled. This is what the delay is for:
+/// a wait nobody hears about protects nobody. The message names the key and the hour,
+/// and its route opens the screen with the stop button on it.
+async fn warn_of_recovery(
+    pool: &PgPool,
+    push: &Option<std::sync::Arc<crate::services::push::Push>>,
+    account_id: i64,
+    kind: &str,
+    ready_at: chrono::DateTime<chrono::Utc>,
+) {
+    let Some(push) = push else { return };
+    let what = if kind == "cloud" { "iCloud key" } else { "phone key" };
+    push.notify(
+        pool,
+        &[account_id],
+        "Someone is recovering your account",
+        &format!("Your {what} is being replaced. If this is not you, stop it now."),
+        serde_json::json!({ "kind": "recovery", "recoveryKind": kind, "readyAt": ready_at.to_rfc3339() }),
+    )
+    .await;
+    tracing::info!("recovery: account {account_id} scheduled a {kind} key change, ready {ready_at}");
+}
+
+// Recovering a lost Cloud Key. The phone is still here and its Device Key still
+// signs, so the pair that does this is Device plus Recovery. It waits a day, and the
+// old Cloud Key can stop it in that time, which is the point of the wait.
+
+/// POST /api/me/account/recovery/cloud/code
+pub async fn cloud_recovery_code(
+    pool: web::Data<PgPool>,
+    service: web::Data<SmartAccounts>,
+    req: HttpRequest,
+) -> HttpResponse {
+    let profile = match caller(pool.get_ref(), &req).await {
+        Ok(profile) => profile,
+        Err(response) => return response,
+    };
+    match smart_accounts::issue_cloud_recovery_code(
+        pool.get_ref(),
+        service.get_ref(),
+        profile.account_id,
+        profile.email.as_deref(),
+    )
+    .await
+    {
+        Ok(issued) => HttpResponse::Ok().json(issued),
+        Err(error) => failed(error),
+    }
+}
+
+/// POST /api/me/account/recovery/cloud/verify
+pub async fn cloud_recovery_verify(
+    pool: web::Data<PgPool>,
+    req: HttpRequest,
+    body: web::Json<VerifyBody>,
+) -> HttpResponse {
+    let profile = match caller(pool.get_ref(), &req).await {
+        Ok(profile) => profile,
+        Err(response) => return response,
+    };
+    match smart_accounts::verify_cloud_recovery_code(pool.get_ref(), profile.account_id, &body.code).await {
+        Ok(grant) => HttpResponse::Ok().json(grant),
+        Err(error) => failed(error),
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CloudRotationBody {
+    pub grant_id: String,
+    pub new_cloud_owner: String,
+}
+
+/// POST /api/me/account/recovery/cloud/prepare - park the swap and start the clock.
+pub async fn cloud_recovery_prepare(
+    pool: web::Data<PgPool>,
+    service: web::Data<SmartAccounts>,
+    push: web::Data<Option<std::sync::Arc<crate::services::push::Push>>>,
+    req: HttpRequest,
+    body: web::Json<CloudRotationBody>,
+) -> HttpResponse {
+    let profile = match caller(pool.get_ref(), &req).await {
+        Ok(profile) => profile,
+        Err(response) => return response,
+    };
+    let new_cloud = match parse_address("newCloudOwner", &body.new_cloud_owner) {
+        Ok(address) => address,
+        Err(response) => return response,
+    };
+    match smart_accounts::prepare_cloud_rotation(
+        pool.get_ref(),
+        service.get_ref(),
+        profile.account_id,
+        &body.grant_id,
+        new_cloud,
+    )
+    .await
+    {
+        Ok(plan) => {
+            warn_of_recovery(pool.get_ref(), push.get_ref(), profile.account_id, "cloud", plan.ready_at).await;
+            HttpResponse::Ok().json(plan)
+        }
+        Err(error) => failed(error),
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RotationIdBody {
+    pub rotation_id: i64,
+}
+
+/// POST /api/me/account/recovery/cloud/signature - the Recovery Key's half, once the
+/// day is up. Refused earlier, and refused for good once anyone has stopped it.
+pub async fn cloud_recovery_signature(
+    pool: web::Data<PgPool>,
+    service: web::Data<SmartAccounts>,
+    req: HttpRequest,
+    body: web::Json<RotationIdBody>,
+) -> HttpResponse {
+    let profile = match caller(pool.get_ref(), &req).await {
+        Ok(profile) => profile,
+        Err(response) => return response,
+    };
+    match smart_accounts::cloud_rotation_signature(
+        pool.get_ref(),
+        service.get_ref(),
+        profile.account_id,
+        body.rotation_id,
+    )
+    .await
+    {
+        Ok(signature) => HttpResponse::Ok().json(serde_json::json!({ "signature": signature })),
+        Err(error) => failed(error),
+    }
+}
+
+/// POST /api/me/account/recovery/cloud/settle - the phone reporting its swap landed.
+/// Checked against the Safe's own owner list before anything here is believed.
+pub async fn cloud_recovery_settle(
+    pool: web::Data<PgPool>,
+    service: web::Data<SmartAccounts>,
+    req: HttpRequest,
+    body: web::Json<RotationIdBody>,
+) -> HttpResponse {
+    let profile = match caller(pool.get_ref(), &req).await {
+        Ok(profile) => profile,
+        Err(response) => return response,
+    };
+    match smart_accounts::settle_cloud_rotation(pool.get_ref(), service.get_ref(), profile.account_id, body.rotation_id)
+        .await
+    {
+        Ok(true) => HttpResponse::Ok().json(serde_json::json!({ "settled": true })),
+        Ok(false) => error_response(409, "the Safe does not have that key yet"),
+        Err(error) => failed(error),
+    }
+}
+
+/// GET /api/me/account/recovery/pending - what is waiting, so it can be stopped.
+pub async fn recovery_pending(pool: web::Data<PgPool>, req: HttpRequest) -> HttpResponse {
+    let profile = match caller(pool.get_ref(), &req).await {
+        Ok(profile) => profile,
+        Err(response) => return response,
+    };
+    match smart_accounts::pending_recoveries(pool.get_ref(), profile.account_id).await {
+        Ok(list) => HttpResponse::Ok().json(list),
+        Err(error) => failed(error),
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CancelBody {
+    pub kind: String,
+    pub rotation_id: i64,
+}
+
+/// POST /api/me/account/recovery/cancel - stop a scheduled key change.
+pub async fn recovery_cancel(
+    pool: web::Data<PgPool>,
+    req: HttpRequest,
+    body: web::Json<CancelBody>,
+) -> HttpResponse {
+    let profile = match caller(pool.get_ref(), &req).await {
+        Ok(profile) => profile,
+        Err(response) => return response,
+    };
+    match smart_accounts::cancel_recovery(pool.get_ref(), profile.account_id, &body.kind, body.rotation_id).await {
+        Ok(true) => HttpResponse::Ok().json(serde_json::json!({ "cancelled": true })),
+        Ok(false) => error_response(409, "there is nothing waiting to stop"),
         Err(error) => failed(error),
     }
 }

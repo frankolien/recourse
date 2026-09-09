@@ -170,6 +170,7 @@ async fn main() -> Result<()> {
             smart_accounts.clone(),
             treasury.clone(),
             deposits.clone(),
+            treasury.push.clone(),
         )
     })
     .bind(bind)?

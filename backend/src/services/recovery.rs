@@ -37,6 +37,7 @@ const MAX_ATTEMPTS: i32 = 5;
 const MAX_CODES_PER_HOUR: i64 = 5;
 
 pub const PURPOSE_DEVICE_ROTATION: &str = "device_rotation";
+pub const PURPOSE_CLOUD_ROTATION: &str = "cloud_rotation";
 
 /// Seals and opens Recovery Keys. Holding the wrapping key is an operational control,
 /// not a cryptographic impossibility: the server can open what it sealed. The property

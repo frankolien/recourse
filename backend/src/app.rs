@@ -55,6 +55,7 @@ pub fn build_app(
     smart_accounts: SmartAccounts,
     treasury: Treasury,
     deposits: Vec<std::sync::Arc<DepositClient>>,
+    push: Option<std::sync::Arc<crate::services::push::Push>>,
 ) -> App<
     impl actix_web::dev::ServiceFactory<
         actix_web::dev::ServiceRequest,
@@ -79,6 +80,7 @@ pub fn build_app(
         .app_data(web::Data::new(smart_accounts))
         .app_data(web::Data::new(treasury))
         .app_data(web::Data::new(deposits))
+        .app_data(web::Data::new(push))
         // Registered before the /api scope: a scope matches by prefix, and the treasury
         // routes would otherwise be looked up inside it and not found.
         .service(handlers::treasury::routes(web::scope("/api/treasury")))
@@ -205,6 +207,13 @@ pub fn build_app(
                 .route("/me/account/provision", web::post().to(handlers::accounts::provision))
                 .route("/me/account/recovery/code", web::post().to(handlers::accounts::recovery_code))
                 .route("/me/account/recovery/verify", web::post().to(handlers::accounts::recovery_verify))
+                .route("/me/account/recovery/pending", web::get().to(handlers::accounts::recovery_pending))
+                .route("/me/account/recovery/cancel", web::post().to(handlers::accounts::recovery_cancel))
+                .route("/me/account/recovery/cloud/code", web::post().to(handlers::accounts::cloud_recovery_code))
+                .route("/me/account/recovery/cloud/verify", web::post().to(handlers::accounts::cloud_recovery_verify))
+                .route("/me/account/recovery/cloud/prepare", web::post().to(handlers::accounts::cloud_recovery_prepare))
+                .route("/me/account/recovery/cloud/signature", web::post().to(handlers::accounts::cloud_recovery_signature))
+                .route("/me/account/recovery/cloud/settle", web::post().to(handlers::accounts::cloud_recovery_settle))
                 .route("/me/account/device/prepare", web::post().to(handlers::accounts::device_prepare))
                 .route("/me/account/device/execute", web::post().to(handlers::accounts::device_execute))
                 .route("/me/account/abandon", web::post().to(handlers::accounts::abandon))
