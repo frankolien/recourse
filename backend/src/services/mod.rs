@@ -21,6 +21,7 @@ pub mod smart_accounts;
 pub mod treasury;
 pub mod treasury_keys;
 pub mod wallet_backups;
+pub mod webhooks;
 
 use alloy::primitives::Address;
 use anyhow::{Context, Result};
