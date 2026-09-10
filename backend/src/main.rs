@@ -227,7 +227,18 @@ fn build_treasury(config: &AppConfig) -> Result<Treasury> {
         }
     };
     let push = services::push::Push::from_config(config).map(Arc::new);
-    Ok(Treasury { client, chain_id: config.chain_id, relayer: Arc::new(Mutex::new(None)), push })
+    let chain = services::treasury::ChainInfo {
+        chain_id: config.chain_id,
+        name: config.chain_name.clone(),
+        native: config.native,
+        explorer_url: config.explorer_url.clone(),
+        usdc: format!("{:#x}", config.usdc),
+        eurc: config.eurc.map(|a| format!("{a:#x}")),
+        entry_point: config.olien.as_ref().map(|d| format!("{:#x}", d.entry_point)),
+        factory: config.olien.as_ref().map(|d| format!("{:#x}", d.factory)),
+        implementation: config.olien.as_ref().map(|d| format!("{:#x}", d.implementation)),
+    };
+    Ok(Treasury { client, chain_id: config.chain_id, chain, relayer: Arc::new(Mutex::new(None)), push })
 }
 
 // The account routes need three things that are each optional: a funded deployer key

@@ -67,6 +67,9 @@ pub struct AppConfig {
     pub escrow: Address,
     pub policy_registry: Address,
     pub chain_id: u64,
+    pub chain_name: String,
+    pub native: NativeToken,
+    pub explorer_url: String,
     // Attestor signing key (testnet throwaway, R7). Only consumed when DEMO_MODE is on
     // (R6). Absent means the demo attest/resolve endpoints stay disabled.
     pub attestor_pk: Option<String>,
@@ -151,6 +154,62 @@ fn env_or(key: &str, default: &str) -> String {
 /// was the only chain.
 /// Verified on Arc testnet on 2026-09-07: symbol EURC, six decimals. Overridable so a
 /// chain that gains one later needs a setting rather than a release.
+/// What pays for gas on this chain. On Arc it is USDC itself, 18 decimals in the
+/// native slot; on Monad it is MON. The relayer's balance, the EntryPoint deposit and
+/// the ledger's gas rows are all in this unit, and the console names it from here
+/// rather than assuming dollars.
+#[derive(Debug, Clone, Copy, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeToken {
+    pub symbol: &'static str,
+    pub decimals: u8,
+}
+
+pub fn native_for(chain_id: u64) -> NativeToken {
+    match chain_id {
+        5042 | 5042002 => NativeToken { symbol: "USDC", decimals: 18 },
+        143 | 10143 => NativeToken { symbol: "MON", decimals: 18 },
+        _ => NativeToken { symbol: "ETH", decimals: 18 },
+    }
+}
+
+pub fn chain_name_for(chain_id: u64) -> &'static str {
+    match chain_id {
+        5042 => "Arc",
+        5042002 => "Arc Testnet",
+        143 => "Monad",
+        10143 => "Monad Testnet",
+        _ => "Unknown chain",
+    }
+}
+
+/// The block explorer for links the console and alerts hand out. EXPLORER_URL wins;
+/// the defaults are the hosts checked on 2026-09-10 (Arc mainnet's is not known yet).
+fn explorer_for(chain_id: u64) -> String {
+    if let Some(url) = optional_env("EXPLORER_URL") {
+        return url.trim_end_matches('/').to_string();
+    }
+    match chain_id {
+        5042002 => "https://testnet.arcscan.app".into(),
+        10143 => "https://testnet.monadexplorer.com".into(),
+        143 => "https://monadexplorer.com".into(),
+        _ => String::new(),
+    }
+}
+
+/// RPC_URL wins, ARC_RPC_URL still works from the days there was one chain, and the
+/// default follows the deployment file's chain so a Monad file needs no RPC setting.
+fn rpc_url_for(chain_id: u64) -> String {
+    if let Some(url) = optional_env("RPC_URL").or_else(|| optional_env("ARC_RPC_URL")) {
+        return url;
+    }
+    match chain_id {
+        10143 => "https://testnet-rpc.monad.xyz".into(),
+        143 => "https://rpc.monad.xyz".into(),
+        _ => "https://arc-testnet.drpc.org".into(),
+    }
+}
+
 fn eurc_for(chain_id: u64) -> Option<Address> {
     if let Some(text) = optional_env("EURC_ADDRESS") {
         return text.trim().parse().ok();
@@ -204,7 +263,10 @@ impl AppConfig {
                 "DATABASE_URL",
                 "postgres://recourse:recourse@localhost:5433/recourse",
             ),
-            rpc_url: env_or("ARC_RPC_URL", "https://arc-testnet.drpc.org"),
+            rpc_url: rpc_url_for(deployment.chain_id),
+            chain_name: chain_name_for(deployment.chain_id).to_string(),
+            native: native_for(deployment.chain_id),
+            explorer_url: explorer_for(deployment.chain_id),
             port: env_or("PORT", "8080").parse().context("PORT")?,
             index_interval_secs: env_or("INDEX_INTERVAL_SECS", "15")
                 .parse()
