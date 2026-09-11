@@ -153,12 +153,19 @@ impl DepositClient {
     /// Read per cycle rather than inferred from the logs already seen, because a sweep
     /// that failed leaves the money where it is while the log cursor moves past it. A
     /// balance is the only account of what is actually there.
-    pub async fn funded(&self, addresses: &[Address]) -> Result<Vec<Address>> {
+    /// `at` pins the read to a block. The check after a sweep passes the block the
+    /// sweep was mined in, because reading `latest` straight after a receipt can be
+    /// answered from a node that has not caught up, and an alarm that fires when
+    /// nothing is wrong is one nobody reads twice.
+    pub async fn funded(&self, addresses: &[Address], at: Option<u64>) -> Result<Vec<Address>> {
         let token = IERC20::new(self.chain.usdc, &self.provider);
         let mut funded = Vec::new();
         for address in addresses {
-            let held = token
-                .balanceOf(*address)
+            let mut call = token.balanceOf(*address);
+            if let Some(block) = at {
+                call = call.block(block.into());
+            }
+            let held = call
                 .call()
                 .await
                 .with_context(|| format!("reading the balance of {address:#x}"))?;
@@ -175,13 +182,14 @@ impl DepositClient {
     ///
     /// The gas limit is computed rather than estimated; see `GAS_PER_BENEFICIARY` for
     /// why the estimate cannot be trusted on this particular function.
-    pub async fn collect(&self, beneficiaries: &[Address]) -> Result<Vec<B256>> {
+    pub async fn collect(&self, beneficiaries: &[Address]) -> Result<(Vec<B256>, u64)> {
         if beneficiaries.is_empty() {
             bail!("nothing to collect");
         }
         let _guard = self.send_lock.lock().await;
         let factory = IDepositFactory::new(self.factory, &self.provider);
         let mut hashes = Vec::new();
+        let mut last_block = 0u64;
         for chunk in beneficiaries.chunks(COLLECT_CHUNK) {
             let keys: Vec<B256> = chunk.iter().map(|a| a.into_word()).collect();
             let gas = GAS_OVERHEAD + GAS_PER_BENEFICIARY * chunk.len() as u64;
@@ -197,9 +205,10 @@ impl DepositClient {
             if !receipt.status() {
                 bail!("collectBatch reverted in {:#x}", receipt.transaction_hash);
             }
+            last_block = last_block.max(receipt.block_number.unwrap_or_default());
             hashes.push(receipt.transaction_hash);
         }
-        Ok(hashes)
+        Ok((hashes, last_block))
     }
 }
 

@@ -100,7 +100,7 @@ async fn cycle(client: &DepositClient, pool: &PgPool) -> anyhow::Result<()> {
     // by what the vaults actually hold rather than by which logs this window happened
     // to contain. A sweep that failed is retried next cycle instead of being lost with
     // the window it was noticed in.
-    let holding = client.funded(&watched).await?;
+    let holding = client.funded(&watched, None).await?;
     let arrived: Vec<Address> = holding.iter().filter_map(|d| owner_of.get(d).copied()).collect();
 
     if !arrived.is_empty() {
@@ -110,13 +110,15 @@ async fn cycle(client: &DepositClient, pool: &PgPool) -> anyhow::Result<()> {
             client.chain.name
         );
         match client.collect(&arrived).await {
-            Ok(hashes) => {
+            Ok((hashes, block)) => {
                 for hash in hashes {
                     info!("deposit sweep sent {hash:#x}");
                 }
                 // collectBatch catches a failing collect and returns normally, so a
-                // receipt says nothing about whether the money moved. The balances do.
-                match client.funded(&holding).await {
+                // receipt says nothing about whether the money moved. The balances do,
+                // read at the block the sweep landed in rather than at whatever a node
+                // calls latest a moment later.
+                match client.funded(&holding, Some(block)).await {
                     Ok(still) if !still.is_empty() => warn!(
                         "deposit sweep: {} vault(s) on {} still hold their dollars after sweeping",
                         still.len(),
