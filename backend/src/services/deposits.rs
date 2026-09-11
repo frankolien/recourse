@@ -11,7 +11,7 @@
 // contracts/src/deposit is the rule book.
 
 use alloy::network::EthereumWallet;
-use alloy::primitives::{Address, B256};
+use alloy::primitives::{Address, B256, U256};
 use alloy::providers::fillers::{ChainIdFiller, GasFiller, NonceFiller, SimpleNonceManager};
 use alloy::providers::{DynProvider, Provider, ProviderBuilder};
 use alloy::rpc::types::Filter;
@@ -31,6 +31,7 @@ sol! {
 
     #[sol(rpc)]
     interface IERC20 {
+        function balanceOf(address owner) external view returns (uint256);
         event Transfer(address indexed from, address indexed to, uint256 value);
     }
 }
@@ -47,6 +48,25 @@ pub struct DepositChain {
     /// one means adding a chain needs a deploy rather than a pile of settings.
     pub rpc: String,
 }
+
+/// What one beneficiary costs to collect: deploying its vault and burning through
+/// CCTP. Measured at about 525k on Base, so this is that with room.
+///
+/// It is a constant rather than an estimate because `collectBatch` catches a failing
+/// `collect` and returns normally, so the outer call succeeds whether or not the inner
+/// one did. `eth_estimateGas` binary searches for the cheapest gas the outer call
+/// survives, which is the gas at which the inner one runs out, and the 63/64 rule makes
+/// the shortfall worse. Trusting the estimate means paying for a transaction that
+/// deploys nothing and moves nothing, which is exactly what happened on 2026-09-11.
+const GAS_PER_BENEFICIARY: u64 = 750_000;
+const GAS_OVERHEAD: u64 = 80_000;
+/// Enough that one transaction stays well inside a block, and small enough that one
+/// bad vault cannot strand many good ones behind it.
+const COLLECT_CHUNK: usize = 16;
+
+/// Below this a vault's `sweep` refuses, so there is no point paying to call it.
+/// Mirrors `DepositVault.MIN_DEPOSIT`.
+const MIN_DEPOSIT: u128 = 1_000_000;
 
 pub struct DepositClient {
     provider: DynProvider,
@@ -128,28 +148,58 @@ impl DepositClient {
         Ok(touched)
     }
 
-    /// Deploy each vault if needed and send its dollars to Arc, in one transaction.
-    /// Vaults with nothing in them are skipped by the contract rather than reverting the
-    /// batch, so a stale list is harmless.
-    pub async fn collect(&self, beneficiaries: &[Address]) -> Result<B256> {
+    /// Which of these deposit addresses hold enough to be worth a transaction.
+    ///
+    /// Read per cycle rather than inferred from the logs already seen, because a sweep
+    /// that failed leaves the money where it is while the log cursor moves past it. A
+    /// balance is the only account of what is actually there.
+    pub async fn funded(&self, addresses: &[Address]) -> Result<Vec<Address>> {
+        let token = IERC20::new(self.chain.usdc, &self.provider);
+        let mut funded = Vec::new();
+        for address in addresses {
+            let held = token
+                .balanceOf(*address)
+                .call()
+                .await
+                .with_context(|| format!("reading the balance of {address:#x}"))?;
+            if held >= U256::from(MIN_DEPOSIT) {
+                funded.push(*address);
+            }
+        }
+        Ok(funded)
+    }
+
+    /// Deploy each vault if needed and send its dollars to Arc. Vaults with nothing in
+    /// them are skipped by the contract rather than reverting the batch, so a stale
+    /// list is harmless.
+    ///
+    /// The gas limit is computed rather than estimated; see `GAS_PER_BENEFICIARY` for
+    /// why the estimate cannot be trusted on this particular function.
+    pub async fn collect(&self, beneficiaries: &[Address]) -> Result<Vec<B256>> {
         if beneficiaries.is_empty() {
             bail!("nothing to collect");
         }
         let _guard = self.send_lock.lock().await;
         let factory = IDepositFactory::new(self.factory, &self.provider);
-        let keys: Vec<B256> = beneficiaries.iter().map(|a| a.into_word()).collect();
-        let receipt = factory
-            .collectBatch(keys)
-            .send()
-            .await
-            .context("sending collectBatch")?
-            .get_receipt()
-            .await
-            .context("waiting for collectBatch")?;
-        if !receipt.status() {
-            bail!("collectBatch reverted in {:#x}", receipt.transaction_hash);
+        let mut hashes = Vec::new();
+        for chunk in beneficiaries.chunks(COLLECT_CHUNK) {
+            let keys: Vec<B256> = chunk.iter().map(|a| a.into_word()).collect();
+            let gas = GAS_OVERHEAD + GAS_PER_BENEFICIARY * chunk.len() as u64;
+            let receipt = factory
+                .collectBatch(keys)
+                .gas(gas)
+                .send()
+                .await
+                .context("sending collectBatch")?
+                .get_receipt()
+                .await
+                .context("waiting for collectBatch")?;
+            if !receipt.status() {
+                bail!("collectBatch reverted in {:#x}", receipt.transaction_hash);
+            }
+            hashes.push(receipt.transaction_hash);
         }
-        Ok(receipt.transaction_hash)
+        Ok(hashes)
     }
 }
 

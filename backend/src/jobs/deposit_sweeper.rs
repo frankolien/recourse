@@ -90,29 +90,44 @@ async fn cycle(client: &DepositClient, pool: &PgPool) -> anyhow::Result<()> {
     }
 
     let watched: Vec<Address> = owner_of.keys().copied().collect();
-    let mut arrived: Vec<Address> = Vec::new();
     for batch in watched.chunks(ADDRESSES_PER_QUERY) {
-        for deposit in client.usdc_received(batch, from, to).await? {
-            if let Some(owner) = owner_of.get(&deposit) {
-                if !arrived.contains(owner) {
-                    arrived.push(*owner);
-                }
-            }
+        if !client.usdc_received(batch, from, to).await?.is_empty() {
+            info!("deposit sweep: dollars landed on {} in blocks {from}..{to}", client.chain.name);
+            break;
         }
     }
+    // The cursor moves whether or not the sweep worked, so what gets swept is decided
+    // by what the vaults actually hold rather than by which logs this window happened
+    // to contain. A sweep that failed is retried next cycle instead of being lost with
+    // the window it was noticed in.
+    let holding = client.funded(&watched).await?;
+    let arrived: Vec<Address> = holding.iter().filter_map(|d| owner_of.get(d).copied()).collect();
 
     if !arrived.is_empty() {
         info!(
-            "deposit sweep: {} address(es) got dollars on {} in blocks {from}..{to}",
+            "deposit sweep: {} vault(s) holding on {}",
             arrived.len(),
             client.chain.name
         );
-        // One transaction for the lot. A vault holding too little is skipped by the
-        // contract, and its dollars wait for the next deposit rather than being lost.
         match client.collect(&arrived).await {
-            Ok(hash) => info!("deposit sweep sent {hash:#x}"),
-            // Leaving the cursor where it is would replay the whole window; the money is
-            // safe in the vault either way, and the next deposit sweeps it.
+            Ok(hashes) => {
+                for hash in hashes {
+                    info!("deposit sweep sent {hash:#x}");
+                }
+                // collectBatch catches a failing collect and returns normally, so a
+                // receipt says nothing about whether the money moved. The balances do.
+                match client.funded(&holding).await {
+                    Ok(still) if !still.is_empty() => warn!(
+                        "deposit sweep: {} vault(s) on {} still hold their dollars after sweeping",
+                        still.len(),
+                        client.chain.name
+                    ),
+                    Ok(_) => {}
+                    Err(e) => warn!("deposit sweep could not re-read balances: {e:#}"),
+                }
+            }
+            // The money is safe in the vault either way and the balance check above
+            // finds it again next cycle.
             Err(e) => warn!("deposit sweep could not send: {e:#}"),
         }
     }
