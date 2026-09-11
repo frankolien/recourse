@@ -32,6 +32,10 @@ struct ArcContractGateway: ContractGateway {
         try await reader.usdcBalance(of: owner)
     }
 
+    func eurcBalance(of owner: EthereumAddress) async throws -> EURCAmount? {
+        try await reader.eurcBalance(of: owner)
+    }
+
     func allowance(owner: EthereumAddress, spender: EthereumAddress) async throws -> USDCAmount {
         try await reader.allowance(owner: owner, spender: spender)
     }

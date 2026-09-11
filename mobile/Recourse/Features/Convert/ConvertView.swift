@@ -602,23 +602,3 @@ private struct ConvertReviewSheet: View {
     }
 }
 
-/// EURC shares USDC's 6 decimals on Arc, but is a distinct unit and formatting it
-/// through USDCAmount would put a dollar sign on euros.
-struct EURCAmount: Equatable, Sendable {
-    let baseUnits: UInt64
-
-    init(baseUnits: BigUInt) {
-        self.baseUnits = UInt64(clamping: baseUnits.description) ?? 0
-    }
-
-    var formatted: String {
-        String(format: "%.4f", Double(baseUnits) / 1_000_000)
-    }
-}
-
-private extension UInt64 {
-    init?(clamping description: String) {
-        guard let value = UInt64(description) else { return nil }
-        self = value
-    }
-}

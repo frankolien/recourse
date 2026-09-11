@@ -159,6 +159,17 @@ actor ArcContractReader: ContractReading {
         return USDCAmount(baseUnits: try uint64(result["0"], method: "balanceOf"))
     }
 
+    func eurcBalance(of owner: EthereumAddress) async throws -> EURCAmount? {
+        guard let eurc = configuration.eurcAddress else { return nil }
+        let result = try await call(
+            contract: erc20,
+            address: eurc,
+            method: "balanceOf",
+            parameters: [try web3Address(owner)]
+        )
+        return EURCAmount(baseUnits: try uint64(result["0"], method: "balanceOf"))
+    }
+
     func allowance(owner: EthereumAddress, spender: EthereumAddress) async throws -> USDCAmount {
         let result = try await call(
             contract: erc20,

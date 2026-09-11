@@ -284,6 +284,16 @@ struct HomeView: View {
                 .minimumScaleFactor(0.55)
                 .lineLimit(1)
 
+                // Euros are a second holding, not a second balance: one line under the
+                // dollars, and none at all for the many accounts that hold no EURC.
+                if let euros = environment.paymentStore.eurcBalance, euros.baseUnits > 0 {
+                    Text(hidesBalance ? "€•••• EURC" : "\(euros.money) EURC")
+                        .font(.system(size: 15, weight: .medium, design: .rounded))
+                        .foregroundStyle(RecourseColor.nightText)
+                        .contentTransition(.numericText())
+                        .transition(.blurReplace)
+                }
+
                 Text(motionSubtitle)
                     .font(.recourse(13, .medium))
                     .foregroundStyle(hasIncoming ? RecourseColor.ledger : RecourseColor.nightMuted)

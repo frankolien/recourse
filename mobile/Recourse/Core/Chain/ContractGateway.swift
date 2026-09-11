@@ -39,6 +39,9 @@ struct VaultState: Codable, Hashable, Sendable {
 
 protocol ContractReading: Sendable {
     func usdcBalance(of owner: EthereumAddress) async throws -> USDCAmount
+    /// Nil on a chain with no EURC, so the screen can leave the line out rather
+    /// than show a zero for a currency the account cannot hold.
+    func eurcBalance(of owner: EthereumAddress) async throws -> EURCAmount?
     func allowance(owner: EthereumAddress, spender: EthereumAddress) async throws -> USDCAmount
     func policy(id: UInt64) async throws -> PolicyRecord
     func payment(id: UInt64) async throws -> PaymentRecord

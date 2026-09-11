@@ -225,6 +225,9 @@ final class BuyerPaymentStore {
     private(set) var merchantPayments: [DemoPayment] = []
     private(set) var policies: [PolicyRecord] = []
     private(set) var balance: USDCAmount?
+    /// Euros the account holds, read in the same breath as the dollars. Nil until
+    /// read, and nil on a chain without EURC.
+    private(set) var eurcBalance: EURCAmount?
     /// When the balance on screen was last read from the chain. Survives launches
     /// with the balance, so the screen can say how old the number is.
     private(set) var balanceUpdatedAt: Date?
@@ -240,6 +243,8 @@ final class BuyerPaymentStore {
     private struct BalanceSnapshot: Codable {
         let baseUnits: UInt64
         let updatedAt: Date
+        // Optional so a snapshot written before euros were kept still decodes.
+        var eurcBaseUnits: UInt64?
     }
 
     init(
@@ -350,6 +355,7 @@ final class BuyerPaymentStore {
         merchantPayments = []
         policies = []
         balance = nil
+        eurcBalance = nil
         balanceUpdatedAt = nil
         balanceIsStale = false
         walletAddress = nil
@@ -360,6 +366,7 @@ final class BuyerPaymentStore {
         // rather than a zero waiting on the network.
         if let snapshot = cache.load(BalanceSnapshot.self, key: "balance", scope: current) {
             balance = USDCAmount(baseUnits: snapshot.baseUnits)
+            eurcBalance = snapshot.eurcBaseUnits.map { EURCAmount(baseUnits: $0) }
             balanceUpdatedAt = snapshot.updatedAt
         }
     }
@@ -368,12 +375,17 @@ final class BuyerPaymentStore {
     /// one thing a money app must never do to someone on a bad connection.
     private func readBalance(of address: EthereumAddress) async {
         do {
-            let fresh = try await fetchBalance(address: address)
+            let fresh = try await fetchBalances(address: address)
             let now = Date()
-            balance = fresh
+            balance = fresh.usdc
+            eurcBalance = fresh.eurc
             balanceUpdatedAt = now
             balanceIsStale = false
-            cache.save(BalanceSnapshot(baseUnits: fresh.baseUnits, updatedAt: now), key: "balance", scope: ActiveAccount.scope)
+            cache.save(
+                BalanceSnapshot(baseUnits: fresh.usdc.baseUnits, updatedAt: now, eurcBaseUnits: fresh.eurc?.baseUnits),
+                key: "balance",
+                scope: ActiveAccount.scope
+            )
         } catch {
             balanceIsStale = true
         }
@@ -476,12 +488,17 @@ final class BuyerPaymentStore {
         )
     }
 
-    private func fetchBalance(address: EthereumAddress) async throws -> USDCAmount {
+    /// The dollars decide whether the read succeeded. The euros are read after them
+    /// and a failure there keeps the last euro figure rather than failing the lot,
+    /// because the dollars are the number the screen is built around.
+    private func fetchBalances(address: EthereumAddress) async throws -> (usdc: USDCAmount, eurc: EURCAmount?) {
         let gateway = try ArcContractGateway.live(
             configuration: configuration,
             signer: signer
         )
-        return try await gateway.usdcBalance(of: address)
+        let usdc = try await gateway.usdcBalance(of: address)
+        let eurc = (try? await gateway.eurcBalance(of: address)) ?? eurcBalance
+        return (usdc, eurc)
     }
 
     private func decode<Value: Decodable>(_ type: Value.Type, from url: URL) async throws -> Value {

@@ -110,6 +110,8 @@ actor FakeContractGateway: ContractGateway {
     }
 
     func usdcBalance(of owner: EthereumAddress) async throws -> USDCAmount { balance }
+    var eurc: EURCAmount?
+    func eurcBalance(of owner: EthereumAddress) async throws -> EURCAmount? { eurc }
     func allowance(owner: EthereumAddress, spender: EthereumAddress) async throws -> USDCAmount {
         currentAllowance
     }
