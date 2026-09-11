@@ -52,14 +52,6 @@ struct HomeView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 18) {
                     scrollPositionReader
-                    // Above the balance on purpose. If the account is being taken,
-                    // nothing further down the screen matters.
-                    ForEach(environment.smartAccounts.pendingRecoveries) { pending in
-                        PendingRecoveryBanner(environment: environment, pending: pending) {
-                            Task { await environment.smartAccounts.refreshPendingRecoveries() }
-                        }
-                        .padding(.horizontal, 20)
-                    }
                     balanceHero
                     balanceChart
                     primaryActions
@@ -86,6 +78,11 @@ struct HomeView: View {
                 .padding(.bottom, 164)
             }
             .scrollIndicators(.hidden)
+            // Pinned rather than scrolled away: a warning you can lose by flicking is
+            // not a warning. The inset also keeps the last row of content clear of it.
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                pendingRecoveryBars
+            }
             .refreshable {
                 await environment.paymentStore.refreshBuyer()
                 await book.refresh(force: true)
@@ -244,6 +241,26 @@ struct HomeView: View {
     // than a daily delta: a wallet whose only movement is deliberate has no market to
     // report. Tapping toggles privacy, and the number swaps through a blur so hiding
     // feels like a shutter rather than a flicker.
+    /// One bar per key being replaced, not one per request. Two requests against the
+    /// same key are the same emergency and the same button.
+    @ViewBuilder
+    private var pendingRecoveryBars: some View {
+        let groups = Dictionary(grouping: environment.smartAccounts.pendingRecoveries, by: \.kind)
+            .values
+            .sorted { ($0.first?.kind ?? "") < ($1.first?.kind ?? "") }
+        if !groups.isEmpty {
+            VStack(spacing: 8) {
+                ForEach(groups, id: \.first!.id) { group in
+                    PendingRecoveryBanner(environment: environment, group: group) {
+                        Task { await environment.smartAccounts.refreshPendingRecoveries() }
+                    }
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 10)
+        }
+    }
+
     private var balanceHero: some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
