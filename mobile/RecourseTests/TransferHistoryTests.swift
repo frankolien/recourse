@@ -136,9 +136,9 @@ final class TransferHistoryTests: XCTestCase {
     func testDecodesTheModernShape() throws {
         let json = """
         {"items":[{"block_number":61542916,"transaction_hash":"0x2F49E3516602","timestamp":"2026-09-11T09:15:29.000000Z",\
-"from":{"hash":"0x0000000000000000000000000000000000000000"},"to":{"hash":"0xE97164D899245313b95bB7F44C35f5D17675bE70"},\
-"total":{"value":"19900000","decimals":"6"},"token":{"address_hash":"0x3600000000000000000000000000000000000000","symbol":"USDC","decimals":"6"},\
-"method":"0x57ecfd28","type":"token_minting"}],"next_page_params":null}
+        "from":{"hash":"0x0000000000000000000000000000000000000000"},"to":{"hash":"0xE97164D899245313b95bB7F44C35f5D17675bE70"},\
+        "total":{"value":"19900000","decimals":"6"},"token":{"address_hash":"0x3600000000000000000000000000000000000000","symbol":"USDC","decimals":"6"},\
+        "method":"0x57ecfd28","type":"token_minting"}],"next_page_params":null}
         """
         let rows = try ArcscanClient.decodeModern(Data(json.utf8))
         XCTAssertEqual(rows.count, 1)
@@ -155,8 +155,8 @@ final class TransferHistoryTests: XCTestCase {
     func testTheModernShapeNamesAMethodItKnows() throws {
         let json = """
         {"items":[{"block_number":1,"transaction_hash":"0xAA","timestamp":"2026-09-11T09:15:29.000000Z",\
-"from":{"hash":"0x01"},"to":{"hash":"0x02"},"total":{"value":"5"},\
-"token":{"address_hash":"0x03","symbol":"USDC"},"method":"transferWithAuthorization(address,address)"}]}
+        "from":{"hash":"0x01"},"to":{"hash":"0x02"},"total":{"value":"5"},\
+        "token":{"address_hash":"0x03","symbol":"USDC"},"method":"transferWithAuthorization(address,address)"}]}
         """
         XCTAssertEqual(try ArcscanClient.decodeModern(Data(json.utf8))[0].method, "transferWithAuthorization")
     }
