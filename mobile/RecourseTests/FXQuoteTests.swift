@@ -249,4 +249,21 @@ final class FXQuoteTests: XCTestCase {
         )
         XCTAssertThrowsError(try FX.assertSane(ruin), "twenty euros into a pool holding twenty-three dollars loses half")
     }
+
+    /// The same pool the other way on the same day. Buying euros was 3.7% worse than
+    /// the market even for a cent, so no size was fair, and the screen told someone to
+    /// try a smaller amount. A zero ceiling is an answer, not a missing one.
+    func testBuyingEurosWasOffMarketAtEverySize() {
+        let reserves = FXReserves(usdc: 23_469_401, eurc: 19_662_648)
+        let buying = FXDirection.usdcToEurc.reserves(reserves)
+        let selling = FXDirection.eurcToUsdc.reserves(reserves)
+        XCTAssertEqual(FX.maxAmountIn(
+            reserveIn: buying.input, reserveOut: buying.output, decimalsIn: 6, decimalsOut: 6,
+            referencePrice: FXDirection.usdcToEurc.reference(eurcPerUsdc: reference)
+        ), 0)
+        XCTAssertGreaterThan(FX.maxAmountIn(
+            reserveIn: selling.input, reserveOut: selling.output, decimalsIn: 6, decimalsOut: 6,
+            referencePrice: FXDirection.eurcToUsdc.reference(eurcPerUsdc: reference)
+        ), 0)
+    }
 }

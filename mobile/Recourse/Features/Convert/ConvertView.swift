@@ -26,6 +26,8 @@ struct ConvertView: View {
     @State private var amountText = ""
     @State private var quote: FXQuote?
     @State private var problem: String?
+    /// Set when this way is off market at every size and the other way is fair.
+    @State private var offersFlip = false
     @State private var quoting = false
     /// Read once when the screen opens; both directions' ceilings come from it.
     @State private var reserves: FXReserves?
@@ -39,20 +41,26 @@ struct ConvertView: View {
         return value
     }
 
-    /// The most the pool fills at the market rate in the current direction. Derived
-    /// rather than stored, so turning the conversion around cannot leave the other
-    /// side's ceiling on screen.
-    private var poolCeiling: USDCAmount? {
+    /// The most the pool fills at the market rate in `way`, in base units of its input.
+    /// Nil when the pool has not been read, zero when it has and no size is fair. Those
+    /// are different answers: one means ask again, the other means stop asking.
+    private func ceilingUnits(_ way: FXDirection) -> BigUInt? {
         guard let reserves else { return nil }
-        let pool = direction.reserves(reserves)
-        let cap = FX.maxAmountIn(
+        let pool = way.reserves(reserves)
+        return FX.maxAmountIn(
             reserveIn: pool.input,
             reserveOut: pool.output,
             decimalsIn: 6,
             decimalsOut: 6,
-            referencePrice: direction.reference(eurcPerUsdc: referencePrice)
+            referencePrice: way.reference(eurcPerUsdc: referencePrice)
         )
-        guard cap > 0, let units = UInt64(cap.description) else { return nil }
+    }
+
+    /// The most the pool fills at the market rate in the current direction. Derived
+    /// rather than stored, so turning the conversion around cannot leave the other
+    /// side's ceiling on screen.
+    private var poolCeiling: USDCAmount? {
+        guard let cap = ceilingUnits(direction), cap > 0, let units = UInt64(cap.description) else { return nil }
         return USDCAmount(baseUnits: units)
     }
 
@@ -86,6 +94,9 @@ struct ConvertView: View {
                     receiving
                     if let problem {
                         refusal(problem)
+                        if offersFlip {
+                            flipOffer
+                        }
                     } else {
                         details
                     }
@@ -234,6 +245,7 @@ struct ConvertView: View {
         amountText = ""
         quote = nil
         problem = nil
+        offersFlip = false
     }
 
     @ViewBuilder
@@ -301,6 +313,27 @@ struct ConvertView: View {
         .transition(.opacity)
     }
 
+    /// When this way is off market at every size and the other way is fair, the one
+    /// useful thing left is to turn around, so it is a button rather than advice.
+    private var flipOffer: some View {
+        Button(action: flip) {
+            HStack(spacing: 8) {
+                Image(systemName: "arrow.up.arrow.down")
+                    .font(.system(size: 12, weight: .semibold))
+                Text("Convert \(direction.outputSymbol) to \(direction.inputSymbol) instead")
+                    .font(.recourse(13, .semibold))
+            }
+            .foregroundStyle(RecourseColor.nightText)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
+            .background(RecourseColor.nightChip, in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .padding(.top, 12)
+        .padding(.leading, 28)
+        .transition(.opacity)
+    }
+
     private func detail(_ label: String, _ value: String) -> some View {
         HStack {
             Text(label)
@@ -328,6 +361,7 @@ struct ConvertView: View {
     private func refreshQuote() async {
         quote = nil
         problem = nil
+        offersFlip = false
         guard let amount, let reader else { return }
         // Refused before the pool is asked: a quote for money the account does not
         // have is a quote that can only fail at the last step.
@@ -358,6 +392,9 @@ struct ConvertView: View {
             quote = candidate
         } catch let error as FXQuoteError {
             problem = describe(error)
+            if case .offMarket = error, ceilingUnits(way) == 0, let other = ceilingUnits(way.flipped), other > 0 {
+                offersFlip = true
+            }
         } catch {
             problem = "Could not read the pool. Check your connection and try again."
         }
@@ -370,9 +407,19 @@ struct ConvertView: View {
             // is that this pool is too thin for this size. Carrying the ceiling in
             // the sentence matters more than the percentage does: without it the
             // only way forward is to guess downwards.
-            let gap = "This pool is \(String(format: "%.1f", Double(bps) / 100))% worse than the market rate at this size."
-            guard let poolCeiling else { return "\(gap) Try a smaller amount." }
-            return "\(gap) The most it can fill right now is \(poolCeiling.decimalString) \(direction.inputSymbol)."
+            let worse = "\(String(format: "%.1f", Double(bps) / 100))% worse than the market rate"
+            // A pool priced off market is off at every size, and "try a smaller amount"
+            // sends someone down to zero a keystroke at a time for nothing. Say so, and
+            // name the direction that does work when there is one.
+            if ceilingUnits(direction) == 0 {
+                var text = "This pool is \(worse) at any size right now, so no amount is worth converting this way."
+                if let other = ceilingUnits(direction.flipped), other > 0 {
+                    text += " \(direction.outputSymbol) to \(direction.inputSymbol) fills at a fair rate."
+                }
+                return text
+            }
+            guard let poolCeiling else { return "This pool is \(worse) at this size. Try a smaller amount." }
+            return "This pool is \(worse) at this size. The most it can fill right now is \(poolCeiling.decimalString) \(direction.inputSymbol)."
         case .noLiquidity:
             return "This pool has nothing to give at that size."
         case .zeroAmount:
