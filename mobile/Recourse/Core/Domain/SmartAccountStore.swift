@@ -29,6 +29,14 @@ final class SmartAccountStore {
     /// Key changes waiting out their delay. Kept on the store rather than fetched by
     /// the screen so Home can show the alarm without owning any of the plumbing.
     private(set) var pendingRecoveries: [PendingRecovery] = []
+    /// Recoveries this device has cancelled, and when. Cancelling is a transaction, so
+    /// the server keeps listing one for the seconds it takes to be mined and indexed;
+    /// without this the next poll puts the alarm straight back on screen and the
+    /// button looks broken. The stamp is what keeps it honest: if the cancel did not
+    /// actually take, the server is still listing it after the grace period and the
+    /// warning comes back rather than being hidden forever.
+    private var cancelledAt: [String: Date] = [:]
+    private static let cancelGrace: TimeInterval = 90
     /// The Safe signer while live; the gateway builds its submitter from it.
     private(set) var safeSigner: SafeAccountSigner?
     /// The provision in flight, so a second caller waits on it instead of asking the
@@ -223,13 +231,19 @@ final class SmartAccountStore {
         guard let found = try? await session.withAccessToken({ try await api.pendingRecoveries(accessToken: $0) }) else {
             return
         }
-        pendingRecoveries = found
+        // Forget a cancellation once the server agrees it happened, and forget one that
+        // the server has kept listing past the grace, which means it did not happen.
+        let now = Date()
+        let listed = Set(found.map(\.id))
+        cancelledAt = cancelledAt.filter { listed.contains($0.key) && now.timeIntervalSince($0.value) < Self.cancelGrace }
+        pendingRecoveries = found.filter { cancelledAt[$0.id] == nil }
     }
 
     func stopRecovery(_ pending: PendingRecovery) async throws {
         try await session.withAccessToken {
             try await api.cancelRecovery(kind: pending.kind, rotationID: pending.rotationId, accessToken: $0)
         }
+        cancelledAt[pending.id] = Date()
         pendingRecoveries.removeAll { $0.id == pending.id }
     }
 

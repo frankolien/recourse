@@ -254,10 +254,12 @@ struct HomeView: View {
                     PendingRecoveryBanner(environment: environment, group: group) {
                         Task { await environment.smartAccounts.refreshPendingRecoveries() }
                     }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 10)
+            .animation(.snappy(duration: 0.28), value: environment.smartAccounts.pendingRecoveries)
         }
     }
 
