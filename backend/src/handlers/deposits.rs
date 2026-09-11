@@ -79,13 +79,20 @@ pub async fn address(
     let mut chains = Vec::new();
     for client in clients.get_ref() {
         let chain_id = client.chain.chain_id as i64;
-        let cached: Option<(String,)> =
-            sqlx::query_as("SELECT address FROM deposit_addresses WHERE account_id = $1 AND chain_id = $2")
-                .bind(profile.account_id)
-                .bind(chain_id)
-                .fetch_optional(pool.get_ref())
-                .await
-                .unwrap_or(None);
+        // Scoped to the factory, because the address is a function of the factory's
+        // code as well as the account: a widened chain list changes the factory's
+        // address, and every address the previous one issued is one this build cannot
+        // sweep. A swap must miss the cache rather than be served from it.
+        let factory = format!("{:#x}", client.factory);
+        let cached: Option<(String,)> = sqlx::query_as(
+            "SELECT address FROM deposit_addresses WHERE account_id = $1 AND chain_id = $2 AND factory = $3",
+        )
+        .bind(profile.account_id)
+        .bind(chain_id)
+        .bind(&factory)
+        .fetch_optional(pool.get_ref())
+        .await
+        .unwrap_or(None);
 
         let address = match cached {
             Some((address,)) => address,
@@ -97,12 +104,13 @@ pub async fn address(
                     // Cached so the sweeper has a list to watch without asking the chain
                     // about every account on every cycle.
                     let _ = sqlx::query(
-                        "INSERT INTO deposit_addresses (account_id, chain_id, address) VALUES ($1, $2, $3)
-                         ON CONFLICT (account_id, chain_id) DO UPDATE SET address = EXCLUDED.address",
+                        "INSERT INTO deposit_addresses (account_id, chain_id, address, factory) VALUES ($1, $2, $3, $4)
+                         ON CONFLICT (account_id, chain_id) DO UPDATE SET address = EXCLUDED.address, factory = EXCLUDED.factory",
                     )
                     .bind(profile.account_id)
                     .bind(chain_id)
                     .bind(&text)
+                    .bind(&factory)
                     .execute(pool.get_ref())
                     .await;
                     text

@@ -66,13 +66,18 @@ async fn cycle(client: &DepositClient, pool: &PgPool) -> anyhow::Result<()> {
     }
     let to = head.min(from + CHUNK_BLOCKS - 1);
 
-    // The deposit address is a function of the Arc account, so the list of addresses to
-    // watch is just the list of live accounts, mapped through what the chain says.
-    let rows: Vec<(String, String)> =
-        sqlx::query_as("SELECT sa.safe_address, d.address FROM deposit_addresses d JOIN smart_accounts sa ON sa.account_id = d.account_id WHERE d.chain_id = $1 AND sa.status = 'live'")
-            .bind(chain)
-            .fetch_all(pool)
-            .await?;
+    // The deposit address is a function of the Arc account and of the factory's own
+    // code, so only addresses this factory issued are watched. One from a previous
+    // factory is not an address this build can collect from, and watching it would
+    // mean seeing the money land and then sweeping a different, empty vault.
+    let rows: Vec<(String, String)> = sqlx::query_as(
+        "SELECT sa.safe_address, d.address FROM deposit_addresses d JOIN smart_accounts sa ON sa.account_id = d.account_id \
+         WHERE d.chain_id = $1 AND d.factory = $2 AND sa.status = 'live'",
+    )
+    .bind(chain)
+    .bind(format!("{:#x}", client.factory))
+    .fetch_all(pool)
+    .await?;
     let mut owner_of: HashMap<Address, Address> = HashMap::new();
     for (safe, deposit) in rows {
         if let (Ok(safe), Ok(deposit)) = (safe.parse::<Address>(), deposit.parse::<Address>()) {
