@@ -3,13 +3,11 @@ import AuthenticationServices
 import CryptoKit
 import SwiftUI
 
-/// Spike, not a feature. Answers the one question the wallet architecture note
-/// hangs on: does the PRF extension actually return key material on this device,
-/// and is that material stable across separate assertions?
-///
-/// If it is stable, a wallet key can be wrapped against a passkey and unwrapped
-/// on any device the passkey reaches, with the server holding only ciphertext.
-/// If it is not, the whole passkey path collapses back to recovery phrases.
+/// Spike, not a feature. Answers two questions: does the PRF extension return key
+/// material on this device, and is it stable across separate assertions? A stable
+/// output is then run through mera's derivation, so the address shown here is the
+/// one the same passkey gets on the web, which is what a trading app that signs in
+/// with the passkey and trades from its keys stands on.
 ///
 /// Runs entirely on device. The challenge is random rather than server-issued,
 /// because nothing here verifies a signature; only the PRF output matters.
@@ -19,7 +17,7 @@ struct PasskeyPRFProbeView: View {
     var body: some View {
         List {
             Section {
-                Text("Registers a passkey for \(PRFProbe.relyingParty), then asserts twice with the same salt. PRF is usable only if both assertions return identical bytes.")
+                Text("Registers a passkey for \(PRFProbe.relyingParty), then asserts twice with mera's salt. PRF is usable only if both assertions return identical bytes; the accounts printed after are the ones mera derives from this passkey.")
                     .font(.footnote)
                     .foregroundStyle(RecourseColor.nightMuted)
             }
@@ -68,10 +66,9 @@ final class PRFProbe: NSObject {
     /// served by that domain's apple-app-site-association.
     static let relyingParty = "recourse-arc.vercel.app"
 
-    /// Fixed so the two assertions ask the authenticator the same question. In
-    /// production this would be a per-account salt, safe to store server side
-    /// because it is not a secret.
-    private static let salt = Data(SHA256.hash(data: Data("recourse-arc-wallet-v1".utf8)))
+    /// mera's salt, so the output is the one its web demo would get from the same
+    /// passkey at this relying party.
+    private static let salt = PasskeyAccounts.prfSalt
 
     private(set) var log: [Line] = []
     private(set) var hasCredential = false
@@ -137,7 +134,13 @@ final class PRFProbe: NSObject {
                     ? "Both assertions matched. PRF is deterministic here."
                     : "Outputs differed. PRF is not usable as key material.")
                 if stable {
-                    add("ok", "Derived wallet seed \(Self.deriveSeed(from: output).prefix(8).loggableHex)...")
+                    do {
+                        let derived = try PasskeyAccounts.derive(prfOutput: output)
+                        add("ok", "EVM \(derived.evmAddress.value)")
+                        add("ok", "Ed25519 \(derived.ed25519PublicKey.loggableHex)")
+                    } catch {
+                        add("x", "Derivation failed: \(error)")
+                    }
                 }
             } else {
                 firstOutput = output
@@ -183,18 +186,6 @@ final class PRFProbe: NSObject {
             add("x", describe(error))
             return nil
         }
-    }
-
-    /// The bytes PRF hands back are key material, not a key. HKDF binds them to
-    /// this purpose so the same credential could serve another one later without
-    /// the two sharing a secret.
-    private static func deriveSeed(from prfOutput: Data) -> Data {
-        let key = HKDF<SHA256>.deriveKey(
-            inputKeyMaterial: SymmetricKey(data: prfOutput),
-            info: Data("recourse-arc-wallet-v1".utf8),
-            outputByteCount: 32
-        )
-        return Data(key.withUnsafeBytes { Array($0) })
     }
 
     private func perform(_ request: ASAuthorizationRequest) async throws -> ASAuthorization {
