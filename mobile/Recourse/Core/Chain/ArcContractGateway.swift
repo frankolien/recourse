@@ -60,8 +60,8 @@ struct ArcContractGateway: ContractGateway {
         try await reader.vaultState(of: owner)
     }
 
-    func fxAmountOut(amountIn: USDCAmount) async throws -> BigUInt {
-        try await reader.fxAmountOut(amountIn: amountIn)
+    func fxAmountOut(amountIn: BigUInt, direction: FXDirection) async throws -> BigUInt {
+        try await reader.fxAmountOut(amountIn: amountIn, direction: direction)
     }
 
     func fxReserves() async throws -> FXReserves {
@@ -116,12 +116,12 @@ struct ArcContractGateway: ContractGateway {
         try await writer.vaultWithdraw(shares: shares)
     }
 
-    func approveFXRouterUSDC(amount: USDCAmount) async throws -> ChainHash {
-        try await writer.approveFXRouterUSDC(amount: amount)
+    func approveFXRouter(amount: BigUInt, direction: FXDirection) async throws -> ChainHash {
+        try await writer.approveFXRouter(amount: amount, direction: direction)
     }
 
-    func swapUSDCForEURC(amountIn: USDCAmount, minAmountOut: BigUInt, deadline: UInt64) async throws -> ChainHash {
-        try await writer.swapUSDCForEURC(amountIn: amountIn, minAmountOut: minAmountOut, deadline: deadline)
+    func swapFX(amountIn: BigUInt, minAmountOut: BigUInt, direction: FXDirection, deadline: UInt64) async throws -> ChainHash {
+        try await writer.swapFX(amountIn: amountIn, minAmountOut: minAmountOut, direction: direction, deadline: deadline)
     }
 
     func cashCheque(_ cheque: Cheque, signature: Data) async throws -> ChainHash {

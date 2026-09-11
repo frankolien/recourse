@@ -79,22 +79,21 @@ actor ArcContractReader: ContractReading {
         )
     }
 
-    func fxAmountOut(amountIn: USDCAmount) async throws -> BigUInt {
+    func fxAmountOut(amountIn: BigUInt, direction: FXDirection) async throws -> BigUInt {
         guard let fxRouter,
               let router = configuration.fxRouterAddress,
               let eurc = configuration.eurcAddress else {
             throw ContractReadError.unsupportedMethod("getAmountsOut")
         }
 
-        let path = [
-            try web3Address(configuration.usdcAddress),
-            try web3Address(eurc),
-        ]
+        let usdc = try web3Address(configuration.usdcAddress)
+        let euro = try web3Address(eurc)
+        let path = direction == .usdcToEurc ? [usdc, euro] : [euro, usdc]
         let result = try await call(
             contract: fxRouter,
             address: router,
             method: "getAmountsOut",
-            parameters: [BigUInt(amountIn.baseUnits), path]
+            parameters: [amountIn, path]
         )
         // getAmountsOut returns one amount per hop; the last is what arrives.
         guard let amounts = result["0"] as? [BigUInt], let out = amounts.last else {

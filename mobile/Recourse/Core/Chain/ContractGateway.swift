@@ -48,10 +48,11 @@ protocol ContractReading: Sendable {
     func previewVerdict(paymentID: UInt64) async throws -> VerdictPreview
     func resolveDelay() async throws -> UInt64
     func vaultState(of owner: EthereumAddress) async throws -> VaultState
-    /// Output the FX venue would pay for `amountIn` of USDC, in EURC base units.
-    /// Quoted through the router rather than derived from reserves, so the number
-    /// shown and the number filled come from one curve, one fee, one rounding.
-    func fxAmountOut(amountIn: USDCAmount) async throws -> BigUInt
+    /// Output the FX venue would pay for `amountIn` of the direction's input token, in
+    /// base units of its output. Quoted through the router rather than derived from
+    /// reserves, so the number shown and the number filled come from one curve, one
+    /// fee, one rounding.
+    func fxAmountOut(amountIn: BigUInt, direction: FXDirection) async throws -> BigUInt
     /// What the pool holds. Read so the screen can state the largest amount it can
     /// fill, instead of refusing sizes one at a time until the user finds it.
     func fxReserves() async throws -> FXReserves
@@ -79,10 +80,11 @@ protocol ContractWriting: Sendable {
     func approveVaultUSDC(amount: USDCAmount) async throws -> ChainHash
     func vaultDeposit(amount: USDCAmount) async throws -> ChainHash
     func vaultWithdraw(shares: UInt64) async throws -> ChainHash
-    /// Let the FX router take this much USDC from the account.
-    func approveFXRouterUSDC(amount: USDCAmount) async throws -> ChainHash
-    /// Swap USDC for at least `minAmountOut` EURC through the pool, or revert.
-    func swapUSDCForEURC(amountIn: USDCAmount, minAmountOut: BigUInt, deadline: UInt64) async throws -> ChainHash
+    /// Let the FX router take this much of the direction's input token.
+    func approveFXRouter(amount: BigUInt, direction: FXDirection) async throws -> ChainHash
+    /// Swap the input token for at least `minAmountOut` of the output through the
+    /// pool, or revert.
+    func swapFX(amountIn: BigUInt, minAmountOut: BigUInt, direction: FXDirection, deadline: UInt64) async throws -> ChainHash
     /// Submit someone else's authorization and move their USDC to the person it names.
     func cashCheque(_ cheque: Cheque, signature: Data) async throws -> ChainHash
     /// Burn a cheque's nonce so the authorization can never be used.

@@ -486,7 +486,7 @@ struct HomeView: View {
                     icon: "arrow.left.arrow.right",
                     tint: Color(red: 0.23, green: 0.51, blue: 0.96),
                     title: "Convert",
-                    detail: "USDC to EURC",
+                    detail: "USDC and EURC, either way",
                     figure: nil
                 ) { environment.router.push(.convert) }
             }

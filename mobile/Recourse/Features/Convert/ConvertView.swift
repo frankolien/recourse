@@ -1,7 +1,7 @@
 import SwiftUI
 @preconcurrency import BigInt
 
-/// Convert USDC into EURC.
+/// Convert between USDC and EURC, either way.
 ///
 /// The screen's real job is the refusal. Arc's only public stablecoin pool quotes
 /// 100 USDC at about 27 EURC where the market rate implies 87, so a Convert screen
@@ -27,12 +27,51 @@ struct ConvertView: View {
     @State private var quote: FXQuote?
     @State private var problem: String?
     @State private var quoting = false
-    @State private var ceiling: USDCAmount?
+    /// Read once when the screen opens; both directions' ceilings come from it.
+    @State private var reserves: FXReserves?
+    @State private var direction: FXDirection = .usdcToEurc
     @State private var showsReview = false
 
+    /// Six decimals either way on Arc, so USDCAmount carries it as a plain amount and
+    /// the symbol comes from the direction.
     private var amount: USDCAmount? {
         guard let value = try? USDCAmount(decimalString: amountText), value.baseUnits > 0 else { return nil }
         return value
+    }
+
+    /// The most the pool fills at the market rate in the current direction. Derived
+    /// rather than stored, so turning the conversion around cannot leave the other
+    /// side's ceiling on screen.
+    private var poolCeiling: USDCAmount? {
+        guard let reserves else { return nil }
+        let pool = direction.reserves(reserves)
+        let cap = FX.maxAmountIn(
+            reserveIn: pool.input,
+            reserveOut: pool.output,
+            decimalsIn: 6,
+            decimalsOut: 6,
+            referencePrice: direction.reference(eurcPerUsdc: referencePrice)
+        )
+        guard cap > 0, let units = UInt64(cap.description) else { return nil }
+        return USDCAmount(baseUnits: units)
+    }
+
+    /// What the account holds of the currency being paid in, when the screen knows.
+    private var held: USDCAmount? {
+        guard let store = environment?.paymentStore else { return nil }
+        switch direction {
+        case .usdcToEurc: return store.balance
+        case .eurcToUsdc: return store.eurcBalance.map { USDCAmount(baseUnits: $0.baseUnits) }
+        }
+    }
+
+    /// The pool's ceiling, or the balance if that is smaller: MAX should never offer
+    /// money the account does not have.
+    private var maxFill: USDCAmount? {
+        guard let poolCeiling else { return nil }
+        guard let held else { return poolCeiling }
+        let units = min(poolCeiling.baseUnits, held.baseUnits)
+        return units > 0 ? USDCAmount(baseUnits: units) : nil
     }
 
     // The layout is the one every swap screen has settled on: what you pay, what
@@ -69,7 +108,7 @@ struct ConvertView: View {
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showsReview) {
             if let amount, let quote {
-                ConvertReviewSheet(amount: amount, quote: quote, reader: reader, environment: environment, referencePrice: referencePrice) {
+                ConvertReviewSheet(amount: amount, quote: quote, reader: reader, environment: environment, referencePrice: referencePrice, direction: direction) {
                     amountText = ""
                 }
                 .presentationDetents([.large])
@@ -77,9 +116,9 @@ struct ConvertView: View {
             }
         }
         .task {
-            await loadCeiling()
+            await loadReserves()
         }
-        .task(id: amountText) {
+        .task(id: "\(direction)|\(amountText)") {
             await refreshQuote()
         }
     }
@@ -98,28 +137,37 @@ struct ConvertView: View {
                     .contentTransition(.numericText())
                     .animation(.snappy(duration: 0.18), value: amountText)
                 Spacer(minLength: 8)
-                token(.usdc, "USDC")
+                token(direction.inputMark, direction.inputSymbol)
             }
-            if let ceiling {
+            if held != nil || maxFill != nil {
                 HStack {
-                    Spacer()
-                    // The most the pool can fill at the market rate: the number that
-                    // decides whether typing further is worth it.
-                    Button {
-                        amountText = ceiling.decimalString
-                    } label: {
-                        HStack(spacing: 6) {
-                            Text("MAX")
-                                .font(.recourse(15, .bold))
-                                .foregroundStyle(RecourseColor.nightText)
-                            Text(ceiling.decimalString)
-                                .font(.system(size: 15, weight: .medium, design: .rounded))
-                                .foregroundStyle(RecourseColor.nightMuted)
-                        }
-                        .contentShape(Rectangle())
+                    // What there is to spend, so nobody has to leave the screen to find
+                    // out whether they hold the currency they are converting.
+                    if let held {
+                        Text("Balance \(held.decimalString) \(direction.inputSymbol)")
+                            .font(.recourse(13))
+                            .foregroundStyle(RecourseColor.nightMuted)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Convert the maximum, \(ceiling.decimalString) USDC")
+                    Spacer()
+                    // The most that fills at the market rate, or what is held if that is
+                    // less: the number that decides whether typing further is worth it.
+                    if let maxFill {
+                        Button {
+                            amountText = maxFill.decimalString
+                        } label: {
+                            HStack(spacing: 6) {
+                                Text("MAX")
+                                    .font(.recourse(15, .bold))
+                                    .foregroundStyle(RecourseColor.nightText)
+                                Text(maxFill.decimalString)
+                                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                                    .foregroundStyle(RecourseColor.nightMuted)
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Convert the maximum, \(maxFill.decimalString) \(direction.inputSymbol)")
+                    }
                 }
             }
         }
@@ -136,7 +184,7 @@ struct ConvertView: View {
                             .tint(RecourseColor.nightMuted)
                             .frame(height: 62)
                     } else if let quote {
-                        Text(EURCAmount(baseUnits: quote.amountOut).formatted)
+                        Text(fourPlaces(quote.amountOut))
                             .font(.system(size: 52, weight: .semibold, design: .rounded))
                             .foregroundStyle(RecourseColor.ledger)
                             .contentTransition(.numericText())
@@ -149,31 +197,51 @@ struct ConvertView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
                 Spacer(minLength: 8)
-                token(.eurc, "EURC")
+                token(direction.outputMark, direction.outputSymbol)
             }
             .animation(.snappy(duration: 0.24), value: quote)
         }
     }
 
-    /// The line between the two sides, with the relationship drawn on it. It is a
-    /// glyph and not a button: the pool converts one way.
+    /// The line between the two sides. Tapping the arrows turns the conversion around:
+    /// the pool is one pair and fills either way, so which side is paid in is the
+    /// person's choice rather than the venue's. It used to be a bare glyph, which left
+    /// someone holding euros with no way to spend them.
     private var separator: some View {
         HStack(spacing: 14) {
             Rectangle().fill(RecourseColor.nightLine).frame(height: 1)
-            Image(systemName: "arrow.up.arrow.down")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(RecourseColor.nightMuted)
+            Button(action: flip) {
+                Image(systemName: "arrow.up.arrow.down")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(RecourseColor.nightText)
+                    .frame(width: 40, height: 40)
+                    .background(RecourseColor.nightChip, in: Circle())
+                    .rotationEffect(.degrees(direction == .usdcToEurc ? 0 : 180))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Convert \(direction.outputSymbol) to \(direction.inputSymbol) instead")
             Rectangle().fill(RecourseColor.nightLine).frame(height: 1)
         }
-        .padding(.vertical, 26)
+        .padding(.vertical, 22)
+    }
+
+    private func flip() {
+        UISelectionFeedbackGenerator().selectionChanged()
+        withAnimation(.snappy(duration: 0.3)) {
+            direction = direction.flipped
+        }
+        // An amount typed in one currency is not an amount in the other.
+        amountText = ""
+        quote = nil
+        problem = nil
     }
 
     @ViewBuilder
     private var details: some View {
         if let quote {
             VStack(spacing: 0) {
-                detail("Rate", String(format: "%.4f EURC per USDC", quote.price))
-                detail("Minimum received", EURCAmount(baseUnits: quote.minAmountOut).formatted)
+                detail("Rate", String(format: "%.4f %@ per %@", quote.price, direction.outputSymbol, direction.inputSymbol))
+                detail("Minimum received", "\(fourPlaces(quote.minAmountOut)) \(direction.outputSymbol)")
                 if let deviation = quote.deviationBps {
                     detail("Versus market", deviation <= 0
                         ? "better by \(abs(deviation)) bps"
@@ -250,40 +318,41 @@ struct ConvertView: View {
 
     /// Read once when the screen opens. The ceiling moves only when the pool's
     /// reserves move, which no keystroke does, so refetching it per quote would be
-    /// a network read that could not change the answer.
-    private func loadCeiling() async {
+    /// a network read that could not change the answer. Kept as reserves rather than
+    /// as a ceiling so turning the conversion around needs no second read.
+    private func loadReserves() async {
         guard let reader else { return }
-        guard let reserves = try? await reader.fxReserves() else { return }
-        let cap = FX.maxAmountIn(
-            reserveIn: reserves.usdc,
-            reserveOut: reserves.eurc,
-            decimalsIn: 6,
-            decimalsOut: 6,
-            referencePrice: referencePrice
-        )
-        guard cap > 0, let units = UInt64(cap.description) else { return }
-        ceiling = USDCAmount(baseUnits: units)
+        reserves = try? await reader.fxReserves()
     }
 
     private func refreshQuote() async {
         quote = nil
         problem = nil
         guard let amount, let reader else { return }
+        // Refused before the pool is asked: a quote for money the account does not
+        // have is a quote that can only fail at the last step.
+        if let held, amount.baseUnits > held.baseUnits {
+            problem = "You have \(held.decimalString) \(direction.inputSymbol)."
+            return
+        }
 
         // Debounce: the pad re-runs this on every key and each pass is a network read.
         try? await Task.sleep(for: .milliseconds(350))
         if Task.isCancelled { return }
 
+        let way = direction
         quoting = true
         defer { quoting = false }
         do {
-            let out = try await reader.fxAmountOut(amountIn: amount)
+            let out = try await reader.fxAmountOut(amountIn: BigUInt(amount.baseUnits), direction: way)
+            // Turned around while the read was in flight: this answer is for the other side.
+            if Task.isCancelled || way != direction { return }
             let candidate = try FX.quote(
                 amountIn: BigUInt(amount.baseUnits),
                 amountOut: out,
                 decimalsIn: 6,
                 decimalsOut: 6,
-                referencePrice: referencePrice
+                referencePrice: way.reference(eurcPerUsdc: referencePrice)
             )
             try FX.assertSane(candidate)
             quote = candidate
@@ -302,8 +371,8 @@ struct ConvertView: View {
             // the sentence matters more than the percentage does: without it the
             // only way forward is to guess downwards.
             let gap = "This pool is \(String(format: "%.1f", Double(bps) / 100))% worse than the market rate at this size."
-            guard let ceiling else { return "\(gap) Try a smaller amount." }
-            return "\(gap) The most it can fill right now is \(ceiling.decimalString) USDC."
+            guard let poolCeiling else { return "\(gap) Try a smaller amount." }
+            return "\(gap) The most it can fill right now is \(poolCeiling.decimalString) \(direction.inputSymbol)."
         case .noLiquidity:
             return "This pool has nothing to give at that size."
         case .zeroAmount:
@@ -324,6 +393,7 @@ private struct ConvertReviewSheet: View {
     let reader: (any ContractReading)?
     let environment: AppEnvironment?
     let referencePrice: Double
+    let direction: FXDirection
     let onConverted: () -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -348,8 +418,8 @@ private struct ConvertReviewSheet: View {
             header
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    leg(mark: .usdc, label: "Convert", amount: amount.decimalString, symbol: "USDC")
-                    leg(mark: .eurc, label: "To", amount: EURCAmount(baseUnits: quote.amountOut).formatted, symbol: "EURC")
+                    leg(mark: direction.inputMark, label: "Convert", amount: amount.decimalString, symbol: direction.inputSymbol)
+                    leg(mark: direction.outputMark, label: "To", amount: fourPlaces(quote.amountOut), symbol: direction.outputSymbol)
                         .padding(.top, 18)
                     rule.padding(.vertical, 22)
                     row("Slippage") {
@@ -360,7 +430,7 @@ private struct ConvertReviewSheet: View {
                             .padding(.vertical, 8)
                             .background(RecourseColor.nightChip, in: Capsule())
                     }
-                    row("Receive at least", value: EURCAmount(baseUnits: quote.minAmountOut).formatted, unit: "EURC")
+                    row("Receive at least", value: fourPlaces(quote.minAmountOut), unit: direction.outputSymbol)
                     row("Route", value: "Arc Swap")
                     row("Price impact", value: impactText, tint: impactTint)
                     rule.padding(.vertical, 22)
@@ -374,7 +444,7 @@ private struct ConvertReviewSheet: View {
                             .padding(.top, 18)
                     }
                     if let result {
-                        Text("Converted. Transaction \(result.value.prefix(10))... is on Arc; your EURC balance updates with the next refresh.")
+                        Text("Converted. Transaction \(result.value.prefix(10))... is on Arc, and your balances are up to date.")
                             .font(.recourse(13))
                             .foregroundStyle(RecourseColor.ledger)
                             .fixedSize(horizontal: false, vertical: true)
@@ -542,7 +612,7 @@ private struct ConvertReviewSheet: View {
             return
         }
         do {
-            let out = try await reader.fxAmountOut(amountIn: amount)
+            let out = try await reader.fxAmountOut(amountIn: BigUInt(amount.baseUnits), direction: direction)
             simulation = out >= quote.minAmountOut ? .passed : .failed
         } catch {
             simulation = .failed
@@ -560,14 +630,19 @@ private struct ConvertReviewSheet: View {
         Task {
             do {
                 let gateway = try environment.makeContractGateway()
-                stage = "Approving USDC"
-                let approval = try await gateway.approveFXRouterUSDC(amount: amount)
+                stage = "Approving \(direction.inputSymbol)"
+                let approval = try await gateway.approveFXRouter(amount: BigUInt(amount.baseUnits), direction: direction)
                 guard try await gateway.waitForReceipt(transactionHash: approval).outcome == .confirmed else {
                     throw ConvertError.reverted
                 }
                 stage = "Converting on Arc"
                 let deadline = UInt64(Date().timeIntervalSince1970) + 600
-                let hash = try await gateway.swapUSDCForEURC(amountIn: amount, minAmountOut: quote.minAmountOut, deadline: deadline)
+                let hash = try await gateway.swapFX(
+                    amountIn: BigUInt(amount.baseUnits),
+                    minAmountOut: quote.minAmountOut,
+                    direction: direction,
+                    deadline: deadline
+                )
                 guard try await gateway.waitForReceipt(transactionHash: hash).outcome == .confirmed else {
                     throw ConvertError.reverted
                 }
@@ -602,3 +677,15 @@ private struct ConvertReviewSheet: View {
     }
 }
 
+/// The marks belong to the screen rather than the domain, which knows directions but
+/// not what anything looks like.
+fileprivate extension FXDirection {
+    var inputMark: BrandMark { self == .usdcToEurc ? .usdc : .eurc }
+    var outputMark: BrandMark { self == .usdcToEurc ? .eurc : .usdc }
+}
+
+/// Four places for a quote in either token: both have six decimals on Arc, and a quote
+/// is where the last digits are the point.
+fileprivate func fourPlaces(_ baseUnits: BigUInt) -> String {
+    String(format: "%.4f", (Double(baseUnits.description) ?? 0) / 1_000_000)
+}

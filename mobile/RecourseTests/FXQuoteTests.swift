@@ -202,4 +202,51 @@ final class FXQuoteTests: XCTestCase {
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         XCTAssertEqual(FX.deadline(from: now, ttl: 300), BigUInt(1_700_000_300))
     }
+
+    // MARK: Either direction
+
+    func testDirectionHandsTheCurveThePoolTheRightWayRound() {
+        let pool = FXReserves(usdc: 23_469_401, eurc: 19_662_648)
+        XCTAssertEqual(FXDirection.usdcToEurc.reserves(pool).input, BigUInt(23_469_401))
+        XCTAssertEqual(FXDirection.usdcToEurc.reserves(pool).output, BigUInt(19_662_648))
+        XCTAssertEqual(FXDirection.eurcToUsdc.reserves(pool).input, BigUInt(19_662_648))
+        XCTAssertEqual(FXDirection.eurcToUsdc.reserves(pool).output, BigUInt(23_469_401))
+        XCTAssertEqual(FXDirection.usdcToEurc.flipped, .eurcToUsdc)
+        XCTAssertEqual(FXDirection.eurcToUsdc.flipped, .usdcToEurc)
+    }
+
+    func testTheReverseReferenceIsTheInverseOfTheOneGiven() {
+        XCTAssertEqual(FXDirection.usdcToEurc.reference(eurcPerUsdc: reference), reference)
+        XCTAssertEqual(FXDirection.eurcToUsdc.reference(eurcPerUsdc: reference), 1 / reference, accuracy: 1e-12)
+        XCTAssertEqual(FXDirection.eurcToUsdc.reference(eurcPerUsdc: 0), 0, "no reference is not an infinite one")
+    }
+
+    /// The pool as it stood on 2026-09-11, when someone holding 20 EURC found Convert
+    /// only went one way. Selling euros into it is fair up to about one euro and
+    /// ruinous at twenty, and the ceiling has to say which.
+    func testSellingEurosIsCappedAtWhatThePoolFillsFairly() throws {
+        let pool = FXDirection.eurcToUsdc.reserves(FXReserves(usdc: 23_469_401, eurc: 19_662_648))
+        let fair = FXDirection.eurcToUsdc.reference(eurcPerUsdc: reference)
+        let cap = FX.maxAmountIn(
+            reserveIn: pool.input, reserveOut: pool.output,
+            decimalsIn: 6, decimalsOut: 6, referencePrice: fair
+        )
+        XCTAssertGreaterThan(cap, BigUInt(1_000_000))
+        XCTAssertLessThan(cap, BigUInt(1_100_000))
+
+        let atCap = try FX.quote(
+            amountIn: cap,
+            amountOut: try FX.amountOut(amountIn: cap, reserveIn: pool.input, reserveOut: pool.output),
+            decimalsIn: 6, decimalsOut: 6, referencePrice: fair
+        )
+        XCTAssertNoThrow(try FX.assertSane(atCap))
+
+        let everything = BigUInt(20_337_352)
+        let ruin = try FX.quote(
+            amountIn: everything,
+            amountOut: try FX.amountOut(amountIn: everything, reserveIn: pool.input, reserveOut: pool.output),
+            decimalsIn: 6, decimalsOut: 6, referencePrice: fair
+        )
+        XCTAssertThrowsError(try FX.assertSane(ruin), "twenty euros into a pool holding twenty-three dollars loses half")
+    }
 }

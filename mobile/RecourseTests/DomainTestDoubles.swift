@@ -124,7 +124,7 @@ actor FakeContractGateway: ContractGateway {
     // Priced off the live Arc pool by default so a caller that forgets to set it
     // still gets a realistic number rather than zero.
     var fxOut: BigUInt = 339_855
-    func fxAmountOut(amountIn: USDCAmount) async throws -> BigUInt { fxOut }
+    func fxAmountOut(amountIn: BigUInt, direction: FXDirection) async throws -> BigUInt { fxOut }
 
     // The pool this app actually seeded on Arc, so a caller that forgets to set it
     // gets the real depth rather than an unrealistically deep one.
@@ -152,11 +152,11 @@ actor FakeContractGateway: ContractGateway {
         DomainFixture.transferHash
     }
 
-    func approveFXRouterUSDC(amount: USDCAmount) async throws -> ChainHash {
+    func approveFXRouter(amount: BigUInt, direction: FXDirection) async throws -> ChainHash {
         DomainFixture.transferHash
     }
 
-    func swapUSDCForEURC(amountIn: USDCAmount, minAmountOut: BigUInt, deadline: UInt64) async throws -> ChainHash {
+    func swapFX(amountIn: BigUInt, minAmountOut: BigUInt, direction: FXDirection, deadline: UInt64) async throws -> ChainHash {
         DomainFixture.transferHash
     }
 

@@ -25,6 +25,35 @@ struct FXReserves: Equatable, Sendable {
     let eurc: BigUInt
 }
 
+/// Which way a conversion runs.
+///
+/// The pool is one pair and its curve is symmetric, so a direction decides only two
+/// things: which reserve is paid into, and which market rate the quote is held to.
+/// Both live here so the screen, the reader and the writer cannot disagree about them.
+enum FXDirection: Hashable, Sendable {
+    case usdcToEurc
+    case eurcToUsdc
+
+    var flipped: FXDirection { self == .usdcToEurc ? .eurcToUsdc : .usdcToEurc }
+
+    var inputSymbol: String { self == .usdcToEurc ? "USDC" : "EURC" }
+    var outputSymbol: String { self == .usdcToEurc ? "EURC" : "USDC" }
+
+    /// The reserves in the order this direction uses them, labelled so a caller cannot
+    /// hand the curve the pool backwards.
+    func reserves(_ pool: FXReserves) -> (input: BigUInt, output: BigUInt) {
+        self == .usdcToEurc ? (pool.usdc, pool.eurc) : (pool.eurc, pool.usdc)
+    }
+
+    /// Output per input at the market. The screen is given one reference, EURC per
+    /// USDC, and the other direction is its inverse, so the two can never disagree
+    /// about what the market is.
+    func reference(eurcPerUsdc: Double) -> Double {
+        guard eurcPerUsdc > 0 else { return 0 }
+        return self == .usdcToEurc ? eurcPerUsdc : 1 / eurcPerUsdc
+    }
+}
+
 enum FXQuoteError: Error, Equatable, Sendable {
     case zeroAmount
     case noLiquidity

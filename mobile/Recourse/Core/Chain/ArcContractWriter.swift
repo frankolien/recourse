@@ -71,28 +71,35 @@ actor ArcContractWriter: ContractWriting {
         }
     }
 
-    func approveFXRouterUSDC(amount: USDCAmount) async throws -> ChainHash {
-        guard let router = configuration.fxRouterAddress else { throw ContractWriteError.unsupportedMethod("approve(router)") }
+    /// Let the router take the token this direction pays in. Approval is per token, so
+    /// converting euros back needs its own, and the USDC one does not cover it.
+    func approveFXRouter(amount: BigUInt, direction: FXDirection) async throws -> ChainHash {
+        guard let router = configuration.fxRouterAddress, let eurc = configuration.eurcAddress else {
+            throw ContractWriteError.unsupportedMethod("approve(router)")
+        }
+        let token = direction == .usdcToEurc ? configuration.usdcAddress : eurc
         let data = try encode(
             contract: erc20,
             method: "approve",
-            parameters: [try web3Address(router), BigUInt(amount.baseUnits)]
+            parameters: [try web3Address(router), amount]
         )
-        return try await submit(to: configuration.usdcAddress, data: data)
+        return try await submit(to: token, data: data)
     }
 
-    /// The pool converts one way, USDC into EURC, and the router refuses to fill
-    /// below `minAmountOut`, which is the slippage floor the quote was shown with.
-    func swapUSDCForEURC(amountIn: USDCAmount, minAmountOut: BigUInt, deadline: UInt64) async throws -> ChainHash {
+    /// Either way through the one pool. The router refuses to fill below
+    /// `minAmountOut`, which is the slippage floor the quote was shown with.
+    func swapFX(amountIn: BigUInt, minAmountOut: BigUInt, direction: FXDirection, deadline: UInt64) async throws -> ChainHash {
         guard let fxRouter, let router = configuration.fxRouterAddress, let eurc = configuration.eurcAddress else {
             throw ContractWriteError.unsupportedMethod("swapExactTokensForTokens")
         }
-        let path = [try web3Address(configuration.usdcAddress), try web3Address(eurc)]
+        let usdc = try web3Address(configuration.usdcAddress)
+        let euro = try web3Address(eurc)
+        let path = direction == .usdcToEurc ? [usdc, euro] : [euro, usdc]
         let recipient = try await signer.address()
         let data = try encode(
             contract: fxRouter,
             method: "swapExactTokensForTokens",
-            parameters: [BigUInt(amountIn.baseUnits), minAmountOut, path, try web3Address(recipient), BigUInt(deadline)]
+            parameters: [amountIn, minAmountOut, path, try web3Address(recipient), BigUInt(deadline)]
         )
         return try await submit(to: router, data: data)
     }
