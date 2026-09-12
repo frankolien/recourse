@@ -72,13 +72,13 @@ The normal suite keeps network access off. The Arc integration test is opt-in:
 
 ```sh
 xcodebuild -project Recourse.xcodeproj -scheme Recourse \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
   -derivedDataPath /tmp/recourse-ios-derived \
   ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO test
 
 ARC_LIVE_TESTS=1 ARC_RPC_URL=https://arc-testnet.drpc.org \
 xcodebuild -project Recourse.xcodeproj -scheme Recourse \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
   -derivedDataPath /tmp/recourse-ios-derived \
   ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO \
   -only-testing:RecourseTests/ArcLiveReadTests test
