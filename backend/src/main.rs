@@ -113,9 +113,10 @@ async fn main() -> Result<()> {
     if treasury.client.is_some() {
         let pool = pool.clone();
         let interval = config.index_interval_secs;
+        let chunk = config.log_chunk_blocks;
         let treasury = treasury.clone();
         actix_web::rt::spawn(async move {
-            jobs::olien_indexer::run(treasury, pool, interval).await;
+            jobs::olien_indexer::run(treasury, pool, interval, chunk).await;
         });
     }
     // Money arriving in a consumer account is worth a push too, and needs only the

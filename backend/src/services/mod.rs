@@ -63,6 +63,8 @@ pub struct AppConfig {
     pub rpc_url: String,
     pub port: u16,
     pub index_interval_secs: u64,
+    /// The widest block range one log query may ask for on this chain.
+    pub log_chunk_blocks: u64,
     pub demo_mode: bool,
     pub escrow: Address,
     pub policy_registry: Address,
@@ -210,6 +212,25 @@ fn rpc_url_for(chain_id: u64) -> String {
     }
 }
 
+/// How many blocks one `eth_getLogs` may cover on this chain.
+///
+/// A fact about the chain's RPCs rather than a constant. Arc's gateway allows 10,000
+/// and the indexer asks for 5,000; every public Monad endpoint tested on 2026-09-12
+/// refuses more than 100, because a block every 300ms makes a wide range enormous.
+/// Asking for more than the endpoint allows fails every call, so on Monad this is the
+/// difference between an indexer and nothing at all. LOG_CHUNK_BLOCKS wins, for the
+/// day a paid endpoint allows more.
+fn log_chunk_for(chain_id: u64) -> u64 {
+    if let Some(value) = optional_env("LOG_CHUNK_BLOCKS").and_then(|v| v.trim().parse::<u64>().ok()) {
+        return value.max(1);
+    }
+    match chain_id {
+        143 | 10143 => 100,
+        5042 | 5042002 => 5_000,
+        _ => 2_000,
+    }
+}
+
 fn eurc_for(chain_id: u64) -> Option<Address> {
     if let Some(text) = optional_env("EURC_ADDRESS") {
         return text.trim().parse().ok();
@@ -271,6 +292,7 @@ impl AppConfig {
             index_interval_secs: env_or("INDEX_INTERVAL_SECS", "15")
                 .parse()
                 .context("INDEX_INTERVAL_SECS")?,
+            log_chunk_blocks: log_chunk_for(deployment.chain_id),
             demo_mode: env_or("DEMO_MODE", "true") == "true",
             escrow: deployment.escrow,
             policy_registry: deployment.policy_registry,
