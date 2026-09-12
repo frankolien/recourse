@@ -16,7 +16,19 @@ struct EarnView: View {
     @Environment(\.dismiss) private var dismiss
 
     static let productName = "Settlement Yield"
-    static let productBlurb = "Your dollars sit in Circle's USYC treasury fund and earn what it earns. Some is kept in cash so you can take money out at once, and the vault also pays merchants at T+0 and keeps the advance fees."
+    /// What the vault is doing with the money, rather than what we hope it is doing.
+    /// This claimed the USYC fund flatly until 2026-09-12, when the fund turned out to
+    /// be permissioned and refused the vault, which left the screen telling people their
+    /// dollars earned a rate nobody was paying them.
+    static func productBlurb(_ state: VaultState?) -> String {
+        guard let invested = state?.invested else {
+            return "Your dollars sit in the settlement vault. It pays merchants at T+0 and keeps the advance fees, and holds Circle's USYC treasury fund whenever the fund is open to it."
+        }
+        if invested.baseUnits > 0 {
+            return "Your dollars sit in Circle's USYC treasury fund and earn what it earns. Some is kept in cash so you can take money out at once, and the vault also pays merchants at T+0 and keeps the advance fees."
+        }
+        return "Your dollars are cash in the settlement vault right now, earning the advance fees it makes paying merchants at T+0. USYC is a permissioned fund and pays nothing here until it admits this vault."
+    }
     static let earnTint = Color(red: 0.55, green: 0.36, blue: 0.96)
 
     var body: some View {
@@ -62,7 +74,7 @@ struct EarnView: View {
                 GeometryReader { proxy in
                     VStack {
                         Spacer(minLength: 0)
-                        EarnProductSheet(environment: environment, apy: apy, bottomInset: proxy.safeAreaInsets.bottom) {
+                        EarnProductSheet(environment: environment, apy: apy, vaultState: vaultState, bottomInset: proxy.safeAreaInsets.bottom) {
                             closeProduct()
                             // Let the sheet leave before the next one arrives, or
                             // the two animations fight over the same edge.
@@ -227,7 +239,7 @@ struct EarnView: View {
                     }
                     Spacer(minLength: 0)
                 }
-                Text(Self.productBlurb)
+                Text(Self.productBlurb(vaultState))
                     .font(.recourse(12.5))
                     .foregroundStyle(RecourseColor.nightMuted)
                     .lineSpacing(2)
@@ -346,6 +358,9 @@ private struct ProductMark: View {
 private struct EarnProductSheet: View {
     let environment: AppEnvironment
     let apy: Double?
+    /// Passed in rather than read here, so the sheet and the screen behind it cannot
+    /// describe the vault differently.
+    let vaultState: VaultState?
     let bottomInset: CGFloat
     let onDeposit: () -> Void
     let onClose: () -> Void
@@ -394,7 +409,7 @@ private struct EarnProductSheet: View {
                 .padding(.horizontal, Self.sideMargin)
                 .padding(.top, 20)
 
-            Text(EarnView.productBlurb)
+            Text(EarnView.productBlurb(vaultState))
                 .font(.recourse(13))
                 .foregroundStyle(RecourseColor.nightMuted)
                 .multilineTextAlignment(.center)

@@ -19,6 +19,25 @@ struct VaultState: Codable, Hashable, Sendable {
     let totalShares: UInt64
     let outstanding: USDCAmount
     let myShares: UInt64
+    /// What the vault holds in the yield fund, priced by the fund itself. Nil means the
+    /// figure is not known, which is what a snapshot cached before this field existed
+    /// says; zero means the vault is all cash, which is a different statement and the
+    /// Earn screen makes it rather than claiming a rate that is not being paid.
+    let invested: USDCAmount?
+
+    init(
+        totalAssets: USDCAmount,
+        totalShares: UInt64,
+        outstanding: USDCAmount,
+        myShares: UInt64,
+        invested: USDCAmount? = nil
+    ) {
+        self.totalAssets = totalAssets
+        self.totalShares = totalShares
+        self.outstanding = outstanding
+        self.myShares = myShares
+        self.invested = invested
+    }
 
     var sharePrice: Double {
         guard totalShares > 0 else { return 1 }

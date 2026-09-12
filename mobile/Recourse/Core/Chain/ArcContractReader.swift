@@ -310,11 +310,18 @@ actor ArcContractReader: ContractReading {
             method: "sharesOf",
             parameters: [try web3Address(owner)]
         )
+        // Asked for, not required. A vault deployed before the fund existed has no such
+        // function, and losing the whole screen over a figure used for one sentence
+        // would be the wrong trade. Nil then means not known rather than none.
+        let invested = try? await call(contract: vault, address: vaultAddress, method: "investedAssets")
         return VaultState(
             totalAssets: USDCAmount(baseUnits: try uint64(assets["0"], method: "totalAssets")),
             totalShares: try uint64(shares["0"], method: "totalShares"),
             outstanding: USDCAmount(baseUnits: try uint64(outstanding["0"], method: "outstanding")),
-            myShares: try uint64(mine["0"], method: "sharesOf")
+            myShares: try uint64(mine["0"], method: "sharesOf"),
+            invested: invested
+                .flatMap { try? uint64($0["0"], method: "investedAssets") }
+                .map { USDCAmount(baseUnits: $0) }
         )
     }
 
