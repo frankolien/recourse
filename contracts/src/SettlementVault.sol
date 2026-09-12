@@ -83,6 +83,7 @@ contract SettlementVault is Ownable, ReentrancyGuard {
 
     event BufferSet(uint16 bps);
     event Invested(uint256 assets, uint256 shares);
+    event InvestRefused(uint256 assets);
     event Divested(uint256 shares, uint256 assets);
 
     /// `_teller` and `_usyc` may both be zero, which leaves the vault exactly as it was
@@ -124,12 +125,21 @@ contract SettlementVault is Ownable, ReentrancyGuard {
         uint256 put = cash - keep;
         usdc.forceApprove(address(teller), put);
         uint256 before = usyc.balanceOf(address(this));
-        teller.deposit(put, address(this));
-        // Measured rather than taken from the return value, so a teller that reports
-        // one number and mints another cannot move share price.
-        uint256 minted = usyc.balanceOf(address(this)) - before;
-        usdc.forceApprove(address(teller), 0);
-        emit Invested(put, minted);
+        // A fund that refuses must not take the deposit down with it. USYC is
+        // permissioned: on 2026-09-12 its teller answered NotPermissioned to this vault
+        // and to its owner alike, which made every LP deposit revert for a reason that
+        // had nothing to do with the depositor. Refused dollars stay as cash, which is
+        // exactly where they were, and the next call tries again.
+        try teller.deposit(put, address(this)) {
+            // Measured rather than taken from the return value, so a teller that reports
+            // one number and mints another cannot move share price.
+            uint256 minted = usyc.balanceOf(address(this)) - before;
+            usdc.forceApprove(address(teller), 0);
+            emit Invested(put, minted);
+        } catch {
+            usdc.forceApprove(address(teller), 0);
+            emit InvestRefused(put);
+        }
     }
 
     /// Make sure at least `need` dollars are in hand, redeeming from the fund if not.

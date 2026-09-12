@@ -22,6 +22,11 @@ contract FakeTeller is IUSYCTeller {
     uint256 public price = 1e6;
     /// How much USDC this teller will actually part with. Zero means no limit.
     uint256 public cashCap;
+    /// USYC is a permissioned fund and its real teller refuses anyone not on its
+    /// allowlist, which is what Circle's answered to us on 2026-09-12.
+    bool public refuses;
+
+    error NotPermissioned();
 
     constructor(TestUSDC _usdc, TestUSDC _usyc) {
         usdcToken = _usdc;
@@ -34,6 +39,10 @@ contract FakeTeller is IUSYCTeller {
 
     function setCashCap(uint256 c) external {
         cashCap = c;
+    }
+
+    function setRefuses(bool r) external {
+        refuses = r;
     }
 
     function asset() external view returns (address) {
@@ -49,6 +58,7 @@ contract FakeTeller is IUSYCTeller {
     }
 
     function deposit(uint256 assets, address receiver) external returns (uint256 shares) {
+        if (refuses) revert NotPermissioned();
         usdcToken.transferFrom(msg.sender, address(this), assets);
         shares = (assets * 1e6) / price;
         usycToken.mint(receiver, shares);
@@ -186,6 +196,26 @@ contract VaultYieldTest is Test {
         assertEq(usdc.balanceOf(address(plain)), 100e6, "nothing invested");
         vm.prank(lp);
         assertEq(plain.withdraw(shares), 100e6, "and it still pays out");
+    }
+
+    /// Circle's teller answered `NotPermissioned` to this vault and to its owner alike
+    /// on 2026-09-12, because USYC only admits allowlisted holders. A fund that will not
+    /// take the money must not stop anyone depositing into the vault: the dollars stay
+    /// as cash, which is exactly where they already were.
+    function test_ARefusedInvestmentLeavesTheDepositStanding() public {
+        teller.setRefuses(true);
+
+        uint256 shares = _deposit(100e6);
+        assertGt(shares, 0, "the deposit still happened");
+        assertEq(usdc.balanceOf(address(vault)), 100e6, "every dollar stayed as cash");
+        assertEq(vault.investedAssets(), 0, "nothing reached the fund");
+        assertEq(vault.totalAssets(), 100e6, "and the balance is whole");
+
+        // The day the fund admits us, the same call puts the surplus to work.
+        teller.setRefuses(false);
+        vault.invest();
+        assertGt(vault.investedAssets(), 0, "now it is invested");
+        assertEq(vault.totalAssets(), 100e6, "and the total did not move");
     }
 
     function testFuzz_DepositThenWithdrawNeverLosesMoney(uint96 amount) public {
