@@ -149,7 +149,9 @@ suite("a cheque cashes on a real node", () => {
     const { hashDomain, hashTypedData } = await import("viem");
     expect(
       hashDomain({
-        domain: domain(),
+        // hashDomain types chainId as bigint because the domain declares it uint256,
+        // while the chain definition and signTypedData both take a number.
+        domain: { ...domain(), chainId: BigInt(CHAIN_ID) },
         types: {
           EIP712Domain: [
             { name: "name", type: "string" },
