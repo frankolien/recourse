@@ -58,6 +58,8 @@ enum FXQuoteError: Error, Equatable, Sendable {
     case zeroAmount
     case noLiquidity
     case offMarket(deviationBps: Int)
+    /// The venue pays far more than the market. Not a bargain, a broken venue.
+    case implausible(deviationBps: Int)
     case badSlippage
 }
 
@@ -72,6 +74,15 @@ enum FX {
     /// someone's money while showing them a number that looked fine. Thin and
     /// mispriced pools are the normal case on a young chain.
     static let maxDeviationBps = 200
+
+    /// How far better than the reference a quote may be before it is refused.
+    ///
+    /// Being paid more than the market is not a windfall, it is a sign the venue is
+    /// broken: stale reserves, a wrong reference, or a token that is not the one it
+    /// claims. Arc Swap's pool on 2026-09-13 offered half again as many euros as the
+    /// market. Wide, because a genuinely better price is normal and refusing it would
+    /// be hostile; only the absurd end is caught.
+    static let maxGenerousDeviationBps = 3_000
 
     /// The UniswapV2 curve: 0.3% fee, integer division, floored. Floored because
     /// that is what the Solidity library does, and rounding up would quote more
@@ -125,8 +136,13 @@ enum FX {
     /// a venue cannot mark its own homework, and so a refusal has a reason.
     static func assertSane(_ quote: FXQuote, maxDeviationBps: Int = FX.maxDeviationBps) throws {
         guard quote.amountOut > 0, quote.minAmountOut > 0 else { throw FXQuoteError.noLiquidity }
-        if let deviation = quote.deviationBps, deviation > maxDeviationBps {
-            throw FXQuoteError.offMarket(deviationBps: deviation)
+        if let deviation = quote.deviationBps {
+            if deviation > maxDeviationBps {
+                throw FXQuoteError.offMarket(deviationBps: deviation)
+            }
+            if -deviation > FX.maxGenerousDeviationBps {
+                throw FXQuoteError.implausible(deviationBps: deviation)
+            }
         }
     }
 
@@ -199,7 +215,8 @@ enum FX {
         let humanIn = Double(amountIn) / pow(10, Double(decimalsIn))
         let humanOut = Double(out) / pow(10, Double(decimalsOut))
         guard humanIn > 0 else { return false }
-        return deviationBps(price: humanOut / humanIn, reference: referencePrice) <= maxDeviationBps
+        let deviation = deviationBps(price: humanOut / humanIn, reference: referencePrice)
+        return deviation <= maxDeviationBps && -deviation <= FX.maxGenerousDeviationBps
     }
 
     /// A swap must never be signed without one: an open ended order can sit unmined

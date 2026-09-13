@@ -112,6 +112,17 @@ describe("the guard against a mispriced venue", () => {
     expect(() => assertQuoteSane(generous)).not.toThrow();
   });
 
+  it("refuses a venue that quotes absurdly better than the reference", () => {
+    // Arc Swap on 2026-09-13: 849 USDC against 1,103 EURC, half again as many euros
+    // as the market. Nobody gives that away, so the venue is broken rather than kind.
+    const absurd: Quote = {
+      amountIn: 1n, amountOut: 2n, minAmountOut: 1n, price: 1.298,
+      deviationBps: deviationBps(1.298, 0.867), route: [USDC, EURC], venue: "x",
+    };
+    expect(absurd.deviationBps).toBeLessThan(-3_000);
+    expect(() => assertQuoteSane(absurd)).toThrow(/better than the reference/);
+  });
+
   it("refuses a quote that slippage has consumed entirely", () => {
     const dust: Quote = {
       amountIn: 1n, amountOut: 1n, minAmountOut: 0n, price: 1, deviationBps: 0,

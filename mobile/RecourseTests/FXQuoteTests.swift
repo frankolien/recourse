@@ -102,6 +102,21 @@ final class FXQuoteTests: XCTestCase {
         XCTAssertNoThrow(try FX.assertSane(quote))
     }
 
+    func testAVenueAbsurdlyBetterThanTheReferenceIsRefused() throws {
+        // Arc Swap on 2026-09-13 held 849 USDC against 1,103 EURC, offering half as
+        // many euros again as the market. A price that good means a broken venue.
+        let quote = try FX.quote(
+            amountIn: BigUInt(1_000_000), amountOut: BigUInt(1_298_000),
+            decimalsIn: 6, decimalsOut: 6, referencePrice: 0.867
+        )
+        XCTAssertLessThan(quote.deviationBps ?? 0, -3_000)
+        XCTAssertThrowsError(try FX.assertSane(quote)) { error in
+            guard case FXQuoteError.implausible = error else {
+                return XCTFail("expected implausible, got \(error)")
+            }
+        }
+    }
+
     func testQuoteWithNoOutputIsRefused() {
         XCTAssertThrowsError(try FX.quote(amountIn: 1_000, amountOut: 0, decimalsIn: 6, decimalsOut: 6))
     }

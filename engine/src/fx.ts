@@ -56,6 +56,19 @@ export const DEFAULT_SLIPPAGE_BPS = 50;
  */
 export const MAX_DEVIATION_BPS = 200;
 
+/**
+ * How far *better* than the reference a quote may be before it is refused.
+ *
+ * Being paid more than the market is not a windfall, it is a broken venue: stale
+ * reserves, a wrong reference, or a token that is not the one it claims to be. Arc
+ * Swap's USDC/EURC pool on 2026-09-13 offered half again as many euros as the market
+ * and would have sailed through a one sided guard.
+ *
+ * Wide, because a genuinely better price is normal and refusing it would be hostile.
+ * Only the absurd end is caught.
+ */
+export const MAX_GENEROUS_DEVIATION_BPS = 3_000;
+
 export function applySlippage(amountOut: bigint, slippageBps: number): bigint {
   if (!Number.isInteger(slippageBps) || slippageBps < 0 || slippageBps > 10_000) {
     throw new FXError("slippageBps must be an integer in [0, 10000].", "bad_slippage");
@@ -73,17 +86,29 @@ export function deviationBps(price: number, reference: number): number {
  * The check a caller runs before signing. Separate from quoting so a venue cannot
  * mark its own homework, and so the reason a convert was refused is inspectable.
  */
-export function assertQuoteSane(quote: Quote, maxDeviationBps = MAX_DEVIATION_BPS): void {
+export function assertQuoteSane(
+  quote: Quote,
+  maxDeviationBps = MAX_DEVIATION_BPS,
+  maxGenerousBps = MAX_GENEROUS_DEVIATION_BPS,
+): void {
   if (quote.amountOut <= 0n) {
     throw new FXError(`${quote.venue} returned nothing for this size.`, "no_liquidity");
   }
   if (quote.minAmountOut <= 0n) {
     throw new FXError(`${quote.venue} quote is entirely consumed by slippage.`, "no_liquidity");
   }
-  if (quote.deviationBps !== null && quote.deviationBps > maxDeviationBps) {
-    throw new FXError(
-      `${quote.venue} is ${(quote.deviationBps / 100).toFixed(1)}% worse than the reference rate.`,
-      "off_market",
-    );
+  if (quote.deviationBps !== null) {
+    if (quote.deviationBps > maxDeviationBps) {
+      throw new FXError(
+        `${quote.venue} is ${(quote.deviationBps / 100).toFixed(1)}% worse than the reference rate.`,
+        "off_market",
+      );
+    }
+    if (-quote.deviationBps > maxGenerousBps) {
+      throw new FXError(
+        `${quote.venue} is ${(-quote.deviationBps / 100).toFixed(1)}% better than the reference rate, so one of the two is wrong.`,
+        "implausible",
+      );
+    }
   }
 }

@@ -420,6 +420,11 @@ struct ConvertView: View {
             }
             guard let poolCeiling else { return "This pool is \(worse) at this size. Try a smaller amount." }
             return "This pool is \(worse) at this size. The most it can fill right now is \(poolCeiling.decimalString) \(direction.inputSymbol)."
+        case .implausible(let bps):
+            // Refusing a price that looks generous needs saying plainly, or it reads
+            // as the app being broken rather than the pool.
+            let better = String(format: "%.1f", Double(abs(bps)) / 100)
+            return "This pool is offering \(better)% more than the market rate, which means something is wrong with it rather than in your favour. Not converting."
         case .noLiquidity:
             return "This pool has nothing to give at that size."
         case .zeroAmount:
