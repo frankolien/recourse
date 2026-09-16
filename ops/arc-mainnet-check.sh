@@ -18,7 +18,7 @@
 set -u
 export PATH="/bin:/usr/bin:/usr/local/bin:/opt/homebrew/bin:$HOME/.foundry/bin:$PATH"
 
-RPC="${ARC_MAINNET_RPC:-https://rpc.arc.network}"
+RPC="${ARC_MAINNET_RPC:-https://rpc.mainnet.arc.io}"
 EXPECTED_CHAIN=5042
 FAILED=0
 
