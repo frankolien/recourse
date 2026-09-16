@@ -50,22 +50,33 @@ async fn main() -> Result<()> {
     tracing::info!("Postgres connected; applying migrations");
     sqlx::migrate!("./migrations").run(&pool).await?;
     tracing::info!("migrations applied");
-    // Drop any projection left over from a different deployment before indexing.
-    jobs::indexer::reset_if_deployment_changed(
-        &pool,
-        &format!("{:#x}", config.escrow),
-        config.chain_id as i64,
-    )
-    .await?;
+    // Drop any projection left over from a different deployment before indexing. Only
+    // meaningful where there is a consumer deployment to have changed.
+    if config.consumer {
+        jobs::indexer::reset_if_deployment_changed(
+            &pool,
+            &format!("{:#x}", config.escrow),
+            config.chain_id as i64,
+        )
+        .await?;
+    } else {
+        tracing::info!(
+            "no consumer contracts in the deployment file: the escrow indexer, the resolver \
+             and the attestor stay off, and the treasury service runs alone"
+        );
+    }
 
+    // Built either way. It stores its addresses without validating them, so on an
+    // Olien-only chain it holds zeros and is simply never called.
     let chain = ChainClient::new(&config.rpc_url, config.escrow, config.policy_registry)?;
     let attestor = build_attestor(&config).await?;
     let apple_auth = AppleAuthService::from_config(&config)?;
     let google_auth = GoogleAuthService::from_config(&config)?;
     let passkey = PasskeyService::from_config(&config)?;
 
-    // Background indexer keeps Postgres in sync with Arc state.
-    {
+    // Background indexer keeps Postgres in sync with escrow state. Nothing to mirror
+    // when the chain has no escrow.
+    if config.consumer {
         let chain = chain.clone();
         let pool = pool.clone();
         let interval = config.index_interval_secs;
@@ -76,7 +87,7 @@ async fn main() -> Result<()> {
 
     // Automated settlement: hands-off resolution of disputes that are due. Needs the
     // attestor's funded wallet to send resolve txs, and is opt-in (ATTESTOR_AUTO_RESOLVE).
-    if config.auto_resolve {
+    if config.auto_resolve && config.consumer {
         match (&attestor, chain.resolve_delay().await) {
             (Some(attestor), Ok(resolve_delay)) => {
                 let attestor = attestor.clone();
@@ -185,6 +196,11 @@ async fn main() -> Result<()> {
 // so the read API stays usable.
 async fn build_attestor(config: &AppConfig) -> Result<Option<AttestorClient>> {
     if !config.demo_mode {
+        return Ok(None);
+    }
+    // Its whole job is signing attestations against the escrow, and its self-check
+    // reads that contract, so without one there is nothing for it to be right about.
+    if !config.consumer {
         return Ok(None);
     }
     let Some(pk) = &config.attestor_pk else {

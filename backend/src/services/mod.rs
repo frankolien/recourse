@@ -35,13 +35,17 @@ use std::path::PathBuf;
 #[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct Deployment {
-    pub escrow: Address,
-    #[serde(rename = "policyRegistry")]
-    pub policy_registry: Address,
-    #[serde(rename = "settlementVault")]
-    pub settlement_vault: Address,
-    #[serde(rename = "yieldAdapter")]
-    pub yield_adapter: Address,
+    // The consumer contracts, absent on a chain that runs only Olien. A Monad
+    // deployment file has no escrow and no settlement vault, and requiring them here
+    // stopped the service booting at all rather than starting without them.
+    #[serde(default)]
+    pub escrow: Option<Address>,
+    #[serde(rename = "policyRegistry", default)]
+    pub policy_registry: Option<Address>,
+    #[serde(rename = "settlementVault", default)]
+    pub settlement_vault: Option<Address>,
+    #[serde(rename = "yieldAdapter", default)]
+    pub yield_adapter: Option<Address>,
     pub usdc: Address,
     #[serde(rename = "chainId")]
     pub chain_id: u64,
@@ -68,6 +72,10 @@ pub struct AppConfig {
     pub demo_mode: bool,
     pub escrow: Address,
     pub policy_registry: Address,
+    /// Whether this chain carries the consumer contracts. False on an Olien-only chain,
+    /// where the escrow indexer, the resolver and the attestor must not run against the
+    /// zero addresses the two fields above then hold.
+    pub consumer: bool,
     pub chain_id: u64,
     pub chain_name: String,
     pub native: NativeToken,
@@ -294,8 +302,12 @@ impl AppConfig {
                 .context("INDEX_INTERVAL_SECS")?,
             log_chunk_blocks: log_chunk_for(deployment.chain_id),
             demo_mode: env_or("DEMO_MODE", "true") == "true",
-            escrow: deployment.escrow,
-            policy_registry: deployment.policy_registry,
+            // Zero rather than an Option, because ChainClient stores these without
+            // validating them and only the jobs that would call a contract need to
+            // care. Those check `consumer` instead.
+            escrow: deployment.escrow.unwrap_or(Address::ZERO),
+            policy_registry: deployment.policy_registry.unwrap_or(Address::ZERO),
+            consumer: deployment.escrow.is_some() && deployment.policy_registry.is_some(),
             chain_id: deployment.chain_id,
             attestor_pk: std::env::var("ATTESTOR_PK")
                 .ok()
@@ -343,5 +355,43 @@ impl AppConfig {
             apns_key_p8: optional_env("APNS_KEY_P8"),
             apns_bundle_id: optional_env("APNS_BUNDLE_ID"),
         })
+    }
+}
+
+#[cfg(test)]
+mod deployment_file_tests {
+    use super::Deployment;
+
+    // An Olien-only chain has no escrow, no policy registry and no settlement vault.
+    // Requiring them stopped the service booting against Monad at all, so both halves
+    // of that are pinned here: the Monad file must parse without them, and the Arc file
+    // must still yield them. The second is the real risk of making a field optional.
+
+    #[test]
+    fn a_monad_file_parses_without_the_consumer_contracts() {
+        let raw =
+            std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../deployments/10143.json"))
+                .expect("deployments/10143.json");
+        let d: Deployment = serde_json::from_str(&raw).expect("the Monad file must parse");
+        assert_eq!(d.chain_id, 10143);
+        assert!(d.escrow.is_none());
+        assert!(d.policy_registry.is_none());
+        assert!(d.settlement_vault.is_none());
+        assert!(d.olien.is_some(), "the Olien contracts are the point of this file");
+    }
+
+    #[test]
+    fn the_arc_file_still_yields_its_consumer_contracts() {
+        let raw = std::fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../deployments/arc-testnet.json"
+        ))
+        .expect("deployments/arc-testnet.json");
+        let d: Deployment = serde_json::from_str(&raw).expect("the Arc file must parse");
+        assert_eq!(d.chain_id, 5042002);
+        assert!(d.escrow.is_some(), "optional must not mean unread where it exists");
+        assert!(d.policy_registry.is_some());
+        assert!(d.settlement_vault.is_some());
+        assert!(d.olien.is_some());
     }
 }
