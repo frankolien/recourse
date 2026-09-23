@@ -1,0 +1,18 @@
+{
+  "network": "arc-mainnet",
+  "chainId": 5042,
+  "rpcUrl": "https://rpc.mainnet.arc.io",
+  "usdc": "0x3600000000000000000000000000000000000000",
+  "note": "Arc mainnet, open since 2026-09-16. Named by chain id, which is the convention every chain after Arc testnet follows. Gas is USDC here as on Arc testnet, so an account pays for its own transactions in the money it holds. The consumer contracts are deliberately absent: escrow, the policy registry, the settlement vault and the yield adapter are the buyer-protection product and none of them is needed to hold, send or receive. A file without them parses, and the backend turns those jobs off rather than failing to boot.",
+  "verified": "2026-09-23, read off chain 5042 at head 22354417. The USDC precompile answers USDC. The Safe 1.4.1 stack, EntryPoint v0.7 and the Arachnid CREATE2 deployer all carry bytecode whose hash is identical to Arc testnet's, compared contract by contract. CCTP v2 is live: TokenMessengerV2 and MessageTransmitterV2 both carry code, which the roadmap had recorded as absent because it was written before mainnet opened. The RIP-7212 precompile at 0x100 returns 1 for a freshly generated valid P-256 signature, the same as testnet, so Face ID signatures verify on chain without a Solidity fallback.",
+  "safe": {
+    "singleton": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+    "proxyFactory": "0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67",
+    "module4337": "0x75cf11467937ce3F2f357CE24ffc3DBF8fD5c226",
+    "moduleSetup": "0x2dd68b007B46fBe91B9A7c3EDa5A7a1063cB5b47",
+    "entryPoint": "0x0000000071727De22E5E9d8BAf0edAc6f37da032",
+    "note": "Canonical and audited, which is why the consumer account can be on mainnet without waiting for the Olien audit: Safe holds the money."
+  },
+  "p256OwnerFactory": "0x0000000000000000000000000000000000000000",
+  "p256Note": "Zero until ops/deploy-arc-mainnet.sh --live runs. It will land at 0xdd7e1afcd4d1e63fc53dfc3ed28faaed22fb6d46, predicted from the salt and the creation code, and that address is free today. It does NOT match Arc testnet's 0xBb27F2 because the constructor argument differs: testnet passes Daimo's Solidity verifier as a fallback and mainnet passes address(0), since the precompile is live here. Different creation code, different CREATE2 address, and that is correct rather than a mistake to fix."
+}

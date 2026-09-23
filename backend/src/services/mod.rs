@@ -380,6 +380,28 @@ mod deployment_file_tests {
         assert!(d.olien.is_some(), "the Olien contracts are the point of this file");
     }
 
+    // Arc mainnet opened 2026-09-16. Its file carries the Safe stack and the USDC
+    // precompile and deliberately no consumer contracts, because holding, sending and
+    // receiving need none of them. This pins that the file parses and that the service
+    // reads it as a non-consumer chain, which is what keeps the escrow indexer, the
+    // resolver and the attestor off there.
+    #[test]
+    fn the_arc_mainnet_file_parses_as_a_chain_without_the_consumer_contracts() {
+        let raw =
+            std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../deployments/5042.json"))
+                .expect("deployments/5042.json");
+        let d: Deployment = serde_json::from_str(&raw).expect("the Arc mainnet file must parse");
+        assert_eq!(d.chain_id, 5042);
+        assert!(d.escrow.is_none(), "send and receive need no escrow");
+        assert!(d.policy_registry.is_none());
+        assert!(d.settlement_vault.is_none());
+        assert!(d.safe.is_some(), "the account itself is a Safe, so this one is required");
+        assert!(
+            d.p256_owner_factory.is_some(),
+            "present even while zero, so the field exists for the deploy to fill"
+        );
+    }
+
     #[test]
     fn the_arc_file_still_yields_its_consumer_contracts() {
         let raw = std::fs::read_to_string(concat!(

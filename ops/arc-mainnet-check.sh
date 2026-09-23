@@ -87,7 +87,7 @@ olien.verifier 0xE196558Ce080229B256dDE6e62CDA2B051B882fC 0xe41738bb73343ceee06a
 olien.subAccount 0xDfc576536187eF72689c514f8c7ea6487960a637 0x4290a97245250de75b279290a9f5009115e5861e8d3f0a85e21c55098258c818
 olien.implementation 0x8BFf8CCe4edbE882a21197D3942978CCd06fA427 0x7d546243e9c3e421834ed83525c19845c333664ec6128b86abbc3f4b8679b9fc
 olien.factory 0xaF8c108D09E6A159D4dcE0919Ca6A81d6019f131 0x39b4f3ea2723b5cec45c3a114036fba72f5f745b81a6012ca797574d4fb69f6b
-p256OwnerFactory 0xBb27F2339a48aE263527b3F2DD871ec12a7E7ce8 0xe3df416f13b656de49c3b08f8672dc4c7b8d3924f3a0442310b180cf625e6faf
+p256OwnerFactory 0xdd7e1afcd4d1e63fc53dfc3ed28faaed22fb6d46 0xe3df416f13b656de49c3b08f8672dc4c7b8d3924f3a0442310b180cf625e6faf
 EOF
 
 echo
@@ -98,23 +98,11 @@ DECIMALS=$(cast call $USDC "decimals()(uint8)" --rpc-url "$RPC" 2>/dev/null || e
 echo "  $USDC answers $SYMBOL with $DECIMALS decimals"
 
 echo
-echo "A deployment file to save as deployments/arc-mainnet.json once the four above are"
-echo "deployed. The FX router and EURC are left out on purpose: Circle publishes no EURC"
-echo "on Arc mainnet, and our own pool is testnet scaffolding that should never be funded"
-echo "with real money. No router in the file means the app shows no Convert at all."
-cat <<'EOF'
-  {
-    "chainId": 5042,
-    "usdc": "0x3600000000000000000000000000000000000000",
-    "safe": {
-      "entryPoint": "0x0000000071727De22E5E9d8BAf0edAc6f37da032",
-      "module4337": "0x75cf11467937ce3F2f357CE24ffc3DBF8fD5c226",
-      "moduleSetup": "0x2dd68b007B46fBe91B9A7c3EDa5A7a1063cB5b47",
-      "proxyFactory": "0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67",
-      "singleton": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762"
-    }
-  }
-EOF
+echo "The address book is deployments/5042.json, written 2026-09-23 and carrying every"
+echo "address above. The FX router and EURC are left out on purpose: Circle publishes no"
+echo "EURC on Arc mainnet, and our own pool is testnet scaffolding that must never hold"
+echo "real money. No router in the file means Convert says euros are coming instead of"
+echo "opening. ops/deploy-arc-mainnet.sh fills in p256OwnerFactory."
 
 echo
 if [ "$FAILED" -eq 0 ]; then
