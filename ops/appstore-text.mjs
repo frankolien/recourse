@@ -96,7 +96,11 @@ async function descriptionLocalization(appId) {
 }
 
 async function latestBuildLocalization(appId) {
-  const builds = await call(`/apps/${appId}/builds?limit=1&sort=-uploadedDate`);
+  // The relationship under an app refuses sort, so the newest build comes from the
+  // top level collection filtered to this app, which accepts it.
+  const builds = await call(
+    `/builds?filter[app]=${appId}&sort=-uploadedDate&limit=1`,
+  );
   const build = builds.data?.[0];
   if (!build) throw new Error("no build uploaded yet, so there is no What to Test to set");
   const list = await call(`/builds/${build.id}/betaBuildLocalizations`);
