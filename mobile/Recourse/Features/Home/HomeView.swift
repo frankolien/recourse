@@ -479,17 +479,17 @@ struct HomeView: View {
                 figure: requestFigure
             ) { environment.router.push(.invoices) }
 
-            // Only where an FX venue is deployed. A chain without one has no
-            // Convert rather than one that fails when tapped.
-            if Deployment.fxRouter != nil {
-                HomeFeatureCard(
-                    icon: "arrow.left.arrow.right",
-                    tint: Color(red: 0.23, green: 0.51, blue: 0.96),
-                    title: "Convert",
-                    detail: "USDC and EURC, either way",
-                    figure: nil
-                ) { environment.router.push(.convert) }
-            }
+            // The card stays whether or not the venue is open. Someone who came for
+            // euros should learn they are coming rather than conclude the app has no
+            // answer, so the detail line carries the difference and the route carries
+            // the consequence.
+            HomeFeatureCard(
+                icon: "arrow.left.arrow.right",
+                tint: Color(red: 0.23, green: 0.51, blue: 0.96),
+                title: "Convert",
+                detail: Deployment.fxPublic ? "USDC and EURC, either way" : "Euros, coming soon",
+                figure: nil
+            ) { environment.router.push(.convert) }
 
             HomeFeatureCard(
                 icon: "chart.bar.fill",

@@ -171,6 +171,7 @@
 		F72DEC267AA2B2497C0304D19CE7C167 /* OnboardingReadyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B07A8835ED0426156415A380D4D29EE0 /* OnboardingReadyView.swift */; };
 		F821EDFA84A3D0FB0C8B2DCC5248C93C /* InvoicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B8748565148973312015614BD59437A /* InvoicesView.swift */; };
 		F8EFC3B22026953A75BCFE4AA7D9BABA /* ConvertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6F1D361CDACB057785FA2059275541E /* ConvertView.swift */; };
+		54BF46F424589AF71985AB37 /* ConvertComingSoonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6E31D5AB760D0FB9F155248 /* ConvertComingSoonView.swift */; };
 		F97320366AB0441D771476E0A0F3EB9A /* Geist-Medium.otf in Resources */ = {isa = PBXBuildFile; fileRef = F0AF0E7EC726D1F7536055E3113DFBA9 /* Geist-Medium.otf */; };
 		F99F369723F77DBE0F7F45E337E283C0 /* InvoiceWorkflowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4298EE296D27B301D68281401319BA37 /* InvoiceWorkflowTests.swift */; };
 		FA88E4D6653C15DB2442EDC8093FFA5C /* SettlementVault.abi.json in Resources */ = {isa = PBXBuildFile; fileRef = B6C4EF6B57DE81182E2C69BF65E157D3 /* SettlementVault.abi.json */; };
@@ -330,6 +331,7 @@
 		B2E82518339FBE87874C4E845F6C0CC8 /* OrderManifest.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OrderManifest.swift; sourceTree = "<group>"; };
 		B6C4EF6B57DE81182E2C69BF65E157D3 /* SettlementVault.abi.json */ = {isa = PBXFileReference; includeInIndex = 1; path = SettlementVault.abi.json; sourceTree = "<group>"; };
 		B6F1D361CDACB057785FA2059275541E /* ConvertView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConvertView.swift; sourceTree = "<group>"; };
+		A6E31D5AB760D0FB9F155248 /* ConvertComingSoonView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConvertComingSoonView.swift; sourceTree = "<group>"; };
 		B77D4817A186929BBCC67983C4364196 /* ChequeAPIClient.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChequeAPIClient.swift; sourceTree = "<group>"; };
 		B94F6C1DFADB9E2B076C1207F0B0C928 /* InvoiceWorkflow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = InvoiceWorkflow.swift; sourceTree = "<group>"; };
 		BA1D4E96CED07709512E9A0DCF842883 /* PasskeyAccountsTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PasskeyAccountsTests.swift; sourceTree = "<group>"; };
@@ -526,6 +528,7 @@
 			isa = PBXGroup;
 			children = (
 				B6F1D361CDACB057785FA2059275541E /* ConvertView.swift */,
+				A6E31D5AB760D0FB9F155248 /* ConvertComingSoonView.swift */,
 			);
 			name = Convert;
 			path = Convert;
@@ -1215,6 +1218,7 @@
 				70E8D5DFD944B7F300EEB8AF684591DA /* ChequeWorkflow.swift in Sources */,
 				8ADAAA1E1B741941DD4D7B809A82F588 /* WriteChequeView.swift in Sources */,
 				F8EFC3B22026953A75BCFE4AA7D9BABA /* ConvertView.swift in Sources */,
+				54BF46F424589AF71985AB37 /* ConvertComingSoonView.swift in Sources */,
 				7018D1AEEC6493B45901B45BA48EDF56 /* EarnView.swift in Sources */,
 				C95E6F48AB44E72B74CD873759BD47C6 /* BridgeDepositView.swift in Sources */,
 				BCC45AE77F9C49FA79DD4C57FFD08E0F /* DepositSheet.swift in Sources */,

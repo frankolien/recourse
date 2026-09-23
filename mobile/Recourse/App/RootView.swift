@@ -112,8 +112,14 @@ struct RootView: View {
         case .send:
             SendMoneyView(environment: environment)
         case .convert:
-            // Quoting is a read; filling, on Review, signs through the environment.
-            ConvertView(reader: try? ArcContractGateway.live(), environment: environment)
+            // A venue can be deployed and still refuse every ordinary amount, which is
+            // worse than not offering one, so existing and being usable are separate.
+            if Deployment.fxPublic {
+                // Quoting is a read; filling, on Review, signs through the environment.
+                ConvertView(reader: try? ArcContractGateway.live(), environment: environment)
+            } else {
+                ConvertComingSoonView()
+            }
         case .cheques:
             ChequesView(environment: environment)
         case .writeCheque:

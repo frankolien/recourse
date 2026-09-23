@@ -6,6 +6,8 @@
   "pair": "0xceFf43d8AA6d155edf564217d0b54cde082f8Ea8",
   "usdc": "0x3600000000000000000000000000000000000000",
   "eurc": "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a",
+  "public": false,
+  "publicNote": "False while the pool is this thin. The 200 bps sanity guard admits about 0.78 USDC per trade against 44.56 USDC of depth, and a testnet has nothing arbitraging it, so the first trade leaves the price off by its own impact and the next person is refused. Convert says it is coming rather than failing in front of whoever opened the app first. Set true when the venue is deep enough that an ordinary amount goes through, or when this points at a real venue on another chain.",
   "seeded": {
     "date": "2026-09-12",
     "usdc": "44558041",

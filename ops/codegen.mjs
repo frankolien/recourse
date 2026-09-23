@@ -66,9 +66,14 @@ enum Deployment {
 ${fx ? `
     // FX venue, deployed separately. See deployments/arc-testnet-fx.json.
     static let fxRouter: String? = "${fx.router}"
-    static let eurc: String? = "${fx.eurc}"` : `
+    static let eurc: String? = "${fx.eurc}"
+    /// Whether the venue is deep enough to put in front of someone. A venue can be
+    /// deployed and still refuse every ordinary amount, which is worse than not
+    /// offering it, so this is a separate fact from whether it exists.
+    static let fxPublic = ${fx.public === true}` : `
     static let fxRouter: String? = nil
-    static let eurc: String? = nil`}
+    static let eurc: String? = nil
+    static let fxPublic = false`}
 }
 `,
   },
