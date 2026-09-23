@@ -12,6 +12,11 @@ so the only way to tell them apart is the key id in the filename and this table.
 Using one where the other belongs returns `401 Authentication credentials are missing
 or invalid`, which reads like a corrupt key rather than the wrong key.
 
+`appstore-connect.env` sits beside them holding the key id, issuer id and key path
+that `ops/appstore-text.mjs` reads, so the tool runs with no arguments. Those three are
+identifiers rather than secrets; the file is here because it belongs beside the key it
+describes, not because it is sensitive.
+
 Apple lets you download a `.p8` once. Losing one means revoking it and generating
 another, so these are not reproducible from anywhere.
 

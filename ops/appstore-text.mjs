@@ -17,16 +17,34 @@
 // Signing is ES256 with node's own crypto, so this has no dependencies. Apple wants the
 // raw r|s pair rather than the ASN.1 wrapper openssl produces by default, which is what
 // dsaEncoding: "ieee-p1363" asks for.
-import { createSign, sign as cryptoSign } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { sign as cryptoSign } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const API = "https://api.appstoreconnect.apple.com/v1";
+
+// Settings live beside the key they describe, so running this needs no remembered
+// command line. backend/secrets is gitignored, and none of the three values is a
+// secret anyway: the secret is the .p8 they point at. The environment still wins, for
+// CI and for pointing at a second account.
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const settingsPath = resolve(repoRoot, "backend/secrets/appstore-connect.env");
+if (existsSync(settingsPath)) {
+  for (const line of readFileSync(settingsPath, "utf8").split("\n")) {
+    const match = line.match(/^\s*([A-Z_]+)\s*=\s*(.*)$/);
+    if (!match) continue;
+    const [, name, raw] = match;
+    const value = raw.trim().replace(/^["']|["']$/g, "");
+    if (value && !process.env[name]) process.env[name] = value;
+  }
+}
 const BUNDLE_ID = process.env.ASC_BUNDLE_ID ?? "com.recourse.buyer";
 
 const need = (name) => {
   const value = process.env[name];
   if (!value) {
-    console.error(`missing ${name}. See the comment at the top of this file.`);
+    console.error(`missing ${name}. Put it in backend/secrets/appstore-connect.env.`);
     process.exit(1);
   }
   return value;
@@ -38,7 +56,7 @@ const b64url = (input) =>
 function token() {
   const keyId = need("ASC_KEY_ID");
   const issuer = process.env.ASC_ISSUER_ID?.trim();
-  const key = readFileSync(need("ASC_KEY_PATH"), "utf8");
+  const key = readFileSync(resolve(repoRoot, need("ASC_KEY_PATH")), "utf8");
   const now = Math.floor(Date.now() / 1000);
   const header = b64url(JSON.stringify({ alg: "ES256", kid: keyId, typ: "JWT" }));
   // The two kinds of key are told apart by their payload and nothing else. A team key
