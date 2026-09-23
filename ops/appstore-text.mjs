@@ -10,7 +10,9 @@
 // app beside the Install button.
 //
 // Credentials come from the environment and are never printed:
-//   ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_PATH (the .p8, kept in backend/secrets/)
+//   ASC_KEY_ID, ASC_KEY_PATH (the .p8, kept in backend/secrets/), and ASC_ISSUER_ID
+//   for a team key. An individual key has no issuer id, so leaving it unset selects
+//   the individual shape rather than failing.
 //
 // Signing is ES256 with node's own crypto, so this has no dependencies. Apple wants the
 // raw r|s pair rather than the ASN.1 wrapper openssl produces by default, which is what
@@ -35,14 +37,20 @@ const b64url = (input) =>
 
 function token() {
   const keyId = need("ASC_KEY_ID");
-  const issuer = need("ASC_ISSUER_ID");
+  const issuer = process.env.ASC_ISSUER_ID?.trim();
   const key = readFileSync(need("ASC_KEY_PATH"), "utf8");
   const now = Math.floor(Date.now() / 1000);
   const header = b64url(JSON.stringify({ alg: "ES256", kid: keyId, typ: "JWT" }));
+  // The two kinds of key are told apart by their payload and nothing else. A team key
+  // names its issuer; an individual key has no issuer and names the subject "user"
+  // instead. Sending the wrong shape returns a 401 that reads like a bad key, so the
+  // presence of an issuer id decides it rather than a flag someone has to remember.
+  const claims = issuer
+    ? { iss: issuer, iat: now, exp: now + 15 * 60, aud: "appstoreconnect-v1" }
+    : { sub: "user", iat: now, exp: now + 15 * 60, aud: "appstoreconnect-v1" };
+  console.error(`authenticating with ${issuer ? "a team key" : "an individual key"}`);
   // Apple rejects anything longer than twenty minutes.
-  const payload = b64url(
-    JSON.stringify({ iss: issuer, iat: now, exp: now + 15 * 60, aud: "appstoreconnect-v1" }),
-  );
+  const payload = b64url(JSON.stringify(claims));
   const signature = cryptoSign("sha256", Buffer.from(`${header}.${payload}`), {
     key,
     dsaEncoding: "ieee-p1363",
