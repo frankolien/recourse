@@ -25,7 +25,7 @@ struct AppConfiguration: Sendable {
         usdcAddress: EthereumAddress,
         fxRouterAddress: EthereumAddress? = nil,
         eurcAddress: EthereumAddress? = nil,
-        apiURL: URL = AppConfiguration.defaultAPIURL,
+        apiURL: URL = AppConfiguration.apiURL(for: Deployment.current),
         merchantWebURL: URL = AppConfiguration.defaultMerchantWebURL
     ) {
         self.rpcURL = rpcURL
@@ -41,28 +41,43 @@ struct AppConfiguration: Sendable {
         self.merchantWebURL = merchantWebURL
     }
 
-    static let live = AppConfiguration(
-        rpcURL: URL(string: Deployment.rpcURL)!,
-        chainID: Deployment.chainID,
-        chainName: "Arc Testnet",
-        escrowAddress: EthereumAddress(trusted: Deployment.escrow),
-        policyRegistryAddress: EthereumAddress(trusted: Deployment.policyRegistry),
-        settlementVaultAddress: EthereumAddress(trusted: Deployment.settlementVault),
-        usdcAddress: EthereumAddress(trusted: Deployment.usdc),
-        fxRouterAddress: Deployment.fxRouter.map { EthereumAddress(trusted: $0) },
-        eurcAddress: Deployment.eurc.map { EthereumAddress(trusted: $0) },
-        apiURL: defaultAPIURL,
-        merchantWebURL: defaultMerchantWebURL
-    )
+    /// The chain this call is for.
+    ///
+    /// Computed rather than a constant, because Settings can point the app at another
+    /// chain and every address, endpoint and service URL moves together when it does.
+    /// Reading it is cheap: it is one UserDefaults lookup and a lookup in a table the
+    /// build carries.
+    static var live: AppConfiguration { of(Deployment.current) }
 
-    // Default to the live backend, not localhost: scheme env vars only inject when Xcode
-    // launches the app, so a device install / TestFlight / Release build would otherwise
-    // fall back to 127.0.0.1 (the phone itself) and every API call fails. RECOURSE_API_URL
-    // still overrides for local development.
-    private static let defaultAPIURL = URL(
-        string: ProcessInfo.processInfo.environment["RECOURSE_API_URL"]
-            ?? "https://api.frankolien.com"
-    )!
+    static func of(_ book: ChainBook) -> AppConfiguration {
+        AppConfiguration(
+            rpcURL: URL(string: book.rpcURL)!,
+            chainID: book.chainID,
+            chainName: book.name,
+            escrowAddress: EthereumAddress(trusted: book.escrow),
+            policyRegistryAddress: EthereumAddress(trusted: book.policyRegistry),
+            settlementVaultAddress: EthereumAddress(trusted: book.settlementVault),
+            usdcAddress: EthereumAddress(trusted: book.usdc),
+            fxRouterAddress: book.fxRouter.map { EthereumAddress(trusted: $0) },
+            eurcAddress: book.eurc.map { EthereumAddress(trusted: $0) },
+            apiURL: apiURL(for: book),
+            merchantWebURL: defaultMerchantWebURL
+        )
+    }
+
+    // Each chain has its own service, because each has its own database and its own
+    // sessions. Default to the deployed one rather than localhost: scheme env vars only
+    // inject when Xcode launches the app, so a device install, a TestFlight build or a
+    // Release build would otherwise fall back to 127.0.0.1, which is the phone itself,
+    // and every call would fail. RECOURSE_API_URL still overrides for local work, and
+    // overrides whichever chain is selected, which is what local work wants.
+    private static func apiURL(for book: ChainBook) -> URL {
+        if let override = ProcessInfo.processInfo.environment["RECOURSE_API_URL"],
+           let url = URL(string: override) {
+            return url
+        }
+        return URL(string: book.apiURL)!
+    }
 
     private static let defaultMerchantWebURL = URL(
         string: ProcessInfo.processInfo.environment["RECOURSE_MERCHANT_URL"]

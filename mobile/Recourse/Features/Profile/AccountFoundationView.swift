@@ -16,6 +16,9 @@ struct AccountFoundationView: View {
     @State private var handle: String?
     @State private var copiedAddress = false
     @State private var presentedWebPage: WebPageLink?
+    /// The chain a tap proposed, held until it is confirmed, because switching signs
+    /// the person out of an account and into a different one.
+    @State private var pendingNetwork: ChainBook?
     @Environment(\.openURL) private var openURL
 
     private var configuration: AppConfiguration { environment.configuration }
@@ -125,6 +128,7 @@ struct AccountFoundationView: View {
                         row("Terms", "doc.text.fill", tint: Color(red: 0.45, green: 0.47, blue: 0.50))
                     }
                     .buttonStyle(.plain)
+                    networkRow
                     Button {
                         Task {
                             await accountSession.signOut()
@@ -220,6 +224,61 @@ struct AccountFoundationView: View {
                 .padding(.top, 30)
                 .padding(.bottom, 6)
             content()
+        }
+    }
+
+    /// Which chain this session is on, and the way to change it.
+    ///
+    /// It sits next to Sign out because it does the same thing and more. The account on
+    /// the other chain is a different Safe holding different money behind a different
+    /// service, so there is nothing to carry across and pretending otherwise would show
+    /// someone a balance that is not theirs. The dialog says that in those words rather
+    /// than asking "are you sure".
+    @ViewBuilder
+    private var networkRow: some View {
+        let selection = NetworkSelection.shared
+        if selection.canSwitch {
+            Button {
+                pendingNetwork = selection.alternatives.first
+            } label: {
+                row(
+                    "Network",
+                    selection.isTestnet ? "testtube.2" : "globe",
+                    tint: selection.isTestnet
+                        ? Color(red: 0.85, green: 0.60, blue: 0.20)
+                        : Color(red: 0.13, green: 0.60, blue: 0.40),
+                    value: selection.current.name
+                )
+            }
+            .buttonStyle(.plain)
+            .confirmationDialog(
+                pendingNetwork.map { "Switch to \($0.name)?" } ?? "Switch network?",
+                isPresented: Binding(get: { pendingNetwork != nil }, set: { if !$0 { pendingNetwork = nil } }),
+                titleVisibility: .visible
+            ) {
+                if let target = pendingNetwork {
+                    Button("Switch to \(target.name)") {
+                        Task {
+                            // Sign out first. The session belongs to the service for the
+                            // chain being left, and it is worth nothing to the next one.
+                            await accountSession.signOut()
+                            NetworkSelection.shared.select(target)
+                            hasCompletedOnboarding = false
+                            storedWorkspaceRole = ""
+                            pendingNetwork = nil
+                        }
+                    }
+                    Button("Cancel", role: .cancel) { pendingNetwork = nil }
+                }
+            } message: {
+                if let target = pendingNetwork {
+                    Text(
+                        target.isTestnet
+                            ? "You will be signed out and set up again on \(target.name), where the dollars are test dollars. Your account on \(NetworkSelection.shared.current.name) stays where it is."
+                            : "You will be signed out and set up again on \(target.name), where the dollars are real. Your account on \(NetworkSelection.shared.current.name) stays where it is."
+                    )
+                }
+            }
         }
     }
 

@@ -38,10 +38,17 @@ struct SnapshotCache: Sendable {
 
     // The scope is an account identifier from the sign-in provider, so it is hashed
     // into a folder name rather than written into the file system as it is.
+    //
+    // The chain is hashed in beside it. One person is the same account on Arc testnet
+    // and on Arc mainnet, so without this their play balance and their real balance
+    // would share a file and whichever wrote last would be read as both. Partitioning
+    // here rather than at every call site means no store had to learn that the chain
+    // can move, and switching back finds what that chain last knew instead of nothing.
     private func url(key: String, scope: String?) -> URL {
-        let folder = scope.map { scope in
-            SHA256.hash(data: Data(scope.utf8)).prefix(12).map { String(format: "%02x", $0) }.joined()
-        } ?? "anonymous"
+        let folder = scope.map { scope -> String in
+            let scoped = "\(Deployment.chainID):\(scope)"
+            return SHA256.hash(data: Data(scoped.utf8)).prefix(12).map { String(format: "%02x", $0) }.joined()
+        } ?? "anonymous-\(Deployment.chainID)"
         return root.appending(path: folder, directoryHint: .isDirectory).appending(path: "\(key).json")
     }
 }

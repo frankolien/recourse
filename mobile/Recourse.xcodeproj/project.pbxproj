@@ -124,6 +124,7 @@
 		BCAFCDAD9B6628B7383083F30BB4279C /* SendWorkflowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03DFDEA06CF37EC80F49377D4F7E5FE5 /* SendWorkflowTests.swift */; };
 		BCC45AE77F9C49FA79DD4C57FFD08E0F /* DepositSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6189AC026A039E11F8910C86016500AD /* DepositSheet.swift */; };
 		BE305A1628D0F5C9E8A95F9F38F88DFD /* FXQuoteTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C9FBEA6A3F28503B63D572870202545 /* FXQuoteTests.swift */; };
+		5FEED15A4F1877A97766AE0C184011D0 /* NetworkSelectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4304B50DD194E86721FF6EC0B59E2DE8 /* NetworkSelectionTests.swift */; };
 		BE314A313078BA79FE7A90EF4D2206FA /* SecuritySettingsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C747229C1E7022FE6F2E1D5C9CE9EF5 /* SecuritySettingsViews.swift */; };
 		BFFEFBE33A09D3FDBC6B8B380C9CBCF2 /* ArcLiveReadTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F067327B883EC8A5F89B756C8120B3FE /* ArcLiveReadTests.swift */; };
 		C09944A8992F5076610DADAA503FF381 /* PendingRecoveryBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FF00273C696638871FE2925EF4E223F /* PendingRecoveryBanner.swift */; };
@@ -154,6 +155,7 @@
 		E2AC821C245BA4E3063347BEAB8D49F8 /* OlienSigningTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EDBEBF8AB1D5422220A93DC8F0A9EEB /* OlienSigningTests.swift */; };
 		E2BE5BC2E5842AB8347F2608CEB030BC /* SupportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AC12AC988DB6F619F7CB1780EC0F21A /* SupportView.swift */; };
 		E34FB7FC07C37C52A9C7E8319D990EE1 /* AppConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A7DB497A016570C106F83F51C1D48F3 /* AppConfiguration.swift */; };
+		CA8504377E00B4EF96914E4C9ABC002F /* NetworkSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 171F87CA65B6AD5D498BAAB10667DDDB /* NetworkSelection.swift */; };
 		E372E674B2E57A32F3B4A99E6F9D7F95 /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FEFD9B34DB395F401252D46D318AFD7 /* AppEnvironment.swift */; };
 		E46D4B0560846AF593B7A4E0E2AA6024 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 461E2A2E3C422B764B056DAFBD485F46 /* Foundation.framework */; };
 		E629A09F99DD680D1DAB960A10B0DA96 /* ArcContractGateway.swift in Sources */ = {isa = PBXBuildFile; fileRef = 562ACCC7779959DE87E87A569A6AA64C /* ArcContractGateway.swift */; };
@@ -279,6 +281,7 @@
 		694EE08219C9534369D9FF6FC2204F1A /* ArcContractReader.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ArcContractReader.swift; sourceTree = "<group>"; };
 		69E23DD6CDA8EACBF54108EA6C27F4A4 /* NewInvoiceView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NewInvoiceView.swift; sourceTree = "<group>"; };
 		6A7DB497A016570C106F83F51C1D48F3 /* AppConfiguration.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppConfiguration.swift; sourceTree = "<group>"; };
+		171F87CA65B6AD5D498BAAB10667DDDB /* NetworkSelection.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NetworkSelection.swift; sourceTree = "<group>"; };
 		6AC12AC988DB6F619F7CB1780EC0F21A /* SupportView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SupportView.swift; sourceTree = "<group>"; };
 		6C28830324E09D3513FFEF3EFDF8604F /* SafeSigningTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SafeSigningTests.swift; sourceTree = "<group>"; };
 		6D03F4EE8B6A902CDDB9F5821F68F024 /* PasskeyCoordinator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PasskeyCoordinator.swift; sourceTree = "<group>"; };
@@ -295,6 +298,7 @@
 		80AB889D73F213B9B1DDF4690117EE90 /* ArcContractWriterTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ArcContractWriterTests.swift; sourceTree = "<group>"; };
 		85E8BAD5FC9FE64359EEBE942601940E /* EarnView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EarnView.swift; sourceTree = "<group>"; };
 		8C9FBEA6A3F28503B63D572870202545 /* FXQuoteTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FXQuoteTests.swift; sourceTree = "<group>"; };
+		4304B50DD194E86721FF6EC0B59E2DE8 /* NetworkSelectionTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NetworkSelectionTests.swift; sourceTree = "<group>"; };
 		8D812B003E76962DDAEA7CC42B272B37 /* AccountSessionTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AccountSessionTests.swift; sourceTree = "<group>"; };
 		8E9801784BAA9F7BBFF655D03632F7FB /* PushBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PushBridge.swift; sourceTree = "<group>"; };
 		907BD0CD7B50B317BF066252D52CA467 /* BridgeDepositView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BridgeDepositView.swift; sourceTree = "<group>"; };
@@ -685,6 +689,7 @@
 				96ABB383361B7BD695D3C7A5828BEE68 /* EarnLedgerTests.swift */,
 				CF5821F823F4FEB23ADA969CA75BFEB5 /* EvidenceAPIClientTests.swift */,
 				8C9FBEA6A3F28503B63D572870202545 /* FXQuoteTests.swift */,
+				4304B50DD194E86721FF6EC0B59E2DE8 /* NetworkSelectionTests.swift */,
 				5774A9D02A9F6E196C03B5F1E14265F5 /* HandleAPIClientTests.swift */,
 				4298EE296D27B301D68281401319BA37 /* InvoiceWorkflowTests.swift */,
 				7F51ED7CF73AFA1EC4034B72C154FE7D /* KeychainStoreTests.swift */,
@@ -843,6 +848,7 @@
 			isa = PBXGroup;
 			children = (
 				6A7DB497A016570C106F83F51C1D48F3 /* AppConfiguration.swift */,
+				171F87CA65B6AD5D498BAAB10667DDDB /* NetworkSelection.swift */,
 			);
 			name = Config;
 			path = Config;
@@ -1177,6 +1183,7 @@
 				D14E910EFF7734138E44DDE85CDB4BEF /* SafeSubmitter.swift in Sources */,
 				CBBF7C89BC4D78B31676881FAE932314 /* UnsignedTransaction.swift in Sources */,
 				E34FB7FC07C37C52A9C7E8319D990EE1 /* AppConfiguration.swift in Sources */,
+				CA8504377E00B4EF96914E4C9ABC002F /* NetworkSelection.swift in Sources */,
 				24B49C0354E457CD14E63696384B93CB /* AmountKeypad.swift in Sources */,
 				B942C26C5CDA62745FEFBE8C926D04F7 /* BrandMark.swift in Sources */,
 				FC8938D086D656396724A71C4BD70E2D /* HeroAmbientMotes.swift in Sources */,
@@ -1276,6 +1283,7 @@
 				11F23CEA7DC724D4760F71F15F53E574 /* EarnLedgerTests.swift in Sources */,
 				5372250F9438D95B5B965ED705146162 /* EvidenceAPIClientTests.swift in Sources */,
 				BE305A1628D0F5C9E8A95F9F38F88DFD /* FXQuoteTests.swift in Sources */,
+				5FEED15A4F1877A97766AE0C184011D0 /* NetworkSelectionTests.swift in Sources */,
 				963C3CDCE0FAE410EE8823FA6610B11B /* HandleAPIClientTests.swift in Sources */,
 				F99F369723F77DBE0F7F45E337E283C0 /* InvoiceWorkflowTests.swift in Sources */,
 				E7BD659F8F1FF2AD997772B5725C2418 /* KeychainStoreTests.swift in Sources */,
