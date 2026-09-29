@@ -48,8 +48,10 @@ final class TeamStore {
         session: AccountSession,
         smartAccounts: SmartAccountStore,
         api: any OlienAPI,
-        makeSubmitter: @escaping @MainActor () -> (any ArcSubmitter)?
+        makeSubmitter: @escaping @MainActor () -> (any ArcSubmitter)?,
+        cache: SnapshotCache
     ) {
+        self.cache = cache
         self.configuration = configuration
         self.session = session
         self.smartAccounts = smartAccounts
@@ -92,7 +94,7 @@ final class TeamStore {
     /// every ten seconds; the Team screens pass `force` and get it every time.
     private static let minimumInterval: TimeInterval = 45
 
-    private let cache = SnapshotCache.shared
+    private let cache: SnapshotCache
     private static let snapshotKey = "team"
 
     private struct Snapshot: Codable {

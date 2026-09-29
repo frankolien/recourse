@@ -9,7 +9,7 @@ struct EarnView: View {
     let environment: AppEnvironment
 
     @State private var vaultState: VaultState?
-    @State private var ledger = EarnLedger.load()
+    @State private var ledger = EarnLedger()
     @State private var loadError: String?
     @State private var showsProduct = false
     @State private var action: EarnAction?
@@ -112,17 +112,17 @@ struct EarnView: View {
     /// position on screen and says the figures are old.
     private func load() async {
         if vaultState == nil {
-            vaultState = SnapshotCache.shared.load(VaultState.self, key: "earn", scope: ActiveAccount.scope)
+            vaultState = environment.cache.load(VaultState.self, key: "earn", scope: ActiveAccount.scope)
         }
-        ledger = EarnLedger.load()
+        ledger = EarnLedger.load(cache: environment.cache)
         do {
             let owner = try await environment.buyerSigner.address()
             let gateway = try environment.makeContractGateway()
             let state = try await gateway.vaultState(of: owner)
             vaultState = state
-            SnapshotCache.shared.save(state, key: "earn", scope: ActiveAccount.scope)
+            environment.cache.save(state, key: "earn", scope: ActiveAccount.scope)
             ledger.record(price: state.sharePrice)
-            ledger.save()
+            ledger.save(cache: environment.cache)
             loadError = nil
         } catch {
             loadError = vaultState == nil
@@ -875,7 +875,7 @@ private struct EarnActionView: View {
         Task {
             do {
                 let gateway = try environment.makeContractGateway()
-                var ledger = EarnLedger.load()
+                var ledger = EarnLedger.load(cache: environment.cache)
                 switch mode {
                 case .deposit:
                     stage = "Approving USDC"
@@ -898,7 +898,7 @@ private struct EarnActionView: View {
                     }
                     ledger.noteWithdrawal(amount)
                 }
-                ledger.save()
+                ledger.save(cache: environment.cache)
                 await environment.paymentStore.refreshBuyer()
                 await onFinished()
                 succeeded = true

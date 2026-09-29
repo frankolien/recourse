@@ -140,14 +140,14 @@ struct HomeView: View {
             // One live snapshot for the Earn teaser; the Earn screen itself
             // refreshes on every visit.
             if earnVaultState == nil {
-                earnVaultState = SnapshotCache.shared.load(VaultState.self, key: "earn", scope: ActiveAccount.scope)
+                earnVaultState = environment.cache.load(VaultState.self, key: "earn", scope: ActiveAccount.scope)
             }
             guard let owner = try? await environment.buyerSigner.address(),
                   let gateway = try? environment.makeContractGateway() else { return }
             // A read that fails keeps the last position on screen rather than hiding it.
             if let state = try? await gateway.vaultState(of: owner) {
                 earnVaultState = state
-                SnapshotCache.shared.save(state, key: "earn", scope: ActiveAccount.scope)
+                environment.cache.save(state, key: "earn", scope: ActiveAccount.scope)
             }
         }
     }

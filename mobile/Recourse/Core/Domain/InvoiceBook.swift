@@ -61,8 +61,10 @@ final class InvoiceBook {
     init(
         accountSession: AccountSession,
         api: any InvoiceAPI,
-        makeGateway: @escaping () throws -> any ContractGateway
+        makeGateway: @escaping () throws -> any ContractGateway,
+        cache: SnapshotCache
     ) {
+        self.cache = cache
         self.accountSession = accountSession
         self.api = api
         self.makeGateway = makeGateway
@@ -105,7 +107,7 @@ final class InvoiceBook {
     /// as the cheque book: every unsettled invoice costs a chain read.
     private static let minimumInterval: TimeInterval = 45
 
-    private let cache = SnapshotCache.shared
+    private let cache: SnapshotCache
     private static let snapshotKey = "invoices"
 
     private struct Snapshot: Codable {

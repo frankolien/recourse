@@ -14,6 +14,10 @@ struct AppConfiguration: Sendable {
     let eurcAddress: EthereumAddress?
     let apiURL: URL
     let merchantWebURL: URL
+    /// Where history is read from. Nil on a chain whose explorer an app cannot query.
+    let explorerAPIURL: URL?
+    /// Where a transaction link opens for a person.
+    let explorerPageURL: URL
 
     init(
         rpcURL: URL,
@@ -26,7 +30,9 @@ struct AppConfiguration: Sendable {
         fxRouterAddress: EthereumAddress? = nil,
         eurcAddress: EthereumAddress? = nil,
         apiURL: URL = AppConfiguration.apiURL(for: Deployment.current),
-        merchantWebURL: URL = AppConfiguration.defaultMerchantWebURL
+        merchantWebURL: URL = AppConfiguration.defaultMerchantWebURL,
+        explorerAPIURL: URL? = Deployment.current.explorerAPIURL.flatMap(URL.init(string:)),
+        explorerPageURL: URL = URL(string: Deployment.current.explorerPageURL)!
     ) {
         self.rpcURL = rpcURL
         self.chainID = chainID
@@ -39,6 +45,8 @@ struct AppConfiguration: Sendable {
         self.eurcAddress = eurcAddress
         self.apiURL = apiURL
         self.merchantWebURL = merchantWebURL
+        self.explorerAPIURL = explorerAPIURL
+        self.explorerPageURL = explorerPageURL
     }
 
     /// The chain this call is for.
@@ -61,7 +69,9 @@ struct AppConfiguration: Sendable {
             fxRouterAddress: book.fxRouter.map { EthereumAddress(trusted: $0) },
             eurcAddress: book.eurc.map { EthereumAddress(trusted: $0) },
             apiURL: apiURL(for: book),
-            merchantWebURL: defaultMerchantWebURL
+            merchantWebURL: defaultMerchantWebURL,
+            explorerAPIURL: book.explorerAPIURL.flatMap(URL.init(string:)),
+            explorerPageURL: URL(string: book.explorerPageURL)!
         )
     }
 
@@ -97,16 +107,17 @@ struct AppConfiguration: Sendable {
     // initiated. The RPC could answer the same question through eth_getLogs, but the
     // public endpoint caps log queries at ten thousand entries and carries no
     // timestamps, so the explorer is the honest source for a history.
-    static let explorerURL = URL(
-        string: ProcessInfo.processInfo.environment["RECOURSE_EXPLORER_URL"]
-            ?? "https://testnet.arcscan.app"
-    )!
-
-    /// The bundler that carries the account's operations. Pimlico's public endpoint on
-    /// testnet; a keyed endpoint on mainnet.
-    static let bundlerURL = URL(
-        string: ProcessInfo.processInfo.environment["RECOURSE_BUNDLER_URL"] ?? "https://public.pimlico.io/v2/5042002/rpc"
-    )!
+    /// The bundler that carries the account's operations. Pimlico's public endpoint
+    /// names the chain in its path, so this is a fact about the chain rather than a
+    /// constant: the testnet endpoint would accept a mainnet operation's bytes and
+    /// submit them to the wrong chain. RECOURSE_BUNDLER_URL still overrides for local
+    /// work, and overrides whichever chain is selected.
+    var bundlerURL: URL {
+        if let override = ProcessInfo.processInfo.environment["RECOURSE_BUNDLER_URL"], let url = URL(string: override) {
+            return url
+        }
+        return URL(string: "https://public.pimlico.io/v2/\(chainID)/rpc")!
+    }
 
     // Same inbox the web support page publishes; the settings screen builds
     // mailto links from it.

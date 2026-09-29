@@ -23,11 +23,11 @@ struct EarnLedger: Codable, Equatable {
     private static let pointSpacing: TimeInterval = 6 * 3600
     private static let maxPoints = 120
 
-    static func load(cache: SnapshotCache = .shared) -> EarnLedger {
+    static func load(cache: SnapshotCache) -> EarnLedger {
         cache.load(EarnLedger.self, key: key, scope: ActiveAccount.scope) ?? EarnLedger()
     }
 
-    func save(cache: SnapshotCache = .shared) {
+    func save(cache: SnapshotCache) {
         cache.save(self, key: Self.key, scope: ActiveAccount.scope)
     }
 

@@ -122,7 +122,7 @@ struct ActivityView: View {
                 entry: entry,
                 counterpartyName: name(for: entry),
                 network: environment.configuration.chainName,
-                explorerURL: AppConfiguration.explorerURL.appending(path: "tx/\(entry.transfer.hash)"),
+                explorerURL: environment.configuration.explorerPageURL.appending(path: "tx/\(entry.transfer.hash)"),
                 isUSDC: entry.transfer.token == usdcAddress
             )
             .presentationDragIndicator(.visible)

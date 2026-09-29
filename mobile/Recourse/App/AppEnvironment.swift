@@ -6,6 +6,9 @@ import WidgetKit
 @Observable
 final class AppEnvironment {
     let configuration: AppConfiguration
+    /// This chain's cache. Every store below is handed this one, so a store that
+    /// outlives a chain switch keeps writing where it belongs.
+    let cache: SnapshotCache
     let router: AppRouter
     let accountSession: AccountSession
     let buyerSigner: any BuyerSigner
@@ -35,13 +38,16 @@ final class AppEnvironment {
     ) {
         self.configuration = configuration
         self.router = router
+        let cache = SnapshotCache(chainID: configuration.chainID)
+        self.cache = cache
         // Whatever key is handed in is the Cloud Key; the Safe wraps it once it exists.
         let switchable = SwitchableSigner(cloud: buyerSigner ?? TestnetLocalSigner())
         self.switchableSigner = switchable
         self.buyerSigner = switchable
         self.paymentStore = paymentStore ?? BuyerPaymentStore(
             configuration: configuration,
-            signer: self.buyerSigner
+            signer: self.buyerSigner,
+            cache: cache
         )
         self.accountSession = accountSession ?? AccountSession(
             api: AccountAPIClient(baseURL: configuration.apiURL)
@@ -64,17 +70,22 @@ final class AppEnvironment {
             configuration: configuration,
             accountSession: self.accountSession,
             api: ChequeAPIClient(baseURL: configuration.apiURL),
-            makeGateway: gateway
+            makeGateway: gateway,
+            cache: cache
         )
         invoiceBook = InvoiceBook(
             accountSession: self.accountSession,
             api: InvoiceAPIClient(baseURL: configuration.apiURL),
-            makeGateway: gateway
+            makeGateway: gateway,
+            cache: cache
         )
+        // No API on a chain whose explorer refuses apps, and then history says so
+        // rather than asking the wrong chain about this address.
         transferHistory = TransferHistory(
             configuration: configuration,
             signer: self.buyerSigner,
-            explorer: ArcscanClient(baseURL: AppConfiguration.explorerURL)
+            explorer: configuration.explorerAPIURL.map { ArcscanClient(baseURL: $0) },
+            cache: cache
         )
         push = PushCoordinator(
             session: self.accountSession,
@@ -88,7 +99,8 @@ final class AppEnvironment {
             session: self.accountSession,
             smartAccounts: self.smartAccounts,
             api: OlienAPIClient(baseURL: configuration.apiURL),
-            makeSubmitter: { [weak self] in self?.makeSubmitter() }
+            makeSubmitter: { [weak self] in self?.makeSubmitter() },
+            cache: cache
         )
     }
 
@@ -106,7 +118,7 @@ final class AppEnvironment {
         guard let safeSigner = smartAccounts.safeSigner else { return nil }
         return SafeSubmitter(
             signer: safeSigner,
-            bundler: HTTPBundlerClient(url: AppConfiguration.bundlerURL),
+            bundler: HTTPBundlerClient(url: configuration.bundlerURL),
             rpc: HTTPArcRPCTransport(rpcURL: configuration.rpcURL),
             chainID: configuration.chainID
         )
@@ -238,7 +250,7 @@ final class BuyerPaymentStore {
     private(set) var isLoading = false
     private(set) var errorMessage: String?
     private(set) var lastUpdated: Date?
-    private let cache = SnapshotCache.shared
+    private let cache: SnapshotCache
 
     private struct BalanceSnapshot: Codable {
         let baseUnits: UInt64
@@ -250,11 +262,13 @@ final class BuyerPaymentStore {
     init(
         configuration: AppConfiguration = .live,
         signer: any BuyerSigner = TestnetLocalSigner(),
-        session: URLSession = .shared
+        session: URLSession = .shared,
+        cache: SnapshotCache? = nil
     ) {
         self.configuration = configuration
         self.signer = signer
         self.session = session
+        self.cache = cache ?? SnapshotCache(chainID: configuration.chainID)
     }
 
     // What the buyer actually bought, remembered per payment at pay time. The indexer
@@ -277,7 +291,10 @@ final class BuyerPaymentStore {
     // Scoped to the signed-in account: what someone bought is theirs, and two
     // accounts sharing a device must not read each other's purchase history.
     private var orderContextKey: String {
-        ActiveAccount.scope.map { "recourse.buyer.orderContext.\($0)" } ?? "recourse.buyer.orderContext"
+        let base = configuration.chainID == Deployment.primary.chainID
+            ? "recourse.buyer.orderContext"
+            : "recourse.buyer.orderContext.\(configuration.chainID)"
+        return ActiveAccount.scope.map { "\(base).\($0)" } ?? base
     }
 
     private var orderContexts: [UInt64: OrderContext] {
@@ -376,6 +393,7 @@ final class BuyerPaymentStore {
     private func readBalance(of address: EthereumAddress) async {
         do {
             let fresh = try await fetchBalances(address: address)
+            guard loadedAccountScope == ActiveAccount.scope else { return }
             let now = Date()
             balance = fresh.usdc
             eurcBalance = fresh.eurc
@@ -384,7 +402,7 @@ final class BuyerPaymentStore {
             cache.save(
                 BalanceSnapshot(baseUnits: fresh.usdc.baseUnits, updatedAt: now, eurcBaseUnits: fresh.eurc?.baseUnits),
                 key: "balance",
-                scope: ActiveAccount.scope
+                scope: loadedAccountScope
             )
         } catch {
             balanceIsStale = true
@@ -497,8 +515,25 @@ final class BuyerPaymentStore {
             signer: signer
         )
         let usdc = try await gateway.usdcBalance(of: address)
-        let eurc = (try? await gateway.eurcBalance(of: address)) ?? eurcBalance
+        let euroRead: Result<EURCAmount?, any Error>
+        do { euroRead = .success(try await gateway.eurcBalance(of: address)) } catch { euroRead = .failure(error) }
+        let eurc = Self.euros(read: euroRead, chainHasEURC: configuration.eurcAddress != nil, previous: eurcBalance)
         return (usdc, eurc)
+    }
+
+    /// What the euro figure becomes after a read.
+    ///
+    /// A chain without EURC has no euros, and the reader says so by answering nil. That
+    /// nil is an answer, not a failure, and must not fall back to whatever was on
+    /// screen, because the figure on screen came from the last chain that had euros.
+    /// Only a read that actually failed keeps the previous figure, and only on a chain
+    /// that has euros to read. This was the bug that showed testnet euros on mainnet.
+    nonisolated static func euros(read: Result<EURCAmount?, any Error>, chainHasEURC: Bool, previous: EURCAmount?) -> EURCAmount? {
+        guard chainHasEURC else { return nil }
+        switch read {
+        case .success(let value): return value
+        case .failure: return previous
+        }
     }
 
     private func decode<Value: Decodable>(_ type: Value.Type, from url: URL) async throws -> Value {

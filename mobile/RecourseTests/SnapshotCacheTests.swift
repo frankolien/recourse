@@ -14,7 +14,7 @@ final class SnapshotCacheTests: XCTestCase {
     }
 
     func testASnapshotRoundTripsAndStaysWithItsAccount() {
-        let cache = SnapshotCache(root: root)
+        let cache = SnapshotCache(chainID: 5042002, root: root)
         let transfer = TokenTransfer(hash: "0xabc", blockNumber: 7, timestamp: Date(timeIntervalSince1970: 1_700_000_000),
                                      from: "0xaa", to: "0xbb", value: 1_250_000, token: "0xusdc", symbol: "USDC", method: "transfer")
 
@@ -32,7 +32,7 @@ final class SnapshotCacheTests: XCTestCase {
     func testHistoryKeepsItsRowsWhenTheExplorerFails() async {
         let scope = signIn()
         defer { ActiveAccount.set(nil) }
-        let cache = SnapshotCache(root: root)
+        let cache = SnapshotCache(chainID: 5042002, root: root)
         let explorer = ScriptedExplorer(answers: [.success([transfer()]), .failure(ExplorerAPIError.invalidResponse)])
         let history = TransferHistory(configuration: .live, signer: FixtureSigner(), explorer: explorer, cache: cache)
 
@@ -51,7 +51,7 @@ final class SnapshotCacheTests: XCTestCase {
     func testAFreshHistoryOpensOnItsSnapshotBeforeTheNetworkAnswers() async {
         _ = signIn()
         defer { ActiveAccount.set(nil) }
-        let cache = SnapshotCache(root: root)
+        let cache = SnapshotCache(chainID: 5042002, root: root)
         let first = TransferHistory(configuration: .live, signer: FixtureSigner(), explorer: ScriptedExplorer(answers: [.success([transfer()])]), cache: cache)
         await first.refresh(force: true)
 
@@ -67,7 +67,7 @@ final class SnapshotCacheTests: XCTestCase {
     @MainActor
     func testAnotherAccountNeverSeesTheLastPersonsRows() async {
         _ = signIn(id: "one")
-        let cache = SnapshotCache(root: root)
+        let cache = SnapshotCache(chainID: 5042002, root: root)
         let history = TransferHistory(configuration: .live, signer: FixtureSigner(), explorer: ScriptedExplorer(answers: [.success([transfer()]), .failure(ExplorerAPIError.invalidResponse)]), cache: cache)
         await history.refresh(force: true)
         XCTAssertEqual(history.transfers.count, 1)

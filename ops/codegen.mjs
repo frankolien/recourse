@@ -45,11 +45,20 @@ const CHAINS = [
     rpcUrl: arcConfig.rpcUrl,
     apiUrl: "https://api.frankolien.com",
     fxFile: "deployments/arc-testnet-fx.json",
+    // arcscan runs Blockscout, whose v2 API the app reads history from.
+    explorerAPIUrl: "https://testnet.arcscan.app",
+    explorerPageUrl: "https://testnet.arcscan.app",
   },
   {
     file: "deployments/5042.json",
     name: "Arc",
     apiUrl: "https://recourse-arc-mainnet-production.up.railway.app",
+    // explorer.arc.io is the official explorer and it answers an app with a
+    // Cloudflare challenge page, checked 2026-09-29, so it can be linked to from a
+    // browser but not queried. No API means history says it is unavailable here
+    // rather than asking testnet's explorer about a mainnet address.
+    explorerAPIUrl: null,
+    explorerPageUrl: "https://explorer.arc.io",
   },
 ];
 
@@ -76,6 +85,8 @@ const books = CHAINS.map((chain) => {
     fxRouter: fx?.router ?? null,
     eurc: fx?.eurc ?? null,
     fxPublic: fx?.public === true,
+    explorerAPIURL: chain.explorerAPIUrl ?? null,
+    explorerPageURL: chain.explorerPageUrl,
   };
 });
 
@@ -99,7 +110,9 @@ const bookLiteral = (b) =>
     `            olienFactory: ${str(b.olienFactory)},`,
     `            fxRouter: ${str(b.fxRouter)},`,
     `            eurc: ${str(b.eurc)},`,
-    `            fxPublic: ${b.fxPublic}`,
+    `            fxPublic: ${b.fxPublic},`,
+    `            explorerAPIURL: ${str(b.explorerAPIURL)},`,
+    `            explorerPageURL: ${JSON.stringify(b.explorerPageURL)}`,
     "        )",
   ].join("\n");
 
@@ -138,6 +151,11 @@ const swift = [
   "    /// A venue can be deployed and still refuse every ordinary amount, which is",
   "    /// worse than not offering one, so this is separate from whether it exists.",
   "    let fxPublic: Bool",
+  "    /// A Blockscout instance history can be read from. Nil where the chain's",
+  "    /// explorer cannot be queried by an app, and then history says so.",
+  "    let explorerAPIURL: String?",
+  "    /// Where a transaction link opens. A browser can pass a challenge an app cannot.",
+  "    let explorerPageURL: String",
   "",
   "    var id: UInt64 { chainID }",
   "    /// Arc mainnet is the only chain here where the dollars are dollars.",

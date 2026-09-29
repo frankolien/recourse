@@ -56,8 +56,10 @@ final class ChequeBook {
         configuration: AppConfiguration,
         accountSession: AccountSession,
         api: any ChequeAPI,
-        makeGateway: @escaping () throws -> any ContractGateway
+        makeGateway: @escaping () throws -> any ContractGateway,
+        cache: SnapshotCache
     ) {
+        self.cache = cache
         self.configuration = configuration
         self.accountSession = accountSession
         self.api = api
@@ -112,7 +114,7 @@ final class ChequeBook {
     /// refresh passes `force` and waits for nobody.
     private static let minimumInterval: TimeInterval = 45
 
-    private let cache = SnapshotCache.shared
+    private let cache: SnapshotCache
     private static let snapshotKey = "cheques"
 
     private struct Snapshot: Codable {

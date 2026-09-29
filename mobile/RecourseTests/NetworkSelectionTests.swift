@@ -54,27 +54,35 @@ final class NetworkSelectionTests: XCTestCase {
     /// last is read as both.
     func testOneAccountGetsADifferentCacheOnEachChain() throws {
         let root = URL(fileURLWithPath: NSTemporaryDirectory()).appending(path: UUID().uuidString)
-        let cache = SnapshotCache(root: root)
+        defer { try? FileManager.default.removeItem(at: root) }
         let account = "the-same-person"
+        let testnet = SnapshotCache(chainID: 5042002, root: root)
+        let mainnet = SnapshotCache(chainID: 5042, root: root)
 
-        let defaults = freshDefaults()
-        let testnet = Deployment.books.first { $0.isTestnet }!
-        let mainnet = Deployment.books.first { !$0.isTestnet }!
+        testnet.save(["balance": "1000000"], key: "wallet", scope: account)
+        mainnet.save(["balance": "5"], key: "wallet", scope: account)
 
-        NetworkStore.store(testnet, in: .standard)
-        cache.save(["balance": "1000000"], key: "wallet", scope: account)
-        NetworkStore.store(mainnet, in: .standard)
-        cache.save(["balance": "5"], key: "wallet", scope: account)
+        XCTAssertEqual(mainnet.load([String: String].self, key: "wallet", scope: account)?["balance"], "5")
+        XCTAssertEqual(testnet.load([String: String].self, key: "wallet", scope: account)?["balance"], "1000000",
+                       "switching back finds what that chain knew")
+    }
 
-        let onMainnet = cache.load([String: String].self, key: "wallet", scope: account)
-        XCTAssertEqual(onMainnet?["balance"], "5")
-        NetworkStore.store(testnet, in: .standard)
-        let onTestnet = cache.load([String: String].self, key: "wallet", scope: account)
-        XCTAssertEqual(onTestnet?["balance"], "1000000", "switching back finds what that chain knew")
+    /// The race that put testnet euros on mainnet. A store built for one chain is still
+    /// finishing a read when the person switches; when it writes, it must write under
+    /// the chain it was built for, not the one the app is on now. The cache carries its
+    /// chain from construction, so where it writes cannot depend on when it writes.
+    func testAStoreThatOutlivesASwitchStillWritesToItsOwnChain() {
+        let root = URL(fileURLWithPath: NSTemporaryDirectory()).appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let account = "the-same-person"
+        let oldStoresCache = SnapshotCache(chainID: 5042002, root: root)
+        let newStoresCache = SnapshotCache(chainID: 5042, root: root)
 
-        UserDefaults.standard.removeObject(forKey: NetworkStore.key)
-        _ = defaults
-        try? FileManager.default.removeItem(at: root)
+        // The switch happens, then the old store's read lands and it saves.
+        oldStoresCache.save(["eurc": "20000000"], key: "balance", scope: account)
+
+        XCTAssertNil(newStoresCache.load([String: String].self, key: "balance", scope: account),
+                     "the new chain must not see the old chain's late write")
     }
 }
 

@@ -186,7 +186,7 @@ enum BalanceSeries {
 final class TransferHistory {
     private let configuration: AppConfiguration
     private let signer: any BuyerSigner
-    private let explorer: any ExplorerAPI
+    private let explorer: (any ExplorerAPI)?
 
     private let cache: SnapshotCache
 
@@ -196,7 +196,7 @@ final class TransferHistory {
     private(set) var lastUpdated: Date?
     private(set) var me: String?
 
-    init(configuration: AppConfiguration, signer: any BuyerSigner, explorer: any ExplorerAPI, cache: SnapshotCache = .shared) {
+    init(configuration: AppConfiguration, signer: any BuyerSigner, explorer: (any ExplorerAPI)?, cache: SnapshotCache) {
         self.configuration = configuration
         self.signer = signer
         self.explorer = explorer
@@ -227,10 +227,20 @@ final class TransferHistory {
 
     private static let minimumInterval: TimeInterval = 45
 
+    /// True where this chain's explorer cannot be queried by an app. The screen says
+    /// so, because an empty list with no explanation reads as no money having moved.
+    var isUnavailable: Bool { explorer == nil }
+
     /// Ask the explorer again. A failure leaves the rows as they were and says so;
     /// rows that vanish on a bad connection read as money that vanished.
     func refresh(force: Bool = false) async {
         adoptScope()
+        // Asking another chain's explorer would answer about another chain's money,
+        // which is worse than no answer. Rows from this chain's own snapshot stay.
+        guard let explorer else {
+            errorMessage = "History is not available on \(configuration.chainName) yet."
+            return
+        }
         guard !isLoading else { return }
         if !force, let lastUpdated, Date().timeIntervalSince(lastUpdated) < Self.minimumInterval {
             return
