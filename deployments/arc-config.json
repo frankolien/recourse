@@ -77,7 +77,18 @@
       "note": "The first factory, Base only, deployed to Base Sepolia 2026-09-07 and replaced the same day when the chain list was widened from three to eight. It is still deployed and still works: USDC sent to a deposit address it issued is swept by calling collect on it, so nothing sent there is lost."
     },
     "deployedTo": {
-      "note": "Nothing yet on the widened factory. Deploy per chain with contracts/script/DeployDepositFactory.s.sol; a chain the backend lists but has no factory on is left out of what the app offers rather than advertised."
+      "note": "A chain the backend lists but has no factory on is left out of what the app offers rather than advertised, so this list is what is actually funded.",
+      "base-sepolia": {
+        "chainId": 84532,
+        "factory": "0x9C24d756781171e8839Ce0a5e37522BE5528FD82"
+      },
+      "base-mainnet": {
+        "chainId": 8453,
+        "factory": "0x9C24d756781171e8839Ce0a5e37522BE5528FD82",
+        "deployed": "2026-09-29, for 0.00000537 ETH. Base charges gas in ETH, not the dollar, so the USDC funding Arc cannot pay for anything here.",
+        "verified": "usdc() returns Circle's own 0x833589fC on Base and messenger() returns CCTP v2 TokenMessengerV2 at 0x28b5a0e9, the same TokenMessenger Arc mainnet runs. addressFor(0x...dEaD) returns 0xAb8ac25286BDB2e2130Bc62A3a53B0396C227578 on Base mainnet and on Base Sepolia, which is the cross chain determinism measured rather than argued: one person's deposit address is the same everywhere."
+      },
+      "remaining": "Arbitrum, Optimism, Ethereum, Polygon, Avalanche, Unichain and Linea. Each is one run of ops/deploy-deposits-base.sh with its RPC, and lands on the same address. Base first because it is where people already keep dollars; Ethereum can wait until someone asks, since its gas is the only one that costs real money."
     }
   }
 }
