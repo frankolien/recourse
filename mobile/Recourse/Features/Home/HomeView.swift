@@ -491,12 +491,14 @@ struct HomeView: View {
                 figure: nil
             ) { environment.router.push(.convert) }
 
+            // Like Convert: the card stays on a chain that cannot carry the feature,
+            // and the detail line says so rather than the tile vanishing.
             HomeFeatureCard(
                 icon: "chart.bar.fill",
                 tint: Color(red: 0.55, green: 0.36, blue: 0.96),
                 title: "Earn",
-                detail: "Yield on idle USDC",
-                figure: earnFigure
+                detail: Deployment.consumer ? "Yield on idle USDC" : "Yield, coming soon",
+                figure: Deployment.consumer ? earnFigure : nil
             ) { environment.router.push(.earn) }
         }
     }

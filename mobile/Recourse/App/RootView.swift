@@ -118,7 +118,7 @@ struct RootView: View {
                 // Quoting is a read; filling, on Review, signs through the environment.
                 ConvertView(reader: try? ArcContractGateway.live(), environment: environment)
             } else {
-                ConvertComingSoonView()
+                FeatureComingSoonView.convert
             }
         case .cheques:
             ChequesView(environment: environment)
@@ -129,7 +129,13 @@ struct RootView: View {
         case .newInvoice:
             NewInvoiceView(environment: environment)
         case .earn:
-            EarnView(environment: environment)
+            // The vault is one of the four addresses that are zero on a chain without
+            // the consumer contracts, so calling it would ask nothing for nothing.
+            if Deployment.consumer {
+                EarnView(environment: environment)
+            } else {
+                FeatureComingSoonView.earn
+            }
         case .account:
             AccountFoundationView(environment: environment)
         case .support:
