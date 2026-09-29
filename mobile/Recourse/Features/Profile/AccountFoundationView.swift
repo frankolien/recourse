@@ -258,15 +258,13 @@ struct AccountFoundationView: View {
             ) {
                 if let target = pendingNetwork {
                     Button("Switch to \(target.name)") {
-                        Task {
-                            // Sign out first. The session belongs to the service for the
-                            // chain being left, and it is worth nothing to the next one.
-                            await accountSession.signOut()
-                            NetworkSelection.shared.select(target)
-                            hasCompletedOnboarding = false
-                            storedWorkspaceRole = ""
-                            pendingNetwork = nil
-                        }
+                        // Nothing to sign out of. Each chain keeps its own session in
+                        // its own keychain slot, so the app rebuilds itself on the
+                        // other chain and either finds a session there or asks for one
+                        // the first time. The session being left stays valid, which is
+                        // what makes switching back instant.
+                        NetworkSelection.shared.select(target)
+                        pendingNetwork = nil
                     }
                     Button("Cancel", role: .cancel) { pendingNetwork = nil }
                 }
@@ -274,8 +272,8 @@ struct AccountFoundationView: View {
                 if let target = pendingNetwork {
                     Text(
                         target.isTestnet
-                            ? "You will be signed out and set up again on \(target.name), where the dollars are test dollars. Your account on \(NetworkSelection.shared.current.name) stays where it is."
-                            : "You will be signed out and set up again on \(target.name), where the dollars are real. Your account on \(NetworkSelection.shared.current.name) stays where it is."
+                            ? "Balances, history and your account all change to \(target.name), where the dollars are test dollars. Your account on \(NetworkSelection.shared.current.name) stays exactly as it is."
+                            : "Balances, history and your account all change to \(target.name), where the dollars are real. You will sign in once the first time. Your account on \(NetworkSelection.shared.current.name) stays exactly as it is."
                     )
                 }
             }

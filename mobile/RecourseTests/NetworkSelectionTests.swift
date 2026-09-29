@@ -77,3 +77,41 @@ final class NetworkSelectionTests: XCTestCase {
         try? FileManager.default.removeItem(at: root)
     }
 }
+
+/// The pieces that make switching safe rather than merely possible.
+extension NetworkSelectionTests {
+    func testEachChainKeepsItsOwnSessionSlot() {
+        let testnet = Deployment.books.first { $0.isTestnet }!
+        let mainnet = Deployment.books.first { !$0.isTestnet }!
+        let a = AccountSessionStore.slot(for: testnet.chainID)
+        let b = AccountSessionStore.slot(for: mainnet.chainID)
+        XCTAssertNotEqual(a, b, "a session issued by one chain's service is worth nothing to another's")
+    }
+
+    func testThePrimaryChainKeepsTheOriginalSlotName() {
+        // Renaming it would sign out everyone already testing, to fix a problem they
+        // do not have.
+        XCTAssertEqual(AccountSessionStore.slot(for: Deployment.primary.chainID), "backend-account-session")
+    }
+
+    func testEveryChainHasItsOwnServiceAndEndpoint() {
+        // Two chains sharing an API URL would mean one database answering for both,
+        // and a balance from the wrong one.
+        let apis = Deployment.books.map(\.apiURL)
+        XCTAssertEqual(Set(apis).count, apis.count, "each chain needs its own service")
+        let rpcs = Deployment.books.map(\.rpcURL)
+        XCTAssertEqual(Set(rpcs).count, rpcs.count, "each chain needs its own endpoint")
+    }
+
+    @MainActor
+    func testTheConfigurationFollowsTheChain() {
+        for book in Deployment.books {
+            let configuration = AppConfiguration.of(book)
+            XCTAssertEqual(configuration.chainID, book.chainID)
+            XCTAssertEqual(configuration.apiURL.absoluteString, book.apiURL)
+            XCTAssertEqual(configuration.chainName, book.name)
+            // A chain with no venue must not inherit another chain's.
+            if book.fxRouter == nil { XCTAssertNil(configuration.fxRouterAddress) }
+        }
+    }
+}

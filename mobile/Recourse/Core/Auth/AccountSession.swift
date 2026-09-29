@@ -33,10 +33,26 @@ struct AuthenticatedAccount: Codable, Equatable, Sendable {
 
 actor AccountSessionStore {
     private let secureStore: any SecureDataStore
-    private let account = "backend-account-session"
+    private let account: String
 
-    init(secureStore: any SecureDataStore = KeychainStore(service: "com.recourse.buyer.account")) {
+    /// One slot per chain, because a session is issued by one chain's service and is
+    /// worth nothing to another's. Keeping them apart means signing in on Arc does not
+    /// end the session on Arc Testnet, and switching back finds it still there.
+    ///
+    /// The primary chain deliberately keeps the original unsuffixed name. Renaming it
+    /// would sign out everyone already testing, to fix a problem they do not have.
+    static func slot(for chainID: UInt64) -> String {
+        chainID == Deployment.primary.chainID
+            ? "backend-account-session"
+            : "backend-account-session-\(chainID)"
+    }
+
+    init(
+        secureStore: any SecureDataStore = KeychainStore(service: "com.recourse.buyer.account"),
+        chainID: UInt64 = Deployment.chainID
+    ) {
         self.secureStore = secureStore
+        self.account = Self.slot(for: chainID)
     }
 
     func save(_ grant: AccountSessionGrant) async throws {
