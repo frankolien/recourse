@@ -12,7 +12,8 @@ import SwiftUI
 /// The card stays on Home either way. Someone who came looking for euros or for yield
 /// should learn it is coming, not conclude the app has no answer. And it says which
 /// thing is missing, because "coming soon" alone invites the question it is trying to
-/// close.
+/// close. It says nothing about the rest of the app: a reassurance that everything
+/// else works reads as a hint that something did not.
 struct FeatureComingSoonView: View {
     let icon: String
     let title: String
@@ -46,11 +47,6 @@ struct FeatureComingSoonView: View {
             .padding(.horizontal, 32)
 
             Spacer(minLength: 0)
-
-            Text("Everything else in the app works today.")
-                .font(.footnote)
-                .foregroundStyle(RecourseColor.nightMuted)
-                .padding(.bottom, 28)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(RecourseColor.night)
