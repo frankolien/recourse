@@ -14,5 +14,11 @@
     "note": "Canonical and audited, which is why the consumer account can be on mainnet without waiting for the Olien audit: Safe holds the money."
   },
   "p256OwnerFactory": "0xDd7e1aFCd4d1E63fc53dfc3Ed28FAaED22fB6d46",
-  "p256Note": "Deployed 2026-09-29 in transaction 0x5ad33bba83ff09b457989e84c7c2e785cb11d68d8bb0970ec055c12e6c68217d, block 23283645, for 575,305 gas at 20 gwei, which is 0.0115 USDC because gas on Arc is the dollar itself. It landed on the address predicted from the salt and creation code before anything was sent. It is NOT Arc testnet's 0xBb27F2 and that is correct rather than a mistake: fallbackVerifier() reads zero here and Daimo's verifier there, because this chain answers the RIP-7212 precompile itself. The constructor argument is part of the creation code and therefore part of the address."
+  "p256Note": "Deployed 2026-09-29 in transaction 0x5ad33bba83ff09b457989e84c7c2e785cb11d68d8bb0970ec055c12e6c68217d, block 23283645, for 575,305 gas at 20 gwei, which is 0.0115 USDC because gas on Arc is the dollar itself. It landed on the address predicted from the salt and creation code before anything was sent. It is NOT Arc testnet's 0xBb27F2 and that is correct rather than a mistake: fallbackVerifier() reads zero here and Daimo's verifier there, because this chain answers the RIP-7212 precompile itself. The constructor argument is part of the creation code and therefore part of the address.",
+  "service": {
+    "url": "https://recourse-arc-mainnet-production.up.railway.app",
+    "note": "A second Railway service in the Recourse project, built from the same root Dockerfile as the testnet one, with its own Postgres (Postgres-Hals). It takes its chain entirely from DEPLOYMENTS_PATH=/app/deployments/5042.json, so no code distinguishes it. The boot log confirms what the file implies: no consumer contracts, so the escrow indexer, the resolver and the attestor stay off, and the treasury service is disabled because this chain has no Olien.",
+    "deposits": "DEPOSIT_FACTORY=0x9C24d756781171e8839Ce0a5e37522BE5528FD82. The sweeper watches Base and reports the other seven chains idle rather than failing, which is the design: a chain listed but not deployed to costs nothing and starts working the day the factory lands there.",
+    "trap": "A generated Railway domain comes with targetPort null and the service is unreachable until one is set. Same as the Monad service. railway domain update <id> --port 8080."
+  }
 }
