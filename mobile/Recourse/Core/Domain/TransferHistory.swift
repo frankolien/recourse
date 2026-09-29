@@ -220,7 +220,10 @@ final class TransferHistory {
         loadedScope = scope
         lastUpdated = nil
         errorMessage = nil
-        let snapshot = cache.load(Snapshot.self, key: Self.snapshotKey, scope: scope)
+        // With no explorer there is no source that could ever have written rows for
+        // this chain legitimately, so a snapshot found here can only be another chain's
+        // rows misfiled by an older build. Not reading it is the invariant, not a guess.
+        let snapshot = explorer == nil ? nil : cache.load(Snapshot.self, key: Self.snapshotKey, scope: scope)
         transfers = snapshot?.transfers ?? []
         me = snapshot?.me
     }

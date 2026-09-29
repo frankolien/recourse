@@ -48,11 +48,19 @@ struct SnapshotCache: Sendable {
     // into a folder name rather than written into the file system as it is. The chain
     // goes into the hash beside it, and is this instance's chain, never the app's
     // current one.
+    //
+    // The namespace is versioned. A build that shipped on 2026-09-29 partitioned by the
+    // app's current chain at write time and could misfile one chain's figures under
+    // another; those files hash to the old names and are never read again. The cost is
+    // one launch that fetches instead of opening on a remembered figure, once, which
+    // is nothing beside reading the wrong chain's money as your own.
+    private static let namespace = "v2"
+
     private func url(key: String, scope: String?) -> URL {
         let folder = scope.map { scope -> String in
-            let scoped = "\(chainID):\(scope)"
+            let scoped = "\(Self.namespace):\(chainID):\(scope)"
             return SHA256.hash(data: Data(scoped.utf8)).prefix(12).map { String(format: "%02x", $0) }.joined()
-        } ?? "anonymous-\(chainID)"
+        } ?? "\(Self.namespace)-anonymous-\(chainID)"
         return root.appending(path: folder, directoryHint: .isDirectory).appending(path: "\(key).json")
     }
 }

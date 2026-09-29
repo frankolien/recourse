@@ -69,6 +69,37 @@ final class ChainSwitchAuditTests: XCTestCase {
     }
 }
 
+extension ChainSwitchAuditTests {
+    /// The racy build could have filed another chain's rows under mainnet. On a chain
+    /// with no explorer nothing could have written rows legitimately, so whatever is on
+    /// disk is not read, however it got there.
+    @MainActor
+    func testHistoryWithoutAnExplorerIgnoresAnySnapshotOnDisk() async {
+        let root = URL(fileURLWithPath: NSTemporaryDirectory()).appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let cache = SnapshotCache(chainID: mainnet.chainID, root: root)
+        // Poison: rows filed under mainnet by something that should not have.
+        struct Poison: Codable { let me: String?; let transfers: [TokenTransfer] }
+        let stray = TokenTransfer(
+            hash: "0xabc", blockNumber: 1, timestamp: Date(timeIntervalSince1970: 1_700_000_000),
+            from: "0x000000000000000000000000000000000000dead", to: "0x1111111111111111111111111111111111111111",
+            value: 1_000_000, token: "0x3600000000000000000000000000000000000000", symbol: "USDC", method: "transfer"
+        )
+        cache.save(Poison(me: "0x000000000000000000000000000000000000dead", transfers: [stray]), key: "history", scope: ActiveAccount.scope)
+        // The poison must be real, or the assertion below proves nothing.
+        XCTAssertEqual(cache.load(Poison.self, key: "history", scope: ActiveAccount.scope)?.transfers.count, 1)
+
+        let history = TransferHistory(
+            configuration: AppConfiguration.of(mainnet),
+            signer: AuditFixtureSigner(),
+            explorer: nil,
+            cache: cache
+        )
+        await history.refresh(force: true)
+        XCTAssertTrue(history.transfers.isEmpty, "rows that no explorer could have produced must not be shown")
+    }
+}
+
 private actor AuditFixtureSigner: BuyerSigner {
     func address() async throws -> EthereumAddress {
         EthereumAddress(trusted: "0x000000000000000000000000000000000000dEaD")
