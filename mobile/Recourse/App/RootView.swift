@@ -143,11 +143,27 @@ struct RootView: View {
         case .keys:
             KeysView(environment: environment)
         case .team:
-            TeamView(environment: environment)
+            // Home hides this behind membership, but Profile offers it to everyone, so
+            // the gate belongs on the route. Without it a chain with no treasury
+            // protocol shows the service's own refusal and then polls it every ten
+            // seconds forever.
+            if Deployment.olienFactory != nil {
+                TeamView(environment: environment)
+            } else {
+                FeatureComingSoonView.teams
+            }
         case .teamAccount(let address):
-            TeamAccountView(environment: environment, address: address)
+            if Deployment.olienFactory != nil {
+                TeamAccountView(environment: environment, address: address)
+            } else {
+                FeatureComingSoonView.teams
+            }
         case .teamProposal(let account, let txHash):
-            TeamProposalView(environment: environment, account: account, txHash: txHash)
+            if Deployment.olienFactory != nil {
+                TeamProposalView(environment: environment, account: account, txHash: txHash)
+            } else {
+                FeatureComingSoonView.teams
+            }
         }
     }
 

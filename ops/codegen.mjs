@@ -35,6 +35,9 @@ try {
 // the settlement vault for USYC. The same distinction the backend draws, by the same
 // name, so the two agree about what a chain is.
 const consumer = Boolean(d.escrow && d.policyRegistry && d.settlementVault);
+// Treasuries are a separate protocol with its own deploy, so a chain can carry the
+// consumer contracts without it or neither. Arc mainnet has neither yet.
+const olienFactory = d.olien?.factory ?? null;
 const ZERO = "0x0000000000000000000000000000000000000000";
 // Zero rather than absent, because twenty call sites read these without validating
 // them and only the features that would call a contract need to care. Those check
@@ -86,6 +89,10 @@ enum Deployment {
     /// mainnet, where the four addresses above are zero and any screen that would
     /// call one must say so rather than call it.
     static let consumer = ${consumer}
+    /// The Olien factory, when treasuries exist on this chain. Nil means the treasury
+    /// routes would answer that the service is off, so Teams says it is coming instead
+    /// of showing that sentence to someone.
+    static let olienFactory: String? = ${olienFactory ? `"${olienFactory}"` : "nil"}
 ${fx ? `
     // FX venue, deployed separately. See deployments/arc-testnet-fx.json.
     static let fxRouter: String? = "${fx.router}"

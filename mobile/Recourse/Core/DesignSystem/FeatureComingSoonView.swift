@@ -77,7 +77,17 @@ struct FeatureComingSoonView: View {
             explanation: "Your idle dollars will earn while they wait, in a US Treasury fund held by Circle. It is not open on this network yet, because the fund has to admit this account before a single dollar can go in."
         )
     }
+    /// Teams, where the chain has no treasury protocol deployed.
+    static var teams: FeatureComingSoonView {
+        FeatureComingSoonView(
+            icon: "person.3.fill",
+            title: "Teams",
+            heading: "Teams are coming",
+            explanation: "You will be able to belong to a treasury that pays people together, approving from this phone with Face ID. The treasury contracts are not on this network yet."
+        )
+    }
 }
 
 #Preview("Convert") { NavigationStack { FeatureComingSoonView.convert } }
 #Preview("Earn") { NavigationStack { FeatureComingSoonView.earn } }
+#Preview("Teams") { NavigationStack { FeatureComingSoonView.teams } }
