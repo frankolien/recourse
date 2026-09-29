@@ -13,6 +13,6 @@
     "entryPoint": "0x0000000071727De22E5E9d8BAf0edAc6f37da032",
     "note": "Canonical and audited, which is why the consumer account can be on mainnet without waiting for the Olien audit: Safe holds the money."
   },
-  "p256OwnerFactory": "0x0000000000000000000000000000000000000000",
-  "p256Note": "Zero until ops/deploy-arc-mainnet.sh --live runs. It will land at 0xdd7e1afcd4d1e63fc53dfc3ed28faaed22fb6d46, predicted from the salt and the creation code, and that address is free today. It does NOT match Arc testnet's 0xBb27F2 because the constructor argument differs: testnet passes Daimo's Solidity verifier as a fallback and mainnet passes address(0), since the precompile is live here. Different creation code, different CREATE2 address, and that is correct rather than a mistake to fix."
+  "p256OwnerFactory": "0xDd7e1aFCd4d1E63fc53dfc3Ed28FAaED22fB6d46",
+  "p256Note": "Deployed 2026-09-29 in transaction 0x5ad33bba83ff09b457989e84c7c2e785cb11d68d8bb0970ec055c12e6c68217d, block 23283645, for 575,305 gas at 20 gwei, which is 0.0115 USDC because gas on Arc is the dollar itself. It landed on the address predicted from the salt and creation code before anything was sent. It is NOT Arc testnet's 0xBb27F2 and that is correct rather than a mistake: fallbackVerifier() reads zero here and Daimo's verifier there, because this chain answers the RIP-7212 precompile itself. The constructor argument is part of the creation code and therefore part of the address."
 }
