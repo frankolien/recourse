@@ -133,13 +133,11 @@ struct BridgeDepositView: View {
             rule("Arrives in about a minute", detail: "Circle moves it to Arc. You are told when it lands.", icon: "clock.fill", tint: RecourseColor.nightMuted)
             rule("Nobody holds it but you", detail: "This address can only pay your Recourse account, and nothing else.", icon: "lock.fill", tint: RecourseColor.nightMuted)
         }
-        .padding(16)
-        .background(RecourseColor.nightChip, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(RecourseColor.nightLine, lineWidth: 1)
-        }
+        // No card around these. In app the ground is flat black and the rows are the
+        // structure; a filled, outlined box would make four plain facts look like a
+        // component that does something.
         .padding(.horizontal, 22)
+        .padding(.top, 4)
     }
 
     private func rule(_ title: String, detail: String, icon: String, tint: Color) -> some View {
